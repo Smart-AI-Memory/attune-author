@@ -1,3 +1,0 @@
-[console_scripts]
-attune-author = attune_author.cli:main
-attune-author-mcp = attune_author.mcp.server:main
