@@ -217,7 +217,12 @@ def generate_feature_templates(
         )
 
         # LLM polish pass — improves writing quality
-        content = _maybe_polish(content, feature, source_info)
+        content = _maybe_polish(
+            content,
+            feature,
+            source_info,
+            template_type=depth,
+        )
 
         out_path.write_text(content, encoding="utf-8")
         result.templates.append(
@@ -236,32 +241,69 @@ def _maybe_polish(
     content: str,
     feature: Feature,
     source_info: _SourceInfo,
+    template_type: str = "generic",
 ) -> str:
     """Run the LLM polish pass if an API key is available.
+
+    Polish is skipped silently when ``ANTHROPIC_API_KEY`` is
+    not set and strict mode is off. In strict mode (either
+    via the ``ATTUNE_AUTHOR_STRICT_POLISH`` env var or any
+    explicit caller configuration) a missing key or any
+    polish failure propagates through as
+    :class:`attune_author.polish.PolishError`.
+
+    The summary passed to the polish pass is built from the
+    enriched signature lists on ``source_info`` when
+    available, so the LLM sees typed function and method
+    signatures rather than bare names.
 
     Args:
         content: Jinja2-rendered template content.
         feature: The feature being documented.
         source_info: Extracted source information.
+        template_type: Template kind (concept/task/reference
+            /error/warning/troubleshooting/faq) — drives
+            per-type system-prompt selection in polish.py.
 
     Returns:
-        Polished content, or original if polish unavailable.
+        Polished content, or the original input if polish
+        is unavailable and strict mode is off.
     """
     import os
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return content
+    from attune_author.polish import (
+        PolishError,
+        _env_strict_default,
+        build_source_summary,
+        polish_template,
+    )
 
-    from attune_author.polish import build_source_summary, polish_template
+    have_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    if not have_key and not _env_strict_default():
+        return content
 
     summary = build_source_summary(
         public_classes=source_info.public_classes,
         public_functions=source_info.public_functions,
         module_docstrings=source_info.module_docstrings,
         file_count=source_info.file_count,
+        function_signatures=source_info.function_signatures or None,
+        class_signatures=source_info.class_signatures or None,
     )
 
-    return polish_template(content, feature.name, summary)
+    try:
+        return polish_template(
+            content,
+            feature.name,
+            summary,
+            template_type=template_type,
+        )
+    except PolishError:
+        # Strict-mode failure propagates after we've at
+        # least built the summary — surface the underlying
+        # cause to callers without silently dropping the
+        # Jinja output.
+        raise
 
 
 def _is_manual(path: Path) -> bool:
@@ -283,13 +325,33 @@ def _is_manual(path: Path) -> bool:
 
 @dataclass
 class _SourceInfo:
-    """Extracted information from source files."""
+    """Extracted information from source files.
+
+    Attributes:
+        public_functions: Legacy list of ``{name, doc, file}``
+            dicts. Kept for template rendering compatibility.
+        public_classes: Legacy list of ``{name, doc, file}``
+            dicts for classes.
+        module_docstrings: First lines of module docstrings.
+        config_keys: Top-level config constants discovered
+            in source files.
+        file_count: Number of source files matched.
+        function_signatures: Enriched view of functions that
+            includes formatted signatures (``name(arg: T) ->
+            R``). Populated alongside ``public_functions`` so
+            the polish pass can feed the LLM typed context
+            without changing existing callers.
+        class_signatures: Enriched view of classes with
+            public method signatures joined by newlines.
+    """
 
     public_functions: list[dict[str, str]] = field(default_factory=list)
     public_classes: list[dict[str, str]] = field(default_factory=list)
     module_docstrings: list[str] = field(default_factory=list)
     config_keys: list[str] = field(default_factory=list)
     file_count: int = 0
+    function_signatures: list[dict[str, str]] = field(default_factory=list)
+    class_signatures: list[dict[str, str]] = field(default_factory=list)
 
 
 def _extract_source_info(
@@ -340,14 +402,145 @@ def _extract_source_info(
                 info.public_functions.append(
                     {"name": node.name, "doc": first_line, "file": rel_path}
                 )
+                info.function_signatures.append(
+                    {
+                        "name": node.name,
+                        "signature": _format_function_signature(node),
+                        "doc": first_line,
+                        "file": rel_path,
+                    }
+                )
             elif isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
                 doc = ast.get_docstring(node) or ""
                 first_line = doc.split("\n")[0].strip() if doc else ""
                 info.public_classes.append(
                     {"name": node.name, "doc": first_line, "file": rel_path}
                 )
+                info.class_signatures.append(
+                    {
+                        "name": node.name,
+                        "methods": _format_class_methods(node),
+                        "doc": first_line,
+                        "file": rel_path,
+                    }
+                )
 
     return info
+
+
+def _format_function_signature(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> str:
+    """Format a function AST node as a readable signature.
+
+    Produces ``name(arg1: T1, arg2: T2 = default) -> R`` —
+    good enough for the LLM to understand argument types
+    and defaults without running a full unparse. Missing
+    annotations are omitted rather than replaced with
+    ``Any``.
+
+    Args:
+        node: AST function node.
+
+    Returns:
+        Human-readable signature string.
+    """
+    args: list[str] = []
+
+    posonly = list(node.args.posonlyargs)
+    regular = list(node.args.args)
+    kwonly = list(node.args.kwonlyargs)
+    defaults = list(node.args.defaults)
+    kw_defaults = list(node.args.kw_defaults)
+
+    # Map positional/regular args to their defaults
+    positional = posonly + regular
+    num_no_default = len(positional) - len(defaults)
+    for idx, arg in enumerate(positional):
+        arg_str = arg.arg
+        if arg.annotation is not None:
+            arg_str += f": {_unparse_annotation(arg.annotation)}"
+        if idx >= num_no_default:
+            default = defaults[idx - num_no_default]
+            arg_str += f" = {_unparse_annotation(default)}"
+        args.append(arg_str)
+        if posonly and arg is posonly[-1] and idx == len(posonly) - 1:
+            args.append("/")
+
+    if node.args.vararg is not None:
+        vararg = node.args.vararg
+        vararg_str = f"*{vararg.arg}"
+        if vararg.annotation is not None:
+            vararg_str += f": {_unparse_annotation(vararg.annotation)}"
+        args.append(vararg_str)
+    elif kwonly:
+        args.append("*")
+
+    for kw_arg, kw_default in zip(kwonly, kw_defaults, strict=False):
+        kw_str = kw_arg.arg
+        if kw_arg.annotation is not None:
+            kw_str += f": {_unparse_annotation(kw_arg.annotation)}"
+        if kw_default is not None:
+            kw_str += f" = {_unparse_annotation(kw_default)}"
+        args.append(kw_str)
+
+    if node.args.kwarg is not None:
+        kwarg = node.args.kwarg
+        kwarg_str = f"**{kwarg.arg}"
+        if kwarg.annotation is not None:
+            kwarg_str += f": {_unparse_annotation(kwarg.annotation)}"
+        args.append(kwarg_str)
+
+    sig = f"{node.name}({', '.join(args)})"
+    if node.returns is not None:
+        sig += f" -> {_unparse_annotation(node.returns)}"
+    return sig
+
+
+def _format_class_methods(node: ast.ClassDef) -> str:
+    """Format a class's public method signatures.
+
+    Returns a newline-separated string of signatures for
+    methods whose names do not start with an underscore.
+    Includes ``__init__`` because callers need to know the
+    constructor shape.
+
+    Args:
+        node: AST class node.
+
+    Returns:
+        Newline-separated method signatures, or the empty
+        string if the class has no public methods.
+    """
+    methods: list[str] = []
+    for child in node.body:
+        if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef):
+            name = child.name
+            if name.startswith("_") and name != "__init__":
+                continue
+            methods.append(_format_function_signature(child))
+    return "\n".join(methods)
+
+
+def _unparse_annotation(node: ast.expr) -> str:
+    """Convert an AST expression to a readable string.
+
+    Falls back to ``<expr>`` if ``ast.unparse`` fails so
+    signature extraction never raises on exotic annotations.
+
+    Args:
+        node: AST expression node.
+
+    Returns:
+        Readable string representation.
+    """
+    try:
+        return ast.unparse(node)
+    except Exception:  # noqa: BLE001
+        # INTENTIONAL: signature extraction is best-effort
+        # context for the LLM — never block generation on
+        # an exotic annotation we can't render.
+        return "<expr>"
 
 
 def _render_template(
