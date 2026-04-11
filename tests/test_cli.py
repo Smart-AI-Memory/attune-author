@@ -67,6 +67,73 @@ class TestCLI:
         captured = capsys.readouterr()
         assert "isn't set up yet" in captured.out
 
+    def test_generate_missing_feature_lists_available(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """`generate` with no feature prints a usage hint that
+        lists the available features from the manifest."""
+        help_dir = tmp_path / ".help"
+        help_dir.mkdir()
+        (help_dir / "features.yaml").write_text(
+            "version: 1\n"
+            "features:\n"
+            "  auth:\n    description: Auth\n"
+            "  api:\n    description: API\n",
+            encoding="utf-8",
+        )
+        result = main(
+            [
+                "generate",
+                "--help-dir",
+                str(help_dir),
+                "--project-root",
+                str(tmp_path),
+            ]
+        )
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Usage: attune-author generate <feature>" in captured.err
+        assert "auth" in captured.err
+        assert "api" in captured.err
+
+    def test_generate_missing_feature_no_manifest(
+        self,
+        tmp_path: Path,
+        capsys,
+    ) -> None:
+        """`generate` with no feature and no manifest tells the
+        user to run `init` rather than listing features."""
+        result = main(
+            [
+                "generate",
+                "--help-dir",
+                str(tmp_path / ".help"),
+                "--project-root",
+                str(tmp_path),
+            ]
+        )
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Usage: attune-author generate" in captured.err
+        assert "attune-author init" in captured.err
+
+    def test_docs_missing_target_prints_example(
+        self,
+        tmp_path: Path,
+        capsys,
+        monkeypatch,
+    ) -> None:
+        """`docs` with no target prints a usage hint and example."""
+        monkeypatch.chdir(tmp_path)
+        result = main(["docs"])
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Usage: attune-author docs <target>" in captured.err
+        assert "Example:" in captured.err
+        assert "attune-author[ai]" in captured.err
+
     def test_welcome_truncates_long_feature_list(
         self,
         tmp_path: Path,
@@ -180,7 +247,7 @@ class TestCLI:
 
         assert result == 1
         captured = capsys.readouterr()
-        assert "not found" in captured.out
+        assert "not found" in captured.err
 
     def test_regenerate_dry_run(self, help_dir: Path, project_root: Path, capsys) -> None:
         """Test regenerate --dry-run."""

@@ -63,7 +63,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_status.add_argument("--project-root", default=".", help="Project root directory.")
 
     p_gen = sub.add_parser("generate", help="Generate templates for a feature")
-    p_gen.add_argument("feature", help="Feature name to generate.")
+    # Positional is optional so we can print a contextual error
+    # (with the list of available features) instead of argparse's
+    # terse "the following arguments are required" message.
+    p_gen.add_argument("feature", nargs="?", help="Feature name to generate.")
     p_gen.add_argument("--help-dir", default=".help", help="Path to .help/ directory.")
     p_gen.add_argument("--project-root", default=".", help="Project root directory.")
     p_gen.add_argument(
@@ -82,7 +85,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     p_docs = sub.add_parser("docs", help="Generate docs from source (requires [ai])")
-    p_docs.add_argument("target", help="Source file or module to document.")
+    # Optional so the handler can print a contextual usage hint.
+    p_docs.add_argument("target", nargs="?", help="Source file or module to document.")
     p_docs.add_argument("--output", "-o", help="Output file path.")
     p_docs.add_argument(
         "--doc-type",
@@ -214,12 +218,27 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     root = validate_file_path(args.project_root)
     help_dir = validate_file_path(args.help_dir)
 
-    manifest = load_manifest(help_dir)
-    feature = manifest.features.get(args.feature)
+    if not args.feature:
+        _print_generate_usage(help_dir)
+        return 1
 
+    try:
+        manifest = load_manifest(help_dir)
+    except FileNotFoundError:
+        print(
+            f"No manifest at {help_dir / 'features.yaml'}. " "Run `attune-author init` first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    feature = manifest.features.get(args.feature)
     if not feature:
-        print(f"Feature '{args.feature}' not found in manifest.")
-        print(f"Available: {', '.join(sorted(manifest.features))}")
+        print(f"Feature '{args.feature}' not found in manifest.", file=sys.stderr)
+        if manifest.features:
+            print(
+                f"Available: {', '.join(sorted(manifest.features))}",
+                file=sys.stderr,
+            )
         return 1
 
     result = generate_feature_templates(
@@ -266,6 +285,10 @@ def _cmd_regenerate(args: argparse.Namespace) -> int:
 
 def _cmd_docs(args: argparse.Namespace) -> int:
     """Handle the docs command."""
+    if not args.target:
+        _print_docs_usage()
+        return 1
+
     try:
         from attune_author.doc_gen import DocGenConfig, generate_docs
     except ImportError:
@@ -344,6 +367,51 @@ def _print_welcome() -> None:
     print("  attune-author generate <feature>  Generate templates for a feature")
     print()
     print("Run `attune-author --help` for the full reference.")
+
+
+def _print_generate_usage(help_dir: Path) -> None:
+    """Print a contextual usage hint for `generate` with no feature.
+
+    Tries to list the feature names from the manifest so the user
+    sees exactly what they can pass. Falls back to a generic hint
+    if the manifest is missing or unreadable.
+    """
+    print("Usage: attune-author generate <feature>", file=sys.stderr)
+    print("  Generates concept/task/reference templates for a feature.", file=sys.stderr)
+
+    try:
+        from attune_author.manifest import load_manifest
+
+        manifest = load_manifest(help_dir)
+    except Exception:  # noqa: BLE001
+        print(
+            f"\nNo manifest found at {help_dir / 'features.yaml'}. "
+            "Run `attune-author init` first.",
+            file=sys.stderr,
+        )
+        return
+
+    if not manifest.features:
+        print(
+            "\nThe manifest has no features yet — edit "
+            f"{help_dir / 'features.yaml'} or re-run `attune-author init`.",
+            file=sys.stderr,
+        )
+        return
+
+    names = sorted(manifest.features.keys())
+    print(f"\nAvailable features: {', '.join(names)}", file=sys.stderr)
+
+
+def _print_docs_usage() -> None:
+    """Print a contextual usage hint for `docs` with no target."""
+    print("Usage: attune-author docs <target> [--output FILE]", file=sys.stderr)
+    print(
+        "  Generates documentation for a Python file or module using AI.",
+        file=sys.stderr,
+    )
+    print("  Example: attune-author docs src/myapp/auth.py", file=sys.stderr)
+    print("  Requires the [ai] extra: pip install 'attune-author[ai]'", file=sys.stderr)
 
 
 def _load_feature_names_for_welcome() -> list[str] | None:
