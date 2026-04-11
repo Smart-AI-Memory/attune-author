@@ -15,6 +15,17 @@ import pytest
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent / "plugin"
 PACKAGE_INIT = Path(__file__).resolve().parent.parent / "src" / "attune_author" / "__init__.py"
 
+# Skip the whole module when the Claude Code plugin layout
+# isn't scaffolded in this checkout. The plugin/ directory
+# lives alongside the Python package and carries skills,
+# hooks, agents, and MCP config — none of which exist in
+# source-only checkouts. When the plugin gets built these
+# tests light up automatically.
+pytestmark = pytest.mark.skipif(
+    not PLUGIN_ROOT.exists(),
+    reason="plugin/ directory not scaffolded in this checkout",
+)
+
 VALID_SKILL_FIELDS = {
     "name",
     "description",

@@ -15,6 +15,13 @@ import pytest
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent / "plugin"
 SKILLS_DIR = PLUGIN_ROOT / "skills"
 
+# Skip the whole module when the Claude Code plugin layout
+# isn't scaffolded — see test_plugin_config.py for rationale.
+pytestmark = pytest.mark.skipif(
+    not PLUGIN_ROOT.exists(),
+    reason="plugin/ directory not scaffolded in this checkout",
+)
+
 
 def _all_skills() -> list[Path]:
     return sorted(SKILLS_DIR.glob("*/SKILL.md"))
