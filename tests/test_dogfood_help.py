@@ -223,3 +223,170 @@ class TestNoBoilerplateInPolishedTemplates:
             f"Re-run scripts/regenerate_help.py with the "
             f"API key set to fix."
         )
+
+
+class TestNoHallucinatedSymbols:
+    """Verify that every function, class, or method name the
+    polish pass referenced in backticked inline code actually
+    exists in the attune-author source tree.
+
+    This is a dogfood deep-review finding: when the polish
+    pipeline grounds its rewrites in the source summary, it
+    can still occasionally invent plausible-sounding method
+    names that do not exist. Testing against the real AST
+    catches those before a stale corpus ships.
+
+    The check is focused — it only looks at backticked
+    ``name()`` and ``Class.method()`` references, not every
+    identifier in the text. Prose mentions that don't
+    produce executable Python are out of scope. Stdlib and
+    well-known third-party names are allowlisted because
+    they are real, just not defined in this package.
+    """
+
+    SOURCE_DIR = REPO_ROOT / "src" / "attune_author"
+
+    #: Names that are real methods on stdlib or third-party
+    #: types but not defined in attune_author. The polish
+    #: pass is allowed to reference them.
+    ALLOWLIST = frozenset(
+        {
+            # Python builtins
+            "print",
+            "open",
+            "len",
+            "range",
+            "enumerate",
+            "sorted",
+            "format",
+            # str/bytes methods
+            "strip",
+            "split",
+            "join",
+            "replace",
+            "lower",
+            "upper",
+            "startswith",
+            "endswith",
+            # list/dict methods
+            "append",
+            "extend",
+            "update",
+            "get",
+            "items",
+            "keys",
+            "values",
+            # pathlib.Path
+            "read_text",
+            "write_text",
+            "read_bytes",
+            "write_bytes",
+            "resolve",
+            "absolute",
+            "exists",
+            "is_file",
+            "is_dir",
+            "mkdir",
+            "rmdir",
+            "unlink",
+            "glob",
+            "rglob",
+            # ast, json, yaml, os.environ
+            "parse",
+            "dump",
+            "dumps",
+            "loads",
+            "load",
+            "safe_load",
+            "getenv",
+            # pytest convention
+            "main",
+        }
+    )
+
+    @pytest.fixture(scope="class")
+    def real_symbols(self) -> set[str]:
+        """Parse the attune_author source tree and collect
+        every public function, class, and method name that
+        is actually defined.
+        """
+        import ast
+
+        symbols: set[str] = set()
+        for py_file in self.SOURCE_DIR.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+            try:
+                tree = ast.parse(py_file.read_text(encoding="utf-8"))
+            except SyntaxError:
+                continue
+
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    symbols.add(node.name)
+                elif isinstance(node, ast.ClassDef):
+                    symbols.add(node.name)
+
+        return symbols
+
+    def test_no_hallucinated_function_calls(
+        self,
+        real_symbols: set[str],
+    ) -> None:
+        """Every ``foo()`` backticked reference in the corpus
+        resolves to a real function or is allowlisted.
+        """
+        import re
+
+        pattern = re.compile(r"`([a-zA-Z_][a-zA-Z0-9_]*)\(\)`")
+        hallucinated: list[tuple[str, str]] = []
+
+        for md in TEMPLATES_DIR.rglob("*.md"):
+            text = md.read_text(encoding="utf-8")
+            for name in pattern.findall(text):
+                if name in real_symbols:
+                    continue
+                if name in self.ALLOWLIST:
+                    continue
+                hallucinated.append((str(md.relative_to(TEMPLATES_DIR)), name))
+
+        assert not hallucinated, (
+            "Found function references in the dogfood corpus "
+            "that do not resolve to real symbols in "
+            f"src/attune_author/: {hallucinated}. If the "
+            "symbol is a real stdlib or third-party name, "
+            "add it to TestNoHallucinatedSymbols.ALLOWLIST."
+        )
+
+    def test_no_hallucinated_method_calls(
+        self,
+        real_symbols: set[str],
+    ) -> None:
+        """Every ``obj.method()`` backticked reference in the
+        corpus resolves to a real method name or is
+        allowlisted. ``obj`` is not validated — only the
+        method.
+        """
+        import re
+
+        pattern = re.compile(
+            r"`([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\(\)`"
+        )
+        hallucinated: list[tuple[str, str, str]] = []
+
+        for md in TEMPLATES_DIR.rglob("*.md"):
+            text = md.read_text(encoding="utf-8")
+            for obj, meth in pattern.findall(text):
+                if meth in real_symbols:
+                    continue
+                if meth in self.ALLOWLIST:
+                    continue
+                hallucinated.append((str(md.relative_to(TEMPLATES_DIR)), obj, meth))
+
+        assert not hallucinated, (
+            "Found method references in the dogfood corpus "
+            "that do not resolve to real symbols in "
+            f"src/attune_author/: {hallucinated}. If the "
+            "method is a real stdlib or third-party name, "
+            "add it to TestNoHallucinatedSymbols.ALLOWLIST."
+        )
