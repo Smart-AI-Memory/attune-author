@@ -343,6 +343,46 @@ class _SourceInfo:
     class_signatures: list[dict[str, str]] = field(default_factory=list)
 
 
+def _docstring_first_line(node: ast.AST) -> str:
+    """Return the first non-empty line of an AST node's docstring."""
+    doc = ast.get_docstring(node) or ""
+    return doc.split("\n", 1)[0].strip()
+
+
+def _collect_function(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    rel_path: str,
+    info: _SourceInfo,
+) -> None:
+    first_line = _docstring_first_line(node)
+    info.public_functions.append({"name": node.name, "doc": first_line, "file": rel_path})
+    info.function_signatures.append(
+        {
+            "name": node.name,
+            "signature": _format_function_signature(node),
+            "doc": first_line,
+            "file": rel_path,
+        }
+    )
+
+
+def _collect_class(
+    node: ast.ClassDef,
+    rel_path: str,
+    info: _SourceInfo,
+) -> None:
+    first_line = _docstring_first_line(node)
+    info.public_classes.append({"name": node.name, "doc": first_line, "file": rel_path})
+    info.class_signatures.append(
+        {
+            "name": node.name,
+            "methods": _format_class_methods(node),
+            "doc": first_line,
+            "file": rel_path,
+        }
+    )
+
+
 def _extract_source_info(
     matched_files: list[str],
     project_root: Path,
@@ -374,43 +414,17 @@ def _extract_source_info(
             logger.debug("Cannot parse %s: %s", rel_path, e)
             continue
 
-        # Module docstring
-        docstring = ast.get_docstring(tree)
-        if docstring:
-            first_line = docstring.split("\n")[0].strip()
-            if first_line:
-                info.module_docstrings.append(first_line)
+        module_doc = _docstring_first_line(tree)
+        if module_doc:
+            info.module_docstrings.append(module_doc)
 
-        # Public functions and classes
         for node in ast.iter_child_nodes(tree):
-            if isinstance(
-                node, ast.FunctionDef | ast.AsyncFunctionDef
-            ) and not node.name.startswith("_"):
-                doc = ast.get_docstring(node) or ""
-                first_line = doc.split("\n")[0].strip() if doc else ""
-                info.public_functions.append(
-                    {"name": node.name, "doc": first_line, "file": rel_path}
-                )
-                info.function_signatures.append(
-                    {
-                        "name": node.name,
-                        "signature": _format_function_signature(node),
-                        "doc": first_line,
-                        "file": rel_path,
-                    }
-                )
-            elif isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
-                doc = ast.get_docstring(node) or ""
-                first_line = doc.split("\n")[0].strip() if doc else ""
-                info.public_classes.append({"name": node.name, "doc": first_line, "file": rel_path})
-                info.class_signatures.append(
-                    {
-                        "name": node.name,
-                        "methods": _format_class_methods(node),
-                        "doc": first_line,
-                        "file": rel_path,
-                    }
-                )
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                if not node.name.startswith("_"):
+                    _collect_function(node, rel_path, info)
+            elif isinstance(node, ast.ClassDef):
+                if not node.name.startswith("_"):
+                    _collect_class(node, rel_path, info)
 
     return info
 
@@ -443,6 +457,7 @@ def _format_function_signature(
     # Map positional/regular args to their defaults
     positional = posonly + regular
     num_no_default = len(positional) - len(defaults)
+    last_posonly_idx = len(posonly) - 1
     for idx, arg in enumerate(positional):
         arg_str = arg.arg
         if arg.annotation is not None:
@@ -451,7 +466,7 @@ def _format_function_signature(
             default = defaults[idx - num_no_default]
             arg_str += f" = {_unparse_annotation(default)}"
         args.append(arg_str)
-        if posonly and arg is posonly[-1] and idx == len(posonly) - 1:
+        if idx == last_posonly_idx:
             args.append("/")
 
     if node.args.vararg is not None:

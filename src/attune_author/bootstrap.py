@@ -7,6 +7,7 @@ init flow.
 
 from __future__ import annotations
 
+import ast
 import logging
 import os
 from dataclasses import dataclass, field
@@ -338,22 +339,19 @@ def _infer_description(directory: Path) -> str:
     Returns:
         Best-effort description string.
     """
-    # Try __init__.py docstring
+    # Try __init__.py docstring (parsed via AST — manual
+    # triple-quote slicing gets confused by in-body strings).
     init = directory / "__init__.py"
     if init.exists():
         try:
-            text = init.read_text(encoding="utf-8")
-            # Extract first docstring
-            for delim in ('"""', "'''"):
-                if delim in text:
-                    start = text.index(delim) + 3
-                    end = text.index(delim, start)
-                    doc = text[start:end].strip()
-                    first_line = doc.split("\n")[0].strip()
-                    if first_line:
-                        return first_line
-        except (OSError, ValueError):
-            pass
+            tree = ast.parse(init.read_text(encoding="utf-8"))
+            docstring = ast.get_docstring(tree)
+        except (OSError, SyntaxError, ValueError):
+            docstring = None
+        if docstring:
+            first_line = docstring.split("\n", 1)[0].strip()
+            if first_line:
+                return first_line
 
     # Try README
     for readme_name in ("README.md", "README.rst", "README"):
