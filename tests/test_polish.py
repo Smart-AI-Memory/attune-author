@@ -59,9 +59,7 @@ class TestBuildSourceSummary:
 
     def test_truncates_long_lists(self) -> None:
         """Test that long lists are truncated."""
-        many_classes = [
-            {"name": f"Class{i}", "doc": "", "file": "f.py"} for i in range(20)
-        ]
+        many_classes = [{"name": f"Class{i}", "doc": "", "file": "f.py"} for i in range(20)]
         result = build_source_summary(
             public_classes=many_classes,
             public_functions=[],
@@ -86,9 +84,7 @@ class TestPolishTemplate:
 
     def test_returns_original_on_llm_error(self) -> None:
         """Test fallback to original when LLM call fails."""
-        with patch.dict(
-            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
-        ):  # pragma: allowlist secret
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.side_effect = RuntimeError("API down")
                 content = "# Test\nOriginal."
@@ -96,14 +92,18 @@ class TestPolishTemplate:
                 assert result == content
 
     def test_returns_polished_on_success(self) -> None:
-        """Test successful polish returns LLM output."""
-        with patch.dict(
-            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
-        ):  # pragma: allowlist secret
+        """Test successful polish returns LLM output.
+
+        polish_template now feeds the LLM response through
+        _sanitize_output, which guarantees a single trailing
+        newline. Sanitization is covered in detail in
+        TestSanitizeOutput in test_polish_improvements.py.
+        """
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.return_value = "# Test\nPolished content."
                 result = polish_template("orig", "test", "summary")
-                assert result == "# Test\nPolished content."
+                assert result == "# Test\nPolished content.\n"
 
     def test_call_llm_uses_anthropic_client(self) -> None:
         """Test that _call_llm builds and uses an Anthropic client."""
@@ -115,9 +115,7 @@ class TestPolishTemplate:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict(
-            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
-        ):  # pragma: allowlist secret
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = _call_llm("content", "feature", "summary", "concept")
 

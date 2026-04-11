@@ -19,6 +19,7 @@ from attune_author.polish import (
     STRICT_ENV_VAR,
     PolishError,
     _env_strict_default,
+    _sanitize_output,
     build_source_summary,
     polish_template,
 )
@@ -497,3 +498,70 @@ class TestGeneratorSignatureExtraction:
         assert "public(self) -> None" in methods
         assert "_private" not in methods
         assert "__hash__" not in methods
+
+
+# ---------------------------------------------------------
+# LLM output sanitization
+# ---------------------------------------------------------
+
+
+class TestSanitizeOutput:
+    """Output hygiene for the LLM polish step.
+
+    The Anthropic API does not guarantee a trailing newline
+    on responses and occasionally emits trailing whitespace
+    on individual lines (most often from markdown ``  ``
+    line breaks the model produces in tables and lists).
+    Both forms break the no-trailing-whitespace and
+    single-trailing-newline invariants the rest of the
+    pipeline enforces, so polish_template normalizes them
+    via _sanitize_output before returning.
+    """
+
+    def test_adds_trailing_newline(self) -> None:
+        assert _sanitize_output("foo\nbar") == "foo\nbar\n"
+
+    def test_strips_per_line_trailing_whitespace(self) -> None:
+        assert _sanitize_output("foo  \nbar  \n") == "foo\nbar\n"
+
+    def test_clean_input_unchanged(self) -> None:
+        assert _sanitize_output("foo\nbar\n") == "foo\nbar\n"
+
+    def test_empty_string_passthrough(self) -> None:
+        assert _sanitize_output("") == ""
+
+    def test_single_line_normalized(self) -> None:
+        assert _sanitize_output("foo  ") == "foo\n"
+
+    def test_double_trailing_newline_collapsed(self) -> None:
+        # ``splitlines()`` drops trailing empty strings, so
+        # the join produces exactly one final newline
+        assert _sanitize_output("foo\n\n") == "foo\n"
+
+    def test_internal_blank_lines_preserved(self) -> None:
+        result = _sanitize_output("foo\n\nbar")
+        assert result == "foo\n\nbar\n"
+
+    def test_whitespace_only_line_becomes_empty(self) -> None:
+        result = _sanitize_output("foo\n   \nbar")
+        assert result == "foo\n\nbar\n"
+
+    def test_polish_template_applies_sanitization(self) -> None:
+        """polish_template feeds LLM output through
+        _sanitize_output before returning, so a callable
+        polished response with trailing whitespace must
+        come back clean.
+        """
+        with patch.dict(
+            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
+        ):  # pragma: allowlist secret
+            with patch("attune_author.polish._call_llm") as mock_call:
+                mock_call.return_value = "# Polished  \n\nBody  \n"
+                result = polish_template(
+                    "draft",
+                    "feature",
+                    "summary",
+                    template_type="concept",
+                )
+
+        assert result == "# Polished\n\nBody\n"
