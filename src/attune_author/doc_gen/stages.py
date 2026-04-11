@@ -1,20 +1,32 @@
 """Document generation stages: outline, write, review.
 
 Each stage is a standalone function that takes source content
-and configuration, calls the Anthropic API, and returns the
-result. The pipeline in ``pipeline.py`` orchestrates them.
+and configuration, calls the Anthropic API through the shared
+helper in :mod:`attune_author.doc_gen._anthropic`, and returns
+the result. The pipeline in ``pipeline.py`` orchestrates them.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from typing import TYPE_CHECKING
+
+from attune_author.doc_gen._anthropic import (
+    OUTLINE_SOURCE_CHARS,
+    REVIEW_SOURCE_CHARS,
+    WRITE_SOURCE_CHARS,
+    call_anthropic,
+)
+
+if TYPE_CHECKING:
+    from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)
 
 
 def build_outline(
-    client: object,
+    client: Anthropic,
     source_content: str,
     doc_type: str,
     audience: str,
@@ -51,24 +63,21 @@ def build_outline(
         f"Create a documentation outline:\n\n"
         f"Document Type: {doc_type}\n"
         f"Target Audience: {audience}\n\n"
-        f"Source code:\n{source_content[:4000]}\n\n"
+        f"Source code:\n{source_content[:OUTLINE_SOURCE_CHARS]}\n\n"
         f"Generate a comprehensive outline."
     )
 
-    response = client.messages.create(
+    return call_anthropic(
+        client,
+        system=system,
+        user_message=user_message,
         model=model,
         max_tokens=max_tokens,
-        system=system,
-        messages=[{"role": "user", "content": user_message}],
     )
-
-    if response.content:
-        return response.content[0].text
-    return ""
 
 
 def write_content(
-    client: object,
+    client: Anthropic,
     outline: str,
     source_content: str,
     doc_type: str,
@@ -113,24 +122,21 @@ def write_content(
         f"Document Type: {doc_type}\n"
         f"Audience: {audience}\n\n"
         f"Outline:\n{outline}\n\n"
-        f"Source code:\n{source_content[:5000]}\n\n"
+        f"Source code:\n{source_content[:WRITE_SOURCE_CHARS]}\n\n"
         f"Generate complete documentation following the outline."
     )
 
-    response = client.messages.create(
+    return call_anthropic(
+        client,
+        system=system,
+        user_message=user_message,
         model=model,
         max_tokens=max_tokens,
-        system=system,
-        messages=[{"role": "user", "content": user_message}],
     )
-
-    if response.content:
-        return response.content[0].text
-    return ""
 
 
 def review_content(
-    client: object,
+    client: Anthropic,
     draft: str,
     source_content: str,
     doc_type: str,
@@ -150,7 +156,8 @@ def review_content(
         max_tokens: Maximum tokens for the response.
 
     Returns:
-        Polished documentation content.
+        Polished documentation content, or the original draft
+        if the review returned empty content.
     """
     system = (
         "You are a documentation reviewer. Polish the draft:\n\n"
@@ -167,20 +174,18 @@ def review_content(
         f"for {audience}:\n\n"
         f"## Draft\n\n{draft}\n\n"
         f"## Source code (for accuracy)\n\n"
-        f"{source_content[:3000]}\n\n"
+        f"{source_content[:REVIEW_SOURCE_CHARS]}\n\n"
         f"Return the polished documentation."
     )
 
-    response = client.messages.create(
+    polished = call_anthropic(
+        client,
+        system=system,
+        user_message=user_message,
         model=model,
         max_tokens=max_tokens,
-        system=system,
-        messages=[{"role": "user", "content": user_message}],
     )
-
-    if response.content:
-        return response.content[0].text
-    return draft
+    return polished or draft
 
 
 def parse_outline_sections(outline: str) -> list[str]:

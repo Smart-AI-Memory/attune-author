@@ -6,25 +6,30 @@ replace formulaic filler, sharpen descriptions, verify
 accuracy against the source info provided.
 
 Per-type system prompts live in :mod:`polish_prompts`. This
-module owns the API call, the failure handling, and the
-source-summary builder that feeds context to the prompt.
+module owns the polish call orchestration, strict/lenient
+mode handling, and the source-summary builder that feeds
+context to the prompt. The underlying SDK call is routed
+through :mod:`attune_author.doc_gen._anthropic` so that
+credential redaction and error wrapping are shared with the
+doc-gen pipeline.
 
 Strict mode
 -----------
 
-By default, a missing ``ANTHROPIC_API_KEY`` or any other
-LLM-call failure falls through to the original Jinja2
-output — polish is non-fatal. Two ways to opt into strict
-behavior (hard failure on polish errors):
+Polish is strict by default: a missing ``ANTHROPIC_API_KEY``
+or any LLM-call failure raises :class:`PolishError`. Polish
+exists because the raw Jinja2 output is not acceptable on
+its own; treating the LLM pass as best-effort would quietly
+ship lower-quality templates.
 
-1. Pass ``strict=True`` to :func:`polish_template` directly.
+Opting out of strict mode is explicit and deliberate:
+
+1. Pass ``strict=False`` to :func:`polish_template` directly.
 2. Set the ``ATTUNE_AUTHOR_STRICT_POLISH`` environment
-   variable to any truthy value (``1``, ``true``, ``yes``,
-   ``on``). Useful for CI pipelines and for new users who
-   want polish failures to surface rather than hide.
-
-The explicit parameter always overrides the environment
-variable.
+   variable to a falsy value (``0``, ``false``, ``no``,
+   ``off``) — useful for CI that runs the generator without
+   credentials. The explicit ``strict`` argument always
+   overrides the environment variable.
 """
 
 from __future__ import annotations
@@ -32,33 +37,46 @@ from __future__ import annotations
 import logging
 import os
 
+from attune_author.doc_gen._anthropic import (
+    AnthropicCallError,
+    call_anthropic,
+    get_client,
+)
 from attune_author.polish_prompts import get_system_prompt
 
 logger = logging.getLogger(__name__)
 
-#: Environment variable that enables strict mode globally.
-#: When truthy, polish_template() raises on failure unless
-#: the caller explicitly passes strict=False.
+#: Environment variable that flips polish out of strict mode.
+#: Strict is the default — this variable exists only as an
+#: explicit opt-out for environments that genuinely cannot
+#: run the LLM pass (e.g. CI without credentials).
 STRICT_ENV_VAR = "ATTUNE_AUTHOR_STRICT_POLISH"
 
-#: Values of STRICT_ENV_VAR that count as "on".
-_TRUTHY = frozenset({"1", "true", "yes", "on"})
+#: Values of ``STRICT_ENV_VAR`` that disable strict mode.
+#: Anything else — unset, truthy, or unrecognized — keeps
+#: strict behavior, which is the whole point of the flip.
+_FALSY = frozenset({"0", "false", "no", "off"})
 
 
 def _env_strict_default() -> bool:
     """Read the strict-mode default from the environment.
 
+    Strict is the default. The environment variable exists
+    only to let callers opt out by setting it to a falsy
+    value.
+
     Returns:
-        True if STRICT_ENV_VAR is set to a truthy value.
+        False if ``STRICT_ENV_VAR`` is explicitly set to a
+        falsy value; True otherwise.
     """
     val = os.environ.get(STRICT_ENV_VAR, "").strip().lower()
-    return val in _TRUTHY
+    return val not in _FALSY
 
 
 class PolishError(RuntimeError):
     """Raised when the polish pass fails in strict mode.
 
-    Non-strict mode never raises — it logs a warning and
+    Lenient mode never raises — it logs a warning and
     returns the original content.
     """
 
@@ -86,13 +104,14 @@ def polish_template(
             troubleshooting, faq, or ``"generic"`` as a
             fallback. Controls which system prompt the LLM
             sees.
-        strict: If True, any failure in the polish pass
-            (missing API key, network error, SDK error)
-            raises :class:`PolishError`. If False, failures
-            fall back to returning the original content.
-            If None (the default), the behavior is taken
-            from the ``ATTUNE_AUTHOR_STRICT_POLISH``
-            environment variable.
+        strict: If True (the default when ``None``), any
+            failure in the polish pass (missing API key,
+            network error, SDK error) raises
+            :class:`PolishError`. If False, failures fall
+            back to returning the original content. When
+            ``None``, the value is read from the
+            ``ATTUNE_AUTHOR_STRICT_POLISH`` environment
+            variable, which defaults to strict.
 
     Returns:
         Polished markdown string, or the original content
@@ -109,13 +128,14 @@ def polish_template(
         return _sanitize_output(polished)
     except Exception as exc:  # noqa: BLE001
         # INTENTIONAL: lenient mode swallows any LLM failure
-        # so that `attune-author` works without an API key.
-        # Strict mode rewraps everything in PolishError so
-        # callers have a single exception type to catch.
+        # so that `attune-author` can still run without an
+        # API key when the caller has explicitly opted out.
+        # Strict mode (the default) rewraps everything in
+        # PolishError so callers have a single exception
+        # type to catch.
         if effective_strict:
             raise PolishError(
-                f"Polish pass failed for {feature_name!r} "
-                f"(type={template_type!r}): {exc}"
+                f"Polish pass failed for {feature_name!r} " f"(type={template_type!r}): {exc}"
             ) from exc
         logger.warning(
             "Polish pass failed for %s (type=%s), using raw template: %s",
@@ -160,6 +180,11 @@ def _call_llm(
 ) -> str:
     """Make the LLM call for polishing.
 
+    Delegates client creation and the SDK invocation to the
+    shared helper in :mod:`attune_author.doc_gen._anthropic`
+    so that credential handling and error redaction stay in
+    one place.
+
     Args:
         content: Template content to polish.
         feature_name: Feature name for context.
@@ -167,20 +192,14 @@ def _call_llm(
         template_type: Template kind — selects system prompt.
 
     Returns:
-        Polished content from LLM.
+        Polished content from LLM, or the original content
+        when the LLM returned an empty response.
 
     Raises:
-        RuntimeError: If no API key is available.
-        Exception: Any error from the Anthropic SDK.
+        AnthropicCallError: If no API key is available or
+            the SDK call fails.
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY not set")
-
-    from anthropic import Anthropic
-
-    client = Anthropic(api_key=api_key)
-
+    client = get_client()
     system_prompt = get_system_prompt(template_type)
 
     user_message = (
@@ -192,17 +211,27 @@ def _call_llm(
         f"{content}"
     )
 
-    response = client.messages.create(
+    polished = call_anthropic(
+        client,
+        system=system_prompt,
+        user_message=user_message,
         model="claude-sonnet-4-20250514",
         max_tokens=4096,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
     )
+    return polished or content
 
-    if response.content:
-        return response.content[0].text
 
-    return content
+# Re-export so callers can catch a single exception type
+# regardless of whether the failure came from the SDK call
+# or from the wrapping polish layer.
+__all__ = [
+    "AnthropicCallError",
+    "PolishError",
+    "STRICT_ENV_VAR",
+    "_env_strict_default",
+    "build_source_summary",
+    "polish_template",
+]
 
 
 def build_source_summary(
@@ -252,8 +281,7 @@ def build_source_summary(
             parts.append(f"  - {doc}")
 
     classes = class_signatures or [
-        {"name": c["name"], "doc": c.get("doc", ""), "methods": ""}
-        for c in public_classes
+        {"name": c["name"], "doc": c.get("doc", ""), "methods": ""} for c in public_classes
     ]
     if classes:
         parts.append("")

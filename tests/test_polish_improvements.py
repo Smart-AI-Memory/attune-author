@@ -69,9 +69,7 @@ class TestPerTypePrompts:
             ("faq", "plain language"),
         ],
     )
-    def test_kind_guidance_differentiates_prompts(
-        self, kind: str, expected_phrase: str
-    ) -> None:
+    def test_kind_guidance_differentiates_prompts(self, kind: str, expected_phrase: str) -> None:
         """Each kind-specific prompt contains a phrase that
         uniquely identifies its intent — guards against
         silent regression to the pre-PR 2 single prompt.
@@ -99,9 +97,7 @@ class TestPerTypePrompts:
         for kind, patterns in ANTI_PATTERNS.items():
             prompt = SYSTEM_PROMPTS[kind]
             for phrase in patterns:
-                assert (
-                    phrase in prompt
-                ), f"{kind}: anti-pattern {phrase!r} missing from prompt"
+                assert phrase in prompt, f"{kind}: anti-pattern {phrase!r} missing from prompt"
 
 
 # ---------------------------------------------------------
@@ -150,16 +146,23 @@ class TestStrictMode:
                     # strict omitted on purpose
                 )
 
-    def test_strict_none_without_env_is_lenient(self) -> None:
-        """strict=None with no env var falls through silently."""
+    def test_strict_none_without_env_is_strict(self) -> None:
+        """strict=None with no env var is strict by default.
+
+        As of v0.3 polish is strict by default; a missing
+        API key with no explicit opt-out raises PolishError.
+        Callers that need to run without credentials must
+        pass ``strict=False`` or set the env var to a falsy
+        value.
+        """
         with patch.dict("os.environ", {}, clear=True):
-            result = polish_template(
-                "original",
-                "feature",
-                "summary",
-                template_type="concept",
-            )
-            assert result == "original"
+            with pytest.raises(PolishError, match="Polish pass failed"):
+                polish_template(
+                    "original",
+                    "feature",
+                    "summary",
+                    template_type="concept",
+                )
 
     def test_explicit_strict_false_overrides_env(self) -> None:
         """An explicit strict=False overrides the env var
@@ -175,19 +178,19 @@ class TestStrictMode:
             )
             assert result == "original"
 
-    @pytest.mark.parametrize("value", ["1", "true", "TRUE", "yes", "Yes", "on"])
-    def test_env_var_truthy_values(self, value: str) -> None:
-        """All documented truthy env-var values enable strict
-        mode.
+    @pytest.mark.parametrize("value", ["", "1", "true", "TRUE", "yes", "Yes", "on", "maybe"])
+    def test_env_var_defaults_to_strict(self, value: str) -> None:
+        """Unset, truthy, or unrecognized env-var values keep
+        strict mode on. Strict is the default; the env var
+        only disables it when explicitly set to a known
+        falsy token.
         """
         with patch.dict("os.environ", {STRICT_ENV_VAR: value}, clear=True):
             assert _env_strict_default() is True
 
-    @pytest.mark.parametrize("value", ["", "0", "false", "no", "off", "maybe"])
-    def test_env_var_falsy_values(self, value: str) -> None:
-        """Empty or non-truthy env-var values leave strict
-        mode off.
-        """
+    @pytest.mark.parametrize("value", ["0", "false", "FALSE", "no", "off"])
+    def test_env_var_explicit_opt_out(self, value: str) -> None:
+        """Known falsy tokens opt out of strict mode."""
         with patch.dict("os.environ", {STRICT_ENV_VAR: value}, clear=True):
             assert _env_strict_default() is False
 
@@ -195,9 +198,7 @@ class TestStrictMode:
         """Strict mode re-raises anthropic SDK errors as
         PolishError with the original exception chained.
         """
-        with patch.dict(
-            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
-        ):  # pragma: allowlist secret
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.side_effect = ValueError("sdk blew up")
                 with pytest.raises(PolishError) as exc_info:
@@ -210,6 +211,60 @@ class TestStrictMode:
                     )
                 assert exc_info.value.__cause__ is not None
                 assert "sdk blew up" in str(exc_info.value.__cause__)
+
+    def test_default_is_strict_without_explicit_arg(self) -> None:
+        """polish_template called with no strict kwarg and no
+        env var is strict by default — a missing API key must
+        raise PolishError rather than silently returning the
+        raw template.
+
+        This is the test that guards the v0.3 behavior flip.
+        Polish quality is load-bearing for the generator's
+        output; silent fallback would let inferior templates
+        ship unnoticed.
+        """
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(PolishError, match="Polish pass failed"):
+                polish_template(
+                    "raw template",
+                    "my_feature",
+                    "summary",
+                    template_type="concept",
+                )
+
+    def test_api_key_is_redacted_from_error_messages(self) -> None:
+        """Anthropic API keys must never leak through the
+        AnthropicCallError text surface.
+
+        The helper wraps every SDK exception with a redaction
+        pass and uses ``raise ... from None`` so callers can't
+        reach the original (unredacted) message through
+        ``__cause__``.
+        """
+        from attune_author.doc_gen._anthropic import (
+            AnthropicCallError,
+            call_anthropic,
+        )
+
+        fake_client = MagicMock()
+        leaked = "authentication failed: sk-ant-ABCDEF1234567890"
+        fake_client.messages.create.side_effect = RuntimeError(leaked)
+
+        with pytest.raises(AnthropicCallError) as exc_info:
+            call_anthropic(
+                fake_client,
+                system="s",
+                user_message="u",
+                model="claude-sonnet-4-20250514",
+                max_tokens=32,
+            )
+
+        message = str(exc_info.value)
+        assert "sk-ant-ABCDEF1234567890" not in message
+        assert "sk-ant-[REDACTED]" in message
+        # The cause chain must be stripped so callers
+        # inspecting __cause__ can't reach the raw message.
+        assert exc_info.value.__cause__ is None
 
 
 # ---------------------------------------------------------
@@ -232,9 +287,7 @@ class TestPolishTemplateUsesPerTypePrompt:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict(
-            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
-        ):  # pragma: allowlist secret
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
             with patch("anthropic.Anthropic", return_value=mock_client):
                 _call_llm("content", "feature", "summary", "troubleshooting")
 
@@ -256,9 +309,7 @@ class TestPolishTemplateUsesPerTypePrompt:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict(
-            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
-        ):  # pragma: allowlist secret
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
             with patch("anthropic.Anthropic", return_value=mock_client):
                 _call_llm("content", "myfeature", "summary", "warning")
 
@@ -552,9 +603,7 @@ class TestSanitizeOutput:
         polished response with trailing whitespace must
         come back clean.
         """
-        with patch.dict(
-            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
-        ):  # pragma: allowlist secret
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.return_value = "# Polished  \n\nBody  \n"
                 result = polish_template(

@@ -89,6 +89,42 @@ class TestGenerateFeatureTemplates:
                     project_root=project_root,
                 )
 
+    def test_feature_glob_with_zero_matches(
+        self,
+        help_dir: Path,
+        project_root: Path,
+    ) -> None:
+        """A feature whose glob matches no files must still
+        generate templates gracefully.
+
+        The review flagged this as an undocumented edge case:
+        source_hash is computed over an empty file list and
+        the renderer sees ``file_count=0``. The generator
+        must not crash and must still write the three core
+        templates — callers depend on this when scaffolding
+        features before the source code exists.
+        """
+        feature = Feature(
+            name="ghost",
+            description="No files yet",
+            files=["src/does-not-exist/**"],
+        )
+
+        result = generate_feature_templates(
+            feature=feature,
+            help_dir=help_dir,
+            project_root=project_root,
+        )
+
+        assert result.feature == "ghost"
+        assert len(result.templates) == 3
+        assert result.matched_files == []
+        for t in result.templates:
+            assert t.path.exists()
+            content = t.path.read_text(encoding="utf-8")
+            assert content.startswith("---\n")
+            assert "feature: ghost" in content
+
     def test_skips_manual_templates(self, help_dir: Path, project_root: Path) -> None:
         """Test that manual templates are not overwritten."""
         feature = Feature(

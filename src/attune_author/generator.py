@@ -56,9 +56,7 @@ _GUIDANCE_TEMPLATE_NAMES = (
 #: All template kinds known to the generator. New kinds are
 #: added here so validation and frontmatter type mapping
 #: stay in one place.
-_ALL_TEMPLATE_NAMES = (
-    _CORE_DEPTH_NAMES + _PROBLEM_TEMPLATE_NAMES + _GUIDANCE_TEMPLATE_NAMES
-)
+_ALL_TEMPLATE_NAMES = _CORE_DEPTH_NAMES + _PROBLEM_TEMPLATE_NAMES + _GUIDANCE_TEMPLATE_NAMES
 
 #: Backward-compatible alias. External callers historically
 #: imported ``_DEPTH_NAMES`` — keep it working but map to
@@ -263,14 +261,14 @@ def _maybe_polish(
     source_info: _SourceInfo,
     template_type: str = "generic",
 ) -> str:
-    """Run the LLM polish pass if an API key is available.
+    """Run the LLM polish pass on rendered template content.
 
-    Polish is skipped silently when ``ANTHROPIC_API_KEY`` is
-    not set and strict mode is off. In strict mode (either
-    via the ``ATTUNE_AUTHOR_STRICT_POLISH`` env var or any
-    explicit caller configuration) a missing key or any
-    polish failure propagates through as
-    :class:`attune_author.polish.PolishError`.
+    Polish is strict by default: a missing API key or any
+    LLM-call failure raises
+    :class:`attune_author.polish.PolishError`. Callers that
+    genuinely need to run without credentials (CI, tests)
+    opt out via ``ATTUNE_AUTHOR_STRICT_POLISH=false`` — at
+    which point the Jinja2 output is returned as-is.
 
     The summary passed to the polish pass is built from the
     enriched signature lists on ``source_info`` when
@@ -286,21 +284,10 @@ def _maybe_polish(
             per-type system-prompt selection in polish.py.
 
     Returns:
-        Polished content, or the original input if polish
-        is unavailable and strict mode is off.
+        Polished content. In lenient mode (opt-in), returns
+        the original input if the polish call failed.
     """
-    import os
-
-    from attune_author.polish import (
-        PolishError,
-        _env_strict_default,
-        build_source_summary,
-        polish_template,
-    )
-
-    have_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
-    if not have_key and not _env_strict_default():
-        return content
+    from attune_author.polish import build_source_summary, polish_template
 
     summary = build_source_summary(
         public_classes=source_info.public_classes,
@@ -311,19 +298,12 @@ def _maybe_polish(
         class_signatures=source_info.class_signatures or None,
     )
 
-    try:
-        return polish_template(
-            content,
-            feature.name,
-            summary,
-            template_type=template_type,
-        )
-    except PolishError:
-        # Strict-mode failure propagates after we've at
-        # least built the summary — surface the underlying
-        # cause to callers without silently dropping the
-        # Jinja output.
-        raise
+    return polish_template(
+        content,
+        feature.name,
+        summary,
+        template_type=template_type,
+    )
 
 
 def _is_manual(path: Path) -> bool:
@@ -433,9 +413,7 @@ def _extract_source_info(
             elif isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
                 doc = ast.get_docstring(node) or ""
                 first_line = doc.split("\n")[0].strip() if doc else ""
-                info.public_classes.append(
-                    {"name": node.name, "doc": first_line, "file": rel_path}
-                )
+                info.public_classes.append({"name": node.name, "doc": first_line, "file": rel_path})
                 info.class_signatures.append(
                     {
                         "name": node.name,

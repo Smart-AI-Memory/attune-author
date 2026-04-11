@@ -21,14 +21,15 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None) -> int:
-    """CLI entry point.
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the top-level argparse parser for attune-author.
 
-    Args:
-        argv: Command-line arguments (defaults to sys.argv[1:]).
+    Keeping parser construction in its own function lets unit
+    tests exercise argument parsing without invoking the full
+    ``main()`` dispatch and lets ``main()`` itself stay short.
 
     Returns:
-        Exit code (0 for success).
+        A fully-configured parser with every subcommand wired.
     """
     parser = argparse.ArgumentParser(
         prog="attune-author",
@@ -48,7 +49,6 @@ def main(argv: list[str] | None = None) -> int:
 
     sub = parser.add_subparsers(dest="command", help="Available commands")
 
-    # init
     p_init = sub.add_parser("init", help="Initialize .help/ in the current project")
     p_init.add_argument(
         "--project-root",
@@ -56,64 +56,32 @@ def main(argv: list[str] | None = None) -> int:
         help="Project root directory (default: current directory).",
     )
 
-    # status
     p_status = sub.add_parser("status", help="Show staleness report")
-    p_status.add_argument(
-        "--help-dir",
-        default=".help",
-        help="Path to .help/ directory.",
-    )
-    p_status.add_argument(
-        "--project-root",
-        default=".",
-        help="Project root directory.",
-    )
+    p_status.add_argument("--help-dir", default=".help", help="Path to .help/ directory.")
+    p_status.add_argument("--project-root", default=".", help="Project root directory.")
 
-    # generate
     p_gen = sub.add_parser("generate", help="Generate templates for a feature")
     p_gen.add_argument("feature", help="Feature name to generate.")
-    p_gen.add_argument(
-        "--help-dir",
-        default=".help",
-        help="Path to .help/ directory.",
-    )
-    p_gen.add_argument(
-        "--project-root",
-        default=".",
-        help="Project root directory.",
-    )
+    p_gen.add_argument("--help-dir", default=".help", help="Path to .help/ directory.")
+    p_gen.add_argument("--project-root", default=".", help="Project root directory.")
     p_gen.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite manual templates.",
     )
 
-    # regenerate
     p_regen = sub.add_parser("regenerate", help="Regenerate all stale templates")
-    p_regen.add_argument(
-        "--help-dir",
-        default=".help",
-        help="Path to .help/ directory.",
-    )
-    p_regen.add_argument(
-        "--project-root",
-        default=".",
-        help="Project root directory.",
-    )
+    p_regen.add_argument("--help-dir", default=".help", help="Path to .help/ directory.")
+    p_regen.add_argument("--project-root", default=".", help="Project root directory.")
     p_regen.add_argument(
         "--dry-run",
         action="store_true",
         help="Report stale features without regenerating.",
     )
 
-    # docs
     p_docs = sub.add_parser("docs", help="Generate docs from source (requires [ai])")
     p_docs.add_argument("target", help="Source file or module to document.")
-    p_docs.add_argument(
-        "--output",
-        "-o",
-        help="Output file path.",
-    )
+    p_docs.add_argument("--output", "-o", help="Output file path.")
     p_docs.add_argument(
         "--doc-type",
         default="api-reference",
@@ -125,6 +93,57 @@ def main(argv: list[str] | None = None) -> int:
         help="Target audience (default: developers).",
     )
 
+    return parser
+
+
+def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Run the subcommand selected on ``args``.
+
+    Split out from :func:`main` so the dispatch table stays
+    testable in isolation and so :func:`main` is thin enough
+    to read at a glance.
+
+    Args:
+        args: Parsed arguments.
+        parser: The top-level parser, used for the ``--help``
+            fallback when no subcommand is given.
+
+    Returns:
+        Process exit code.
+    """
+    if not args.command:
+        parser.print_help()
+        return 0
+
+    handlers = {
+        "init": _cmd_init,
+        "status": _cmd_status,
+        "generate": _cmd_generate,
+        "regenerate": _cmd_regenerate,
+        "docs": _cmd_docs,
+    }
+    handler = handlers.get(args.command)
+    if handler is None:
+        parser.print_help()
+        return 0
+
+    try:
+        return handler(args)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point.
+
+    Args:
+        argv: Command-line arguments (defaults to sys.argv[1:]).
+
+    Returns:
+        Exit code (0 for success).
+    """
+    parser = _build_parser()
     args = parser.parse_args(argv)
 
     if args.verbose:
@@ -132,29 +151,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    if not args.command:
-        parser.print_help()
-        return 0
-
-    try:
-        if args.command == "init":
-            return _cmd_init(args)
-        elif args.command == "status":
-            return _cmd_status(args)
-        elif args.command == "generate":
-            return _cmd_generate(args)
-        elif args.command == "regenerate":
-            return _cmd_regenerate(args)
-        elif args.command == "docs":
-            return _cmd_docs(args)
-    except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-    except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-
-    return 0
+    return _dispatch(args, parser)
 
 
 def _cmd_init(args: argparse.Namespace) -> int:
@@ -183,7 +180,6 @@ def _cmd_init(args: argparse.Namespace) -> int:
         print(f"  [{marker}] {p.name} — {p.description}")
         print(f"      files: {', '.join(p.files)}")
 
-    # Convert all proposals to manifest
     manifest = proposals_to_manifest(proposals)
     path = save_manifest(manifest, help_dir)
     print(f"\nSaved {len(proposals)} features to {path}")
@@ -272,7 +268,7 @@ def _cmd_docs(args: argparse.Namespace) -> int:
         from attune_author.doc_gen import DocGenConfig, generate_docs
     except ImportError:
         print(
-            "Doc generation requires the [ai] extra:\n" "  pip install 'attune-author[ai]'",
+            "Doc generation requires the [ai] extra:\n  pip install 'attune-author[ai]'",
             file=sys.stderr,
         )
         return 1

@@ -46,6 +46,34 @@ class TestValidateFilePath:
         result = validate_file_path(str(sub), allowed_dir=str(tmp_path))
         assert result == sub.resolve()
 
+    def test_rejects_symlink_chain_escaping_allowed_dir(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A chain of symlinks terminating at a system dir
+        must be rejected even when every intermediate link
+        sits inside the allowed directory.
+
+        Guards against a class of traversal where the
+        attacker can only write inside the workspace but
+        chains their own symlinks through the workspace to
+        eventually resolve to something like ``/etc``.
+        """
+        allowed = tmp_path / "workspace"
+        allowed.mkdir()
+
+        # hop1 and hop2 live inside the allowed dir, so a
+        # naive containment check on the raw string path
+        # would accept them — only resolving symlinks reveals
+        # the final target.
+        hop1 = allowed / "hop1"
+        hop2 = allowed / "hop2"
+        hop2.symlink_to("/etc")
+        hop1.symlink_to(hop2)
+
+        with pytest.raises(ValueError):
+            validate_file_path(str(hop1), allowed_dir=str(allowed))
+
 
 # -- Tool schemas ----------------------------------------------------
 

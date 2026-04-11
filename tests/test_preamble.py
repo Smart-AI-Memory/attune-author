@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from attune_author.preamble import (
     _extract_preamble,
     get_preamble,
@@ -48,6 +50,57 @@ class TestExtractPreamble:
         """Test extraction when there's no frontmatter."""
         text = "First line.\n"
         assert _extract_preamble(text) == "First line."
+
+    def test_frontmatter_without_closing_marker(self) -> None:
+        """A malformed template with an opening ``---`` but
+        no closing marker must not hang or crash. The body
+        parser should still fall back to something sensible
+        (returning None is the documented empty-state).
+        """
+        text = "---\nkey: value\nno closing marker ever follows\n"
+        # The extractor does not deadlock and yields a result
+        # (None or a string) — the contract is that it
+        # returns cleanly.
+        result = _extract_preamble(text)
+        assert result is None or isinstance(result, str)
+
+    def test_frontmatter_only_no_body(self) -> None:
+        """A file with only frontmatter and no body returns None."""
+        text = "---\nkey: value\n---\n"
+        assert _extract_preamble(text) is None
+
+    def test_only_headings_no_body(self) -> None:
+        """A body made entirely of headings returns None."""
+        text = "---\n---\n# Top\n## Sub\n### Deeper\n"
+        assert _extract_preamble(text) is None
+
+
+class TestGetPreambleEdgeCases:
+    """Error-path tests for get_preamble()."""
+
+    def test_non_utf8_file_returns_none(self, tmp_path: Path) -> None:
+        """A task.md with non-UTF-8 bytes must not crash —
+        the reader swallows UnicodeDecodeError via the
+        OSError path or similar and returns None.
+        """
+        help_dir = tmp_path / ".help"
+        tpl_dir = help_dir / "templates" / "bad"
+        tpl_dir.mkdir(parents=True)
+        # Latin-1 bytes that are not valid UTF-8.
+        (tpl_dir / "task.md").write_bytes(b"\xff\xfe\xfd not valid utf-8")
+
+        from attune_author.preamble import get_preamble
+
+        # Current behavior: may raise UnicodeDecodeError or
+        # return None. This test pins the "must not crash
+        # the caller" contract. If UnicodeDecodeError leaks,
+        # this test fails and we add the appropriate catch
+        # in preamble.py.
+        try:
+            result = get_preamble("bad", help_dir)
+        except UnicodeDecodeError:
+            pytest.fail("get_preamble leaked UnicodeDecodeError")
+        assert result is None or isinstance(result, str)
 
 
 class TestGetPreamble:

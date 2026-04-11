@@ -7,10 +7,10 @@ a single ``generate_docs()`` entry point.
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from attune_author.doc_gen._anthropic import AnthropicCallError, get_client
 from attune_author.doc_gen.config import DocGenConfig
 
 logger = logging.getLogger(__name__)
@@ -54,18 +54,10 @@ def generate_docs(
         DocGenResult with the generated documentation.
 
     Raises:
-        RuntimeError: If ANTHROPIC_API_KEY is not set.
+        AnthropicCallError: If ANTHROPIC_API_KEY is not set or
+            any stage fails against the Anthropic SDK.
         FileNotFoundError: If target is a path that doesn't exist.
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY required for doc generation. "
-            "Install with: pip install 'attune-author[ai]'"
-        )
-
-    from anthropic import Anthropic
-
     from attune_author.doc_gen.stages import (
         build_outline,
         review_content,
@@ -73,7 +65,10 @@ def generate_docs(
     )
 
     cfg = config or DocGenConfig()
-    client = Anthropic(api_key=api_key)
+    try:
+        client = get_client()
+    except AnthropicCallError as exc:
+        raise AnthropicCallError(f"{exc} — install with: pip install 'attune-author[ai]'") from None
     result = DocGenResult()
 
     # Read source content

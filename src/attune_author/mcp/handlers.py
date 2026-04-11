@@ -16,6 +16,19 @@ from attune_author.mcp.path_validation import validate_file_path
 logger = logging.getLogger(__name__)
 
 
+class _PathValidationError(Exception):
+    """Internal marker for path-validation failures.
+
+    Carries the pre-formatted error dict that the caller
+    returns directly, so handlers don't repeat the same
+    try/except/return-error-dict scaffold for every field.
+    """
+
+    def __init__(self, error_dict: dict[str, Any]) -> None:
+        super().__init__(error_dict.get("error", ""))
+        self.error_dict = error_dict
+
+
 class AttuneAuthorHandlers:
     """Async handlers for the 6 attune-author MCP tools.
 
@@ -32,6 +45,38 @@ class AttuneAuthorHandlers:
         """
         self._workspace_root = workspace_root
 
+    def _validated_paths(
+        self,
+        args: dict[str, Any],
+        fields: dict[str, str],
+    ) -> dict[str, Path]:
+        """Validate a batch of path fields against workspace root.
+
+        Args:
+            args: Raw MCP tool arguments.
+            fields: Mapping of ``field_name -> default_value``
+                for each path argument that must be validated
+                and pinned to the workspace root.
+
+        Returns:
+            Mapping of ``field_name -> resolved Path``.
+
+        Raises:
+            _PathValidationError: If any field fails validation.
+                The carried error dict is shaped so the handler
+                can return it directly to the MCP caller.
+        """
+        resolved: dict[str, Path] = {}
+        for name, default in fields.items():
+            try:
+                resolved[name] = validate_file_path(
+                    args.get(name, default),
+                    allowed_dir=self._workspace_root,
+                )
+            except ValueError as e:
+                raise _PathValidationError({"success": False, "error": str(e)}) from e
+        return resolved
+
     async def author_init(self, args: dict[str, Any]) -> dict[str, Any]:
         """Bootstrap a .help/ directory with discovered features."""
         from attune_author.bootstrap import (
@@ -41,12 +86,10 @@ class AttuneAuthorHandlers:
         from attune_author.manifest import save_manifest
 
         try:
-            project_root = validate_file_path(
-                args.get("project_root", "."),
-                allowed_dir=self._workspace_root,
-            )
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+            paths = self._validated_paths(args, {"project_root": "."})
+        except _PathValidationError as e:
+            return e.error_dict
+        project_root = paths["project_root"]
 
         help_dir = project_root / ".help"
         if (help_dir / "features.yaml").exists():
@@ -90,16 +133,11 @@ class AttuneAuthorHandlers:
         from attune_author.staleness import check_staleness
 
         try:
-            help_dir = validate_file_path(
-                args.get("help_dir", ".help"),
-                allowed_dir=self._workspace_root,
-            )
-            project_root = validate_file_path(
-                args.get("project_root", "."),
-                allowed_dir=self._workspace_root,
-            )
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+            paths = self._validated_paths(args, {"help_dir": ".help", "project_root": "."})
+        except _PathValidationError as e:
+            return e.error_dict
+        help_dir = paths["help_dir"]
+        project_root = paths["project_root"]
 
         try:
             manifest = load_manifest(help_dir)
@@ -126,16 +164,11 @@ class AttuneAuthorHandlers:
             return {"success": False, "error": "feature name is required"}
 
         try:
-            help_dir = validate_file_path(
-                args.get("help_dir", ".help"),
-                allowed_dir=self._workspace_root,
-            )
-            project_root = validate_file_path(
-                args.get("project_root", "."),
-                allowed_dir=self._workspace_root,
-            )
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+            paths = self._validated_paths(args, {"help_dir": ".help", "project_root": "."})
+        except _PathValidationError as e:
+            return e.error_dict
+        help_dir = paths["help_dir"]
+        project_root = paths["project_root"]
 
         try:
             manifest = load_manifest(help_dir)
@@ -175,16 +208,11 @@ class AttuneAuthorHandlers:
         from attune_author.maintenance import run_maintenance
 
         try:
-            help_dir = validate_file_path(
-                args.get("help_dir", ".help"),
-                allowed_dir=self._workspace_root,
-            )
-            project_root = validate_file_path(
-                args.get("project_root", "."),
-                allowed_dir=self._workspace_root,
-            )
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+            paths = self._validated_paths(args, {"help_dir": ".help", "project_root": "."})
+        except _PathValidationError as e:
+            return e.error_dict
+        help_dir = paths["help_dir"]
+        project_root = paths["project_root"]
 
         features = args.get("features")
         dry_run = bool(args.get("dry_run", False))
@@ -285,12 +313,10 @@ class AttuneAuthorHandlers:
             }
 
         try:
-            help_dir = validate_file_path(
-                args.get("help_dir", ".help"),
-                allowed_dir=self._workspace_root,
-            )
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+            paths = self._validated_paths(args, {"help_dir": ".help"})
+        except _PathValidationError as e:
+            return e.error_dict
+        help_dir = paths["help_dir"]
 
         try:
             manifest = load_manifest(help_dir)

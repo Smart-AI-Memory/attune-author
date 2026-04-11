@@ -2,9 +2,33 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _lenient_polish_by_default(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Disable strict polish mode for every test by default.
+
+    Polish is strict in production (a missing API key raises),
+    but the test suite deliberately runs without credentials
+    and mocks the LLM call where needed. This fixture sets
+    ``ATTUNE_AUTHOR_STRICT_POLISH=false`` for every test so
+    the generator's polish pass degrades to a no-op when no
+    test has mocked ``_call_llm``. Tests that specifically
+    exercise strict-mode behavior override it with their own
+    ``patch.dict`` block.
+    """
+    monkeypatch.setenv("ATTUNE_AUTHOR_STRICT_POLISH", "false")
+    # Also make sure the tests never accidentally call the
+    # real Anthropic API with a key picked up from the dev
+    # machine's environment — a huge cost/latency hazard.
+    if "ANTHROPIC_API_KEY" in os.environ:
+        monkeypatch.delenv("ANTHROPIC_API_KEY")
+    yield
 
 
 @pytest.fixture

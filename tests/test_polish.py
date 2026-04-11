@@ -75,20 +75,25 @@ class TestBuildSourceSummary:
 class TestPolishTemplate:
     """Tests for polish_template()."""
 
-    def test_returns_original_on_no_api_key(self) -> None:
-        """Test fallback to original when API key missing."""
+    def test_returns_original_on_no_api_key_when_lenient(self) -> None:
+        """Test fallback to original when API key missing.
+
+        Polish is strict by default as of v0.3; this test
+        opts into lenient mode explicitly via ``strict=False``
+        so the missing-key path returns the raw content.
+        """
         with patch.dict("os.environ", {}, clear=True):
             content = "# Test\nOriginal content."
-            result = polish_template(content, "test", "summary")
+            result = polish_template(content, "test", "summary", strict=False)
             assert result == content
 
-    def test_returns_original_on_llm_error(self) -> None:
-        """Test fallback to original when LLM call fails."""
+    def test_returns_original_on_llm_error_when_lenient(self) -> None:
+        """Test fallback to original when LLM call fails in lenient mode."""
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.side_effect = RuntimeError("API down")
                 content = "# Test\nOriginal."
-                result = polish_template(content, "test", "summary")
+                result = polish_template(content, "test", "summary", strict=False)
                 assert result == content
 
     def test_returns_polished_on_success(self) -> None:

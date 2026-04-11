@@ -50,7 +50,10 @@ def get_preamble(
 
     try:
         text = task_path.read_text(encoding="utf-8")
-    except OSError as e:
+    except (OSError, UnicodeDecodeError) as e:
+        # Non-UTF-8 task templates are rare but possible
+        # (e.g. accidental binary paste). Treat them as
+        # unreadable rather than crashing the caller.
         logger.debug("Cannot read %s: %s", task_path, e)
         return None
 
