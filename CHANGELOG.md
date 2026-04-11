@@ -8,6 +8,67 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-11
+
+### Fixed (security) (0.3.1)
+
+- **Path traversal via crafted feature name** — `manifest.load_manifest()`
+  now rejects feature names containing `/`, `\`, `..`, or null bytes
+  at parse time, closing a gap where a hand-edited `.help/features.yaml`
+  could push an unsafe name into the `.help/templates/<name>/`
+  directory join. Previously the guard existed in
+  `generator.py` but not in the manifest loader, so callers reaching
+  templates through `mcp.handlers.author_lookup()` could bypass it.
+  The check is now centralized in
+  `attune_author.manifest.is_safe_feature_name()` and reused by the
+  generator, MCP `author_lookup` handler (defense in depth), preamble
+  lookup, and staleness reader.
+- **`author_docs` output-path validation ordering** — the MCP
+  `author_docs` handler previously ran `mkdir(parents=True)` on the
+  output parent **before** validating it against the workspace root,
+  meaning a rejected path could still materialize a directory tree at
+  an attacker-controlled location on disk. The handler now validates
+  the parent first and only creates it after the workspace-containment
+  check passes.
+
+### Fixed (0.3.1)
+
+- **Wheel packaging missed `_partials/` Jinja2 includes** — the
+  `[tool.setuptools.package-data]` glob was `meta_templates/*.j2`,
+  which does not recurse, so the `_partials/problem_macros.j2` macro
+  file was excluded from built wheels and any template importing it
+  would fail at runtime in installed environments. The glob is now
+  `meta_templates/**/*.j2`.
+
+### Changed (0.3.1)
+
+- **Doc-gen system prompts moved out of `stages.py`** — the three
+  stage prompts (outline, write, review) now live in a new
+  `attune_author.doc_gen._prompts` module, mirroring the
+  `polish_prompts` pattern. Each stage's "You are an expert technical
+  writer" opening is shared via a single base constant so future tone
+  changes only land in one place. No behavior change.
+- **Lenient-mode polish failures now log at `error` level** instead
+  of `warning`, so the user-visible degradation that lenient mode
+  promises is actually visible in default log filters.
+- **`generator._is_manual()` debug log on read failure** — silent
+  `OSError -> False` now also emits a debug log so failed reads are
+  diagnosable from logs alone.
+
+### Added (0.3.1)
+
+- **`attune_author.manifest.is_safe_feature_name()`** — public helper
+  that any caller treating a feature name as a filesystem path
+  component should use.
+- **Test coverage** — 26 new tests covering: `is_safe_feature_name`
+  parametrized happy/sad paths, manifest-load rejection of unsafe
+  names, MCP handler error paths (missing manifest on three handlers,
+  output-path escape rejection without leaving dirs on disk, pipeline
+  RuntimeError surfacing), strict-mode polish behavior (missing key,
+  LLM error, env-var default), and a new `test_polish_prompts.py`
+  exercising `get_system_prompt()` for every registered template kind.
+  Total suite: 343 passing (up from 317), coverage 89%.
+
 ## [0.3.0] - 2026-04-11
 
 ### Changed (breaking) (0.3.0)

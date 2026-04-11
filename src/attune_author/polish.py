@@ -137,7 +137,11 @@ def polish_template(
             raise PolishError(
                 f"Polish pass failed for {feature_name!r} " f"(type={template_type!r}): {exc}"
             ) from exc
-        logger.warning(
+        # Lenient mode is the explicit opt-out from strict, so a
+        # failure here is the user-visible degradation we promised
+        # in the docs — log at error level so it shows up in
+        # default log filters, not just verbose runs.
+        logger.error(
             "Polish pass failed for %s (type=%s), using raw template: %s",
             feature_name,
             template_type,

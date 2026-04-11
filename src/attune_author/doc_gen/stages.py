@@ -18,6 +18,11 @@ from attune_author.doc_gen._anthropic import (
     WRITE_SOURCE_CHARS,
     call_anthropic,
 )
+from attune_author.doc_gen._prompts import (
+    OUTLINE_SYSTEM,
+    REVIEW_SYSTEM,
+    write_system,
+)
 
 if TYPE_CHECKING:
     from anthropic import Anthropic
@@ -46,19 +51,6 @@ def build_outline(
     Returns:
         Outline text.
     """
-    system = (
-        "You are an expert technical writer. Create a detailed, "
-        "structured outline for documentation.\n\n"
-        "Include sections for:\n"
-        "1. Overview/Introduction\n"
-        "2. Quick Start example\n"
-        "3. API Reference (functions and classes)\n"
-        "4. Usage Examples\n"
-        "5. Additional reference as needed\n\n"
-        "Format as a numbered list with section titles and "
-        "descriptions."
-    )
-
     user_message = (
         f"Create a documentation outline:\n\n"
         f"Document Type: {doc_type}\n"
@@ -69,7 +61,7 @@ def build_outline(
 
     return call_anthropic(
         client,
-        system=system,
+        system=OUTLINE_SYSTEM,
         user_message=user_message,
         model=model,
         max_tokens=max_tokens,
@@ -106,17 +98,6 @@ def write_content(
         sections_list = ", ".join(section_focus)
         focus_instruction = f"\n\nFocus ONLY on these sections: {sections_list}"
 
-    system = (
-        f"You are an expert technical writer creating "
-        f"documentation for {audience}.\n\n"
-        f"Write clear, comprehensive documentation with:\n"
-        f"- Real code examples from the source\n"
-        f"- Complete API reference with parameter types\n"
-        f"- Usage guides and best practices\n"
-        f"- Error handling and edge cases"
-        f"{focus_instruction}"
-    )
-
     user_message = (
         f"Write documentation:\n\n"
         f"Document Type: {doc_type}\n"
@@ -128,7 +109,7 @@ def write_content(
 
     return call_anthropic(
         client,
-        system=system,
+        system=write_system(audience, focus_instruction),
         user_message=user_message,
         model=model,
         max_tokens=max_tokens,
@@ -159,16 +140,6 @@ def review_content(
         Polished documentation content, or the original draft
         if the review returned empty content.
     """
-    system = (
-        "You are a documentation reviewer. Polish the draft:\n\n"
-        "- Fix inaccuracies against the source code\n"
-        "- Improve clarity and consistency\n"
-        "- Ensure code examples are correct and runnable\n"
-        "- Check API reference completeness\n"
-        "- Fix formatting and markdown structure\n\n"
-        "Return the improved documentation only."
-    )
-
     user_message = (
         f"Review and polish this {doc_type} documentation "
         f"for {audience}:\n\n"
@@ -180,7 +151,7 @@ def review_content(
 
     polished = call_anthropic(
         client,
-        system=system,
+        system=REVIEW_SYSTEM,
         user_message=user_message,
         model=model,
         max_tokens=max_tokens,

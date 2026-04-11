@@ -136,3 +136,53 @@ class TestPolishTemplate:
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
                 _call_llm("content", "feature", "summary", "concept")
+
+
+class TestStrictMode:
+    """Tests for strict-mode behavior of polish_template().
+
+    Strict mode is the production default. The conftest fixture
+    ``_lenient_polish_by_default`` flips strict off for every test
+    so that test runs without an API key don't accidentally hit
+    the network — these tests opt back into strict explicitly to
+    cover the strict-mode failure paths.
+    """
+
+    def test_strict_mode_raises_on_missing_api_key(self) -> None:
+        import pytest
+
+        from attune_author.polish import PolishError, polish_template
+
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(PolishError, match="auth"):
+                polish_template("# Test", "auth", "summary", strict=True)
+
+    def test_strict_mode_raises_on_llm_error(self) -> None:
+        import pytest
+
+        from attune_author.polish import PolishError, polish_template
+
+        with patch.dict(
+            "os.environ",
+            {"ANTHROPIC_API_KEY": "fake"},  # pragma: allowlist secret
+        ):
+            with patch("attune_author.polish._call_llm") as mock_call:
+                mock_call.side_effect = RuntimeError("API down")
+                with pytest.raises(PolishError, match="API down"):
+                    polish_template("# Test", "auth", "summary", strict=True)
+
+    def test_env_var_strict_default_when_unset(self, monkeypatch) -> None:
+        """When STRICT env var is unset, polish defaults to strict.
+
+        Verifies that the conftest fixture's lenient default is the
+        only thing keeping the test suite from raising — production
+        code paths get strict by default.
+        """
+        import pytest
+
+        from attune_author.polish import PolishError, polish_template
+
+        monkeypatch.delenv("ATTUNE_AUTHOR_STRICT_POLISH", raising=False)
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(PolishError):
+                polish_template("# Test", "auth", "summary")
