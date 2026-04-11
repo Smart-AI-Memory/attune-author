@@ -41,10 +41,24 @@ _PROBLEM_TEMPLATE_NAMES = (
     "faq",
 )
 
+#: Guidance-shaped template kinds. Opinionated or
+#: contextual content that sits alongside the reference
+#: material: quickstarts, tips, notes, comparisons.
+#: Generated only when explicitly requested via the
+#: ``depths=`` kwarg.
+_GUIDANCE_TEMPLATE_NAMES = (
+    "quickstart",
+    "tip",
+    "note",
+    "comparison",
+)
+
 #: All template kinds known to the generator. New kinds are
 #: added here so validation and frontmatter type mapping
 #: stay in one place.
-_ALL_TEMPLATE_NAMES = _CORE_DEPTH_NAMES + _PROBLEM_TEMPLATE_NAMES
+_ALL_TEMPLATE_NAMES = (
+    _CORE_DEPTH_NAMES + _PROBLEM_TEMPLATE_NAMES + _GUIDANCE_TEMPLATE_NAMES
+)
 
 #: Backward-compatible alias. External callers historically
 #: imported ``_DEPTH_NAMES`` — keep it working but map to
@@ -137,10 +151,15 @@ def generate_feature_templates(
     Creates one or more template files in the feature's
     template directory. By default emits the three core
     progressive-depth templates (concept, task, reference).
-    Callers can opt into problem-shaped templates (error,
-    warning, troubleshooting, faq) by passing an explicit
-    ``depths`` list — these document failure modes rather
-    than the happy path.
+    Callers can opt into two additional template groups by
+    passing an explicit ``depths`` list:
+
+    - **Problem-shaped** kinds document failure modes
+      rather than the happy path: error, warning,
+      troubleshooting, faq.
+    - **Guidance-shaped** kinds sit alongside the
+      reference material with opinionated or contextual
+      content: quickstart, tip, note, comparison.
 
     Files with ``status: manual`` in frontmatter are
     skipped unless ``overwrite=True``.
@@ -153,7 +172,8 @@ def generate_feature_templates(
             to the core set (concept, task, reference).
             Pass an explicit list to include any of:
             concept, task, reference, error, warning,
-            troubleshooting, faq.
+            troubleshooting, faq, quickstart, tip, note,
+            comparison.
         overwrite: If True, overwrite manual templates.
 
     Returns:
