@@ -105,7 +105,8 @@ def polish_template(
     effective_strict = _env_strict_default() if strict is None else strict
 
     try:
-        return _call_llm(content, feature_name, source_summary, template_type)
+        polished = _call_llm(content, feature_name, source_summary, template_type)
+        return _sanitize_output(polished)
     except Exception as exc:  # noqa: BLE001
         # INTENTIONAL: lenient mode swallows any LLM failure
         # so that `attune-author` works without an API key.
@@ -123,6 +124,32 @@ def polish_template(
             exc,
         )
         return content
+
+
+def _sanitize_output(content: str) -> str:
+    """Apply trailing-whitespace and newline hygiene.
+
+    The Anthropic API does not guarantee a trailing newline
+    and occasionally leaves trailing whitespace on
+    individual lines (most often from markdown ``  `` line
+    breaks the model emits in tables and lists). Both of
+    these break the no-trailing-whitespace and
+    single-trailing-newline invariants the rest of the
+    pipeline enforces, so we normalize them here.
+
+    Args:
+        content: Raw text returned by the LLM.
+
+    Returns:
+        Content with each line right-stripped and exactly
+        one trailing newline.
+    """
+    if not content:
+        return content
+    body = "\n".join(line.rstrip() for line in content.splitlines())
+    if not body.endswith("\n"):
+        body += "\n"
+    return body
 
 
 def _call_llm(

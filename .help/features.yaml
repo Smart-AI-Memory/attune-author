@@ -1,0 +1,131 @@
+version: 1
+
+# Feature manifest for attune-author's own help system.
+#
+# This is the dogfood: attune-author generates and polishes
+# its own documentation using the same pipeline it provides
+# to its users. Each feature below is a coherent subsystem
+# of the package — kept fewer than 10 to make the rendered
+# templates approachable.
+#
+# To regenerate the help, run:
+#     python scripts/regenerate_help.py
+#
+# Polished output requires ANTHROPIC_API_KEY to be set in
+# the environment. Without it, the generator falls back to
+# the raw Jinja2 drafts.
+
+features:
+  template-generation:
+    description: >
+      Render markdown help templates from feature
+      definitions and source code AST inspection
+    files:
+      - src/attune_author/generator.py
+    tags:
+      - generation
+      - jinja2
+      - ast
+      - meta-templates
+
+  polish:
+    description: >
+      Improve generated template quality with an LLM
+      rewrite pass that uses per-type system prompts
+      and source-grounded summaries
+    files:
+      - src/attune_author/polish.py
+      - src/attune_author/polish_prompts.py
+    tags:
+      - polish
+      - llm
+      - anthropic
+      - quality
+
+  manifest:
+    description: >
+      Parse and query the .help/features.yaml manifest
+      that lists project features
+    files:
+      - src/attune_author/manifest.py
+    tags:
+      - configuration
+      - yaml
+      - features
+
+  bootstrap:
+    description: >
+      Scan a project to propose an initial features
+      manifest based on directory structure and Python
+      package layout
+    files:
+      - src/attune_author/bootstrap.py
+    tags:
+      - setup
+      - scanning
+      - manifest
+
+  staleness-and-maintenance:
+    description: >
+      Detect when generated templates are out of date
+      with their source files and regenerate stale ones
+    files:
+      - src/attune_author/staleness.py
+      - src/attune_author/maintenance.py
+    tags:
+      - freshness
+      - hashing
+      - regeneration
+
+  preamble:
+    description: >
+      Render context-sensitive preambles for workflow
+      skills based on project state and recent activity
+    files:
+      - src/attune_author/preamble.py
+    tags:
+      - context
+      - rendering
+      - workflow
+
+  cli:
+    description: >
+      Command-line entry point for attune-author with
+      subcommands for bootstrap, generate, status, and
+      maintain
+    files:
+      - src/attune_author/cli.py
+    tags:
+      - cli
+      - commands
+      - entrypoint
+
+  mcp-server:
+    description: >
+      Model Context Protocol server that exposes
+      attune-author's capabilities to Claude Code as
+      callable tools
+    files:
+      - src/attune_author/mcp/server.py
+      - src/attune_author/mcp/handlers.py
+      - src/attune_author/mcp/tool_schemas.py
+      - src/attune_author/mcp/path_validation.py
+    tags:
+      - mcp
+      - integration
+      - claude-code
+
+  doc-gen-pipeline:
+    description: >
+      Three-stage documentation generation pipeline
+      (outline, write, review) for higher-quality help
+      output via planned LLM rewrites
+    files:
+      - src/attune_author/doc_gen/pipeline.py
+      - src/attune_author/doc_gen/stages.py
+      - src/attune_author/doc_gen/config.py
+    tags:
+      - doc-gen
+      - pipeline
+      - llm
+      - multi-stage
