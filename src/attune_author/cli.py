@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from pathlib import Path
 
 from attune_author.mcp.path_validation import validate_file_path
 
@@ -113,7 +114,7 @@ def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         Process exit code.
     """
     if not args.command:
-        parser.print_help()
+        _print_welcome()
         return 0
 
     handlers = {
@@ -304,6 +305,71 @@ def _get_version() -> str:
         return __version__
     except ImportError:
         return "dev"
+
+
+_WELCOME_HEADER = "attune-author — documentation authoring for the attune ecosystem"
+_MAX_FEATURES_IN_WELCOME = 8
+
+
+def _print_welcome() -> None:
+    """Print the zero-arg welcome screen.
+
+    Detects whether ``.help/features.yaml`` exists in the current
+    working directory and adjusts the suggested next command. A
+    missing or broken manifest falls through to the "not set up
+    yet" path so a stranger running the tool cold never sees a
+    traceback.
+    """
+    print(_WELCOME_HEADER)
+    print()
+
+    features = _load_feature_names_for_welcome()
+    if features is None:
+        print("It looks like this project isn't set up yet.")
+        print()
+        print("Get started:")
+        print("  attune-author init        Scan your project and propose features")
+        print()
+        print("Other commands: status, generate, regenerate, docs")
+        print("Run `attune-author --help` for the full reference.")
+        return
+
+    shown = features[:_MAX_FEATURES_IN_WELCOME]
+    suffix = ", …" if len(features) > _MAX_FEATURES_IN_WELCOME else ""
+    print(f"Found {len(features)} features in .help/features.yaml:")
+    print(f"  {', '.join(shown)}{suffix}")
+    print()
+    print("Try:")
+    print("  attune-author status              Check for stale docs")
+    print("  attune-author generate <feature>  Generate templates for a feature")
+    print()
+    print("Run `attune-author --help` for the full reference.")
+
+
+def _load_feature_names_for_welcome() -> list[str] | None:
+    """Return a sorted list of feature names, or None if unusable.
+
+    Returns None when ``.help/features.yaml`` is missing, unreadable,
+    malformed, or contains zero features — any of which means the
+    welcome screen should treat the project as "not set up yet".
+    Swallows every exception on purpose: this is UI, not a loader.
+    """
+    help_dir = Path(".help")
+    if not (help_dir / "features.yaml").exists():
+        return None
+
+    try:
+        from attune_author.manifest import load_manifest
+
+        manifest = load_manifest(help_dir)
+    except Exception:  # noqa: BLE001
+        # INTENTIONAL: any failure here means we should show the
+        # "not set up yet" screen — a corrupt manifest must not
+        # crash a bare `attune-author` invocation.
+        return None
+
+    names = sorted(manifest.features.keys())
+    return names or None
 
 
 if __name__ == "__main__":

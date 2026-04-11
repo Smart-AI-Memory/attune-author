@@ -11,13 +11,92 @@ from attune_author.cli import main
 class TestCLI:
     """Tests for the CLI entry point."""
 
-    def test_no_args_shows_help(self, capsys) -> None:
-        """Test that no arguments prints help."""
+    def test_no_args_shows_welcome(self, tmp_path: Path, capsys, monkeypatch) -> None:
+        """Bare `attune-author` in a fresh directory shows the
+        'not set up yet' welcome pointing at `init`."""
+        monkeypatch.chdir(tmp_path)
         result = main([])
         assert result == 0
 
         captured = capsys.readouterr()
         assert "attune-author" in captured.out
+        assert "isn't set up yet" in captured.out
+        assert "attune-author init" in captured.out
+
+    def test_welcome_with_manifest(self, tmp_path: Path, capsys, monkeypatch) -> None:
+        """Bare `attune-author` in an initialized project lists
+        feature names and suggests `status` / `generate`."""
+        help_dir = tmp_path / ".help"
+        help_dir.mkdir()
+        (help_dir / "features.yaml").write_text(
+            "version: 1\n"
+            "features:\n"
+            "  auth:\n"
+            "    description: Authentication\n"
+            "  api:\n"
+            "    description: REST API\n",
+            encoding="utf-8",
+        )
+        monkeypatch.chdir(tmp_path)
+        result = main([])
+        assert result == 0
+
+        captured = capsys.readouterr()
+        assert "Found 2 features" in captured.out
+        assert "auth" in captured.out
+        assert "api" in captured.out
+        assert "generate <feature>" in captured.out
+        assert "attune-author status" in captured.out
+
+    def test_welcome_with_broken_manifest(
+        self,
+        tmp_path: Path,
+        capsys,
+        monkeypatch,
+    ) -> None:
+        """A malformed features.yaml must fall through to the
+        'not set up yet' screen without raising."""
+        help_dir = tmp_path / ".help"
+        help_dir.mkdir()
+        # Invalid YAML content
+        (help_dir / "features.yaml").write_text("not: [valid: yaml", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        result = main([])
+        assert result == 0
+
+        captured = capsys.readouterr()
+        assert "isn't set up yet" in captured.out
+
+    def test_welcome_truncates_long_feature_list(
+        self,
+        tmp_path: Path,
+        capsys,
+        monkeypatch,
+    ) -> None:
+        """When a project has more than 8 features, the welcome
+        screen truncates with an ellipsis so a huge project
+        doesn't spam the terminal."""
+        help_dir = tmp_path / ".help"
+        help_dir.mkdir()
+        feature_block = "\n".join(
+            f"  feat{i:02d}:\n    description: Feature {i}" for i in range(12)
+        )
+        (help_dir / "features.yaml").write_text(
+            f"version: 1\nfeatures:\n{feature_block}\n",
+            encoding="utf-8",
+        )
+        monkeypatch.chdir(tmp_path)
+        result = main([])
+        assert result == 0
+
+        captured = capsys.readouterr()
+        assert "Found 12 features" in captured.out
+        # First 8 sorted feature names must appear
+        for i in range(8):
+            assert f"feat{i:02d}" in captured.out
+        # Ninth onwards must be truncated
+        assert "feat11" not in captured.out
+        assert "…" in captured.out
 
     def test_version_flag(self, capsys) -> None:
         """Test --version flag."""
