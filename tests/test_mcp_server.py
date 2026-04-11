@@ -427,3 +427,84 @@ class TestHandlersDirect:
             )
         assert result["success"] is False
         assert "boom" in result["error"]
+
+
+# -- Module-level glue (singleton + SDK adapters) --------------------
+
+
+class TestModuleGlue:
+    """Cover the module-level helpers that wire the server into the MCP SDK."""
+
+    def test_create_server_returns_fresh_instance(self) -> None:
+        from attune_author.mcp.server import create_server
+
+        a = create_server()
+        b = create_server()
+        assert isinstance(a, AttuneAuthorMCPServer)
+        assert a is not b
+
+    def test_get_app_caches_singleton(self) -> None:
+        import attune_author.mcp.server as srv_mod
+        from attune_author.mcp.server import _get_app
+
+        # Reset the cached singleton so this test doesn't depend
+        # on previous test ordering.
+        srv_mod._app = None
+
+        first = _get_app()
+        second = _get_app()
+        assert first is second
+        assert isinstance(first, AttuneAuthorMCPServer)
+
+    def test_handle_list_tools_returns_all_registered(self) -> None:
+        """_handle_list_tools must return one Tool per registered schema."""
+        from mcp.types import Tool
+
+        import attune_author.mcp.server as srv_mod
+        from attune_author.mcp.server import _handle_list_tools
+
+        srv_mod._app = None  # force fresh app
+        tools = asyncio.run(_handle_list_tools())
+        assert len(tools) == 6
+        assert all(isinstance(t, Tool) for t in tools)
+        assert {t.name for t in tools} == set(get_tools())
+
+    def test_handle_call_tool_delegates_and_serializes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """_handle_call_tool must delegate to the app and return JSON TextContent."""
+        import json
+
+        from mcp.types import TextContent
+
+        import attune_author.mcp.server as srv_mod
+        from attune_author.mcp.server import _handle_call_tool
+
+        # Install a fresh app rooted at tmp_path so the call stays hermetic.
+        srv_mod._app = AttuneAuthorMCPServer(workspace_root=str(tmp_path))
+
+        result = asyncio.run(_handle_call_tool("nonexistent", {}))
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], TextContent)
+        assert result[0].type == "text"
+        payload = json.loads(result[0].text)
+        assert payload["success"] is False
+        assert "Unknown tool" in payload["error"]
+
+    def test_handle_call_tool_defaults_arguments_to_empty(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A None arguments value must be coerced to an empty dict,
+        otherwise the handler would crash on .get()."""
+        import json
+
+        import attune_author.mcp.server as srv_mod
+        from attune_author.mcp.server import _handle_call_tool
+
+        srv_mod._app = AttuneAuthorMCPServer(workspace_root=str(tmp_path))
+        result = asyncio.run(_handle_call_tool("nonexistent", None))
+        payload = json.loads(result[0].text)
+        assert payload["success"] is False
