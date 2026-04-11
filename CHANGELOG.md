@@ -8,6 +8,46 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-04-11
+
+### Fixed (security) (0.3.2)
+
+- **CLI path inputs now validated** — `attune-author init`, `status`,
+  `generate`, `regenerate`, and `docs` previously resolved
+  `--project-root`, `--help-dir`, the docs target, and `--output`
+  with a bare `Path(...).resolve()`, skipping the null-byte and
+  system-directory checks the MCP handlers already enforced. All
+  CLI-user-controlled paths now route through
+  `attune_author.mcp.path_validation.validate_file_path()`, so the
+  CLI surface matches the MCP surface.
+
+### Fixed (0.3.2)
+
+- **`bootstrap._infer_description` module-docstring parsing** — the
+  helper used manual triple-quote slicing that would latch onto any
+  `"""` in the file, not just the module docstring, producing wrong
+  or truncated descriptions when `__init__.py` contained in-body
+  strings. It now parses the file with `ast.get_docstring(ast.parse(...))`
+  and gracefully handles `SyntaxError`.
+
+### Changed (0.3.2)
+
+- **Internal: `generator._extract_source_info` refactored** — the
+  function/class AST walk was split into `_docstring_first_line`,
+  `_collect_function`, and `_collect_class` helpers to remove
+  duplicated doc extraction and flatten the main loop. No API change.
+- **Internal: `_format_function_signature` posonly guard simplified** —
+  the redundant `arg is posonly[-1] and idx == len(posonly) - 1`
+  check has been replaced with the sufficient index comparison.
+
+### Tests (0.3.2)
+
+- **`TestModuleGlue` added to `tests/test_mcp_server.py`** — 5 new
+  tests cover `_get_app` singleton caching, `create_server`, and the
+  `_handle_list_tools` / `_handle_call_tool` SDK adapter bodies,
+  lifting `mcp/server.py` from 67% to 80% coverage and the project
+  total from 89% to 90%.
+
 ## [0.3.1] - 2026-04-11
 
 ### Fixed (security) (0.3.1)
