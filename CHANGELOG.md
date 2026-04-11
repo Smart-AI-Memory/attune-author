@@ -8,6 +8,35 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-04-11
+
+### Added (0.3.3)
+
+- **Context-aware welcome screen for bare `attune-author`** — running
+  the CLI with no subcommand now prints a short welcome that adapts
+  to the current directory. On a fresh project it tells the user
+  the project isn't set up yet and points at `attune-author init`.
+  On an initialized project it lists up to 8 feature names and
+  suggests `status` or `generate <feature>`. A malformed manifest
+  falls through to the "not set up yet" path so a cold invocation
+  never surfaces a traceback. `--help` / `-h` still prints the full
+  argparse reference.
+- **Friendly usage hints when `generate` or `docs` are missing
+  required args** — `attune-author generate` with no feature now
+  lists the available features from the manifest (or points at
+  `init` if there's no manifest), and `attune-author docs` with no
+  target shows a usage hint with an example invocation and a
+  reminder about the `[ai]` extra. These replace argparse's terse
+  "the following arguments are required" errors.
+
+### Changed (0.3.3)
+
+- **`generate` error output goes to stderr** — the "feature not
+  found in manifest" and "manifest missing" messages previously
+  printed to stdout, making it hard to distinguish from normal
+  output in shell pipelines. They now print to stderr where they
+  belong.
+
 ## [0.3.2] - 2026-04-11
 
 ### Fixed (security) (0.3.2)
