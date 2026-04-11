@@ -288,10 +288,14 @@ class TestTemplateConstants:
     tuple, and core kinds must keep their identity.
     """
 
-    def test_all_template_names_contains_everything(self) -> None:
-        assert set(_ALL_TEMPLATE_NAMES) == (
-            set(_CORE_DEPTH_NAMES) | set(_PROBLEM_TEMPLATE_NAMES)
-        )
+    def test_all_template_names_contains_core_and_problem(self) -> None:
+        """The core and problem kinds must always appear in
+        the consolidated tuple. Additional tuples (e.g.
+        guidance kinds from tier-2) may also be present —
+        those are tested in their own module.
+        """
+        assert set(_CORE_DEPTH_NAMES) <= set(_ALL_TEMPLATE_NAMES)
+        assert set(_PROBLEM_TEMPLATE_NAMES) <= set(_ALL_TEMPLATE_NAMES)
 
     def test_core_and_problem_are_disjoint(self) -> None:
         assert set(_CORE_DEPTH_NAMES).isdisjoint(_PROBLEM_TEMPLATE_NAMES)

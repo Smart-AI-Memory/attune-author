@@ -161,6 +161,71 @@ Targets for this kind:
   briefly and point to the reference or concept page for
   the full picture
 """,
+    "quickstart": """\
+You are polishing a QUICKSTART template. Quickstarts
+answer "how do I get this working in the next few
+minutes?"
+
+Targets for this kind:
+- The first block under the h1 should be a single
+  runnable command or the smallest runnable snippet that
+  produces a visible result
+- Steps are short — three to five max. If you need more
+  steps, either the quickstart is scoped too broadly or
+  the underlying API is too complicated to be a
+  quickstart subject
+- Show the expected output so the reader knows what
+  success looks like
+- End with "Next:" pointing at a single concrete next
+  action, not a list of options
+""",
+    "tip": """\
+You are polishing a TIP template. Tips are short,
+opinionated recommendations.
+
+Targets for this kind:
+- A tip is one idea, not a checklist. If you have three
+  recommendations, that is three tips
+- Lead with the recommendation, not the context. "Read
+  the docstrings first" is a tip; "There are docstrings
+  in this module" is not
+- Include a one-sentence "Why" that makes the tip
+  memorable
+- Name the tradeoff if any — tips that claim to be
+  free wins usually are not
+""",
+    "note": """\
+You are polishing a NOTE template. Notes are background
+context that does not fit the concept, task, or
+reference shapes.
+
+Targets for this kind:
+- A note is factual, not instructional. It describes
+  how things are, not what the reader should do
+- Keep notes short — a note longer than a page probably
+  wants to be a concept or a reference instead
+- Give the reader enough context to understand the note
+  without reading another file first
+- Cite the source where appropriate (commit, PR, issue,
+  or file) when the note is historical
+""",
+    "comparison": """\
+You are polishing a COMPARISON template. Comparison
+pages help the reader choose between two or more
+options.
+
+Targets for this kind:
+- Use a table for the "feature vs feature" breakdown —
+  it is the shape readers scan fastest
+- Be specific about tradeoffs. "A is faster" is less
+  useful than "A is ~3x faster for batch operations but
+  has no interactive mode"
+- End with a "Use X when..." recommendation section
+  that gives the reader a decision rule, not a shrug
+- Do not pretend the options are equally good if the
+  source info suggests otherwise — pick a winner when
+  the evidence allows it
+""",
 }
 
 #: Phrases that reliably produce formulaic-sounding output.
@@ -203,6 +268,29 @@ ANTI_PATTERNS: dict[str, list[str]] = {
         "The polish pass replaces this answer",
         "Reach for",
         "The most important public functions",
+    ],
+    "quickstart": [
+        "Get started with",
+        "in a few minutes",
+        "The polish pass rewrites this",
+        "What to do next",
+    ],
+    "tip": [
+        "Lean on the public API",
+        "Follow existing patterns",
+        "Write a throwaway test first",
+        "Why this matters",
+    ],
+    "note": [
+        "This note captures background information",
+        "The polish pass replaces this placeholder",
+        "is organized around a small number of classes",
+    ],
+    "comparison": [
+        "This page compares",
+        "Reach for",
+        "The polish pass rewrites this section",
+        "Alternatives in this project",
     ],
 }
 
