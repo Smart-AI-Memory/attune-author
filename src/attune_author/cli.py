@@ -16,7 +16,8 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from pathlib import Path
+
+from attune_author.mcp.path_validation import validate_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ def _cmd_init(args: argparse.Namespace) -> int:
     from attune_author.bootstrap import proposals_to_manifest, scan_project
     from attune_author.manifest import save_manifest
 
-    root = Path(args.project_root).resolve()
+    root = validate_file_path(args.project_root)
     help_dir = root / ".help"
 
     if (help_dir / "features.yaml").exists():
@@ -194,8 +195,8 @@ def _cmd_status(args: argparse.Namespace) -> int:
     from attune_author.manifest import load_manifest
     from attune_author.staleness import check_staleness
 
-    help_dir = Path(args.help_dir)
-    root = Path(args.project_root).resolve()
+    root = validate_file_path(args.project_root)
+    help_dir = validate_file_path(args.help_dir)
 
     manifest = load_manifest(help_dir)
     report = check_staleness(manifest, help_dir, root)
@@ -209,8 +210,8 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     from attune_author.generator import generate_feature_templates
     from attune_author.manifest import load_manifest
 
-    help_dir = Path(args.help_dir)
-    root = Path(args.project_root).resolve()
+    root = validate_file_path(args.project_root)
+    help_dir = validate_file_path(args.help_dir)
 
     manifest = load_manifest(help_dir)
     feature = manifest.features.get(args.feature)
@@ -241,8 +242,8 @@ def _cmd_regenerate(args: argparse.Namespace) -> int:
     """Handle the regenerate command."""
     from attune_author.maintenance import run_maintenance
 
-    help_dir = Path(args.help_dir)
-    root = Path(args.project_root).resolve()
+    root = validate_file_path(args.project_root)
+    help_dir = validate_file_path(args.help_dir)
 
     result = run_maintenance(
         help_dir=help_dir,
@@ -273,15 +274,18 @@ def _cmd_docs(args: argparse.Namespace) -> int:
         )
         return 1
 
+    target = str(validate_file_path(args.target))
+    output = str(validate_file_path(args.output)) if args.output else None
+
     config = DocGenConfig(
         doc_type=args.doc_type,
         audience=args.audience,
     )
 
     result = generate_docs(
-        target=args.target,
+        target=target,
         config=config,
-        output_path=args.output,
+        output_path=output,
     )
 
     if args.output:
