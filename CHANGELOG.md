@@ -8,6 +8,102 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-11
+
+### Changed (breaking) (0.3.0)
+
+- **Polish is now strict by default.** `polish_template()`
+  previously fell back to the raw Jinja2 output on any
+  failure (missing `ANTHROPIC_API_KEY`, network error,
+  SDK error). As of this release, every such failure
+  raises :class:`PolishError`. The rationale is that
+  polish is load-bearing for output quality — silent
+  fallback was letting inferior templates ship unnoticed.
+  **Migration:** environments that genuinely cannot run
+  the LLM pass (CI without credentials, tests, offline
+  dev boxes) must opt out explicitly via either
+  `polish_template(..., strict=False)` or by setting
+  the environment variable
+  `ATTUNE_AUTHOR_STRICT_POLISH=false`. The env var
+  semantics are inverted from 0.2.0: unset, truthy, and
+  unrecognized values all mean "strict" now; only the
+  known falsy tokens (`0`, `false`, `no`, `off`) disable
+  strict mode.
+
+### Added (0.3.0)
+
+- **Shared Anthropic call helper** — new
+  `attune_author.doc_gen._anthropic` module centralizes
+  client construction, single-turn `messages.create()`
+  invocation, and error wrapping for every code path
+  that touches the Anthropic SDK. A single redaction
+  pass strips anything matching `sk-ant-...` from
+  exception text and the error is re-raised with
+  `from None` so API keys cannot leak through
+  `str(exc.__cause__)`. The doc-gen stages and
+  `polish._call_llm()` both delegate to it.
+- **`AnthropicCallError`** — single exception type for
+  SDK failures. Callers that previously caught
+  `RuntimeError` from `generate_docs()` should catch
+  this (or its base `RuntimeError`) instead. The
+  `[ai]` extra install hint is still surfaced on the
+  missing-key path.
+- **Typed Anthropic client** — `doc_gen/stages.py`
+  functions now take `client: Anthropic` instead of
+  `client: object`, restoring IDE autocomplete and
+  catching SDK drift at check time.
+- **Content-budget constants** — `OUTLINE_SOURCE_CHARS`,
+  `WRITE_SOURCE_CHARS`, and `REVIEW_SOURCE_CHARS`
+  replace the 4000/5000/3000 magic numbers previously
+  inlined in `stages.py`.
+- **MCP path validation helper** —
+  `AttuneAuthorHandlers._validated_paths()` + a new
+  internal `_PathValidationError` exception consolidate
+  the four duplicated validate-and-return-error-dict
+  blocks that appeared in `author_status`,
+  `author_generate`, `author_maintain`, and
+  `author_lookup`.
+- **CLI split** — `cli.main()` is now a thin wrapper
+  around `_build_parser()` and `_dispatch()`. The
+  dispatch table is a mapping rather than an `if`
+  ladder, which unlocks per-subcommand unit tests.
+- **Autouse test fixture** — a new `conftest.py`
+  fixture disables strict polish and strips
+  `ANTHROPIC_API_KEY` for every test, so the suite
+  stays offline without per-test mocking. Tests that
+  specifically exercise strict-mode behavior override
+  it with their own `patch.dict` blocks.
+- **New tests** — strict-default `polish_template` test,
+  API-key-redaction test for `call_anthropic`,
+  symlink-chain traversal test for
+  `validate_file_path`, preamble edge-case tests
+  (frontmatter-only body, heading-only body, non-UTF-8
+  file), and a zero-match-glob test for
+  `generate_feature_templates`.
+
+### Fixed (0.3.0)
+
+- **Non-UTF-8 task templates crashed `get_preamble`.**
+  The function's `read_text(encoding="utf-8")` call
+  was wrapped in an `except OSError`, but
+  `UnicodeDecodeError` inherits from `ValueError` and
+  fell through to callers as an unhandled exception.
+  Now caught alongside `OSError` and logged at debug
+  level; the function returns `None` as documented.
+  Discovered via the new preamble edge-case test.
+
+### Internal (0.3.0)
+
+- **Plugin-layout tests now skip when `plugin/` is
+  absent.** `test_plugin_config.py` and
+  `test_plugin_references.py` validate a Claude Code
+  plugin layout that this source-only repo never
+  scaffolded, and were surfacing as 9 failures + 18
+  errors on every run. A module-level
+  `pytestmark = pytest.mark.skipif(...)` hides them
+  when the layout is missing and auto-enables them if
+  it's ever built.
+
 ## [0.2.0] - 2026-04-11
 
 ### Added (0.2.0)
