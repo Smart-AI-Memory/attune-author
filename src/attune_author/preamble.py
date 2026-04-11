@@ -13,6 +13,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from attune_author.manifest import is_safe_feature_name
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,13 +35,7 @@ def get_preamble(
     Returns:
         Preamble string, or None if not available.
     """
-    if (
-        not feature_name
-        or "/" in feature_name
-        or "\\" in feature_name
-        or ".." in feature_name
-        or "\x00" in feature_name
-    ):
+    if not is_safe_feature_name(feature_name):
         return None
     base = Path(help_dir) if help_dir else Path.cwd() / ".help"
     task_path = base / "templates" / feature_name / "task.md"
@@ -116,13 +112,7 @@ def get_related_preambles(
     Returns:
         List of dicts with 'feature' and 'preamble' keys.
     """
-    if (
-        not feature_name
-        or "/" in feature_name
-        or "\\" in feature_name
-        or ".." in feature_name
-        or "\x00" in feature_name
-    ):
+    if not is_safe_feature_name(feature_name):
         return []
     base = Path(help_dir) if help_dir else Path.cwd() / ".help"
     manifest_path = base / "features.yaml"

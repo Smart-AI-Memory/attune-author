@@ -20,7 +20,7 @@ from pathlib import Path
 
 import jinja2
 
-from attune_author.manifest import Feature
+from attune_author.manifest import Feature, is_safe_feature_name
 from attune_author.staleness import _read_frontmatter_value, compute_source_hash
 
 logger = logging.getLogger(__name__)
@@ -81,20 +81,15 @@ def _build_jinja_env(
     Returns:
         Configured Jinja2 Environment.
     """
-    search_paths: list[Path] = []
+    loaders: list[jinja2.BaseLoader] = [jinja2.PackageLoader("attune_author", "meta_templates")]
 
     # Project-local meta templates take priority
     if help_dir:
         project_meta = help_dir / "meta_templates"
         if project_meta.is_dir():
-            search_paths.append(project_meta)
+            loaders.insert(0, jinja2.FileSystemLoader(str(project_meta)))
 
-    # Package defaults as fallback
-    search_paths.append(_DEFAULT_META_DIR)
-
-    loader = jinja2.FileSystemLoader(
-        [str(p) for p in search_paths],
-    )
+    loader = jinja2.ChoiceLoader(loaders)
     return jinja2.Environment(  # nosec B701 — outputs markdown, not HTML
         loader=loader,
         keep_trailing_newline=True,
@@ -181,14 +176,7 @@ def generate_feature_templates(
     root = Path(project_root)
     target_depths = depths or list(_CORE_DEPTH_NAMES)
 
-    # Guard against path traversal via crafted feature names
-    if (
-        not feature.name
-        or "/" in feature.name
-        or "\\" in feature.name
-        or ".." in feature.name
-        or "\x00" in feature.name
-    ):
+    if not is_safe_feature_name(feature.name):
         raise ValueError(f"Invalid feature name: {feature.name!r}")
 
     # Compute source hash
@@ -317,7 +305,8 @@ def _is_manual(path: Path) -> bool:
     """
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError:
+    except OSError as exc:
+        logger.debug("Cannot read %s while checking manual status: %s", path, exc)
         return False
 
     return _read_frontmatter_value(text, "status") == "manual"

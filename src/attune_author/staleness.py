@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from attune_author.manifest import Feature, FeatureManifest
+from attune_author.manifest import Feature, FeatureManifest, is_safe_feature_name
 
 logger = logging.getLogger(__name__)
 
@@ -143,13 +143,7 @@ def _read_stored_hash(
     Returns:
         The stored source_hash or None if not found.
     """
-    if (
-        not feature_name
-        or "/" in feature_name
-        or "\\" in feature_name
-        or ".." in feature_name
-        or "\x00" in feature_name
-    ):
+    if not is_safe_feature_name(feature_name):
         return None
 
     concept = help_dir / "templates" / feature_name / "concept.md"

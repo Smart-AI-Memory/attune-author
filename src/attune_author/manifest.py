@@ -18,6 +18,33 @@ logger = logging.getLogger(__name__)
 _MANIFEST_VERSION = 1
 _MANIFEST_FILENAME = "features.yaml"
 
+#: Substrings that turn a feature name into a path-traversal vector
+#: when the name is used as a directory component under
+#: ``.help/templates/<name>/``.
+_UNSAFE_NAME_TOKENS = ("/", "\\", "..", "\x00")
+
+
+def is_safe_feature_name(name: object) -> bool:
+    """Check whether a feature name is safe to use as a path component.
+
+    Feature names are written to disk as directory components under
+    ``.help/templates/<name>/``. A name containing path separators,
+    parent-directory tokens, or null bytes can escape that jail and
+    traverse outside the help directory. Centralizing the check here
+    means every callsite — manifest load, generator, MCP handlers,
+    preamble lookup, staleness check — shares one definition.
+
+    Args:
+        name: Candidate feature name. Non-string values are rejected.
+
+    Returns:
+        True if ``name`` is a non-empty string with no traversal
+        characters.
+    """
+    if not isinstance(name, str) or not name:
+        return False
+    return not any(token in name for token in _UNSAFE_NAME_TOKENS)
+
 
 @dataclass
 class Feature:
@@ -92,6 +119,8 @@ def load_manifest(help_dir: str | Path) -> FeatureManifest:
 
     features: dict[str, Feature] = {}
     for name, spec in raw_features.items():
+        if not is_safe_feature_name(name):
+            raise ValueError(f"Invalid feature name: {name!r}")
         if not isinstance(spec, dict):
             raise ValueError(f"Feature '{name}' must be a mapping")
         features[name] = Feature(

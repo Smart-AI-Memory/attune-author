@@ -9,11 +9,43 @@ import pytest
 from attune_author.manifest import (
     Feature,
     FeatureManifest,
+    is_safe_feature_name,
     load_manifest,
     match_files_to_features,
     resolve_topic,
     save_manifest,
 )
+
+
+class TestIsSafeFeatureName:
+    """Tests for is_safe_feature_name()."""
+
+    @pytest.mark.parametrize(
+        "name",
+        ["auth", "user_profile", "api-v2", "feature.name"],
+    )
+    def test_accepts_safe_names(self, name: str) -> None:
+        assert is_safe_feature_name(name) is True
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "",
+            "../escape",
+            "..",
+            "foo/bar",
+            "foo\\bar",
+            "foo\x00bar",
+            "../../etc/passwd",
+            "templates/../../../root",
+        ],
+    )
+    def test_rejects_unsafe_names(self, name: str) -> None:
+        assert is_safe_feature_name(name) is False
+
+    def test_rejects_non_string(self) -> None:
+        assert is_safe_feature_name(None) is False  # type: ignore[arg-type]
+        assert is_safe_feature_name(42) is False  # type: ignore[arg-type]
 
 
 class TestLoadManifest:
@@ -59,6 +91,23 @@ class TestLoadManifest:
         (help / "features.yaml").write_text("version: 1\nfeatures:\n  - not a mapping\n")
 
         with pytest.raises(ValueError, match="must be a mapping"):
+            load_manifest(help)
+
+    def test_rejects_unsafe_feature_name_at_load(self, tmp_path: Path) -> None:
+        """A manifest with a path-traversal feature name must not load.
+
+        Closes the gap between generator-side validation and the
+        manifest-load boundary: a crafted features.yaml could otherwise
+        push an unsafe name through to the templates dir join.
+        """
+        help = tmp_path / ".help"
+        help.mkdir()
+        (help / "features.yaml").write_text(
+            "version: 1\nfeatures:\n  ../escape:\n    description: bad\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="Invalid feature name"):
             load_manifest(help)
 
 

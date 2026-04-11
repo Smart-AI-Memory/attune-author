@@ -336,3 +336,94 @@ class TestHandlersDirect:
         result = asyncio.run(h.author_docs({}))
         assert result["success"] is False
         assert "target is required" in result["error"]
+
+    def test_author_status_handles_missing_manifest(self, tmp_path: Path) -> None:
+        """Handler must surface a clean error when features.yaml is missing.
+
+        Closes the gap between the path-validation tests (which run
+        before load_manifest) and the manifest loader's own
+        FileNotFoundError handling.
+        """
+        h = AttuneAuthorHandlers(workspace_root=str(tmp_path))
+        result = asyncio.run(
+            h.author_status(
+                {
+                    "help_dir": str(tmp_path / ".help"),
+                    "project_root": str(tmp_path),
+                }
+            )
+        )
+        assert result["success"] is False
+        assert "Cannot load manifest" in result["error"]
+
+    def test_author_generate_handles_missing_manifest(self, tmp_path: Path) -> None:
+        h = AttuneAuthorHandlers(workspace_root=str(tmp_path))
+        result = asyncio.run(
+            h.author_generate(
+                {
+                    "feature": "anything",
+                    "help_dir": str(tmp_path / ".help"),
+                    "project_root": str(tmp_path),
+                }
+            )
+        )
+        assert result["success"] is False
+        assert "Cannot load manifest" in result["error"]
+
+    def test_author_lookup_handles_missing_manifest(self, tmp_path: Path) -> None:
+        h = AttuneAuthorHandlers(workspace_root=str(tmp_path))
+        result = asyncio.run(
+            h.author_lookup(
+                {
+                    "query": "auth",
+                    "help_dir": str(tmp_path / ".help"),
+                }
+            )
+        )
+        assert result["success"] is False
+        assert "Cannot load manifest" in result["error"]
+
+    def test_author_docs_rejects_output_outside_workspace(self, tmp_path: Path) -> None:
+        """Output paths outside the workspace must be rejected BEFORE
+        the parent directory is created on disk."""
+        h = AttuneAuthorHandlers(workspace_root=str(tmp_path))
+        # An absolute path under /tmp is outside the workspace_root.
+        outside = "/tmp/attune-author-escape-test/out.md"
+        outside_parent = Path(outside).parent
+        # Pre-condition: parent must not exist before the call.
+        if outside_parent.exists():
+            import shutil
+
+            shutil.rmtree(outside_parent)
+
+        result = asyncio.run(
+            h.author_docs(
+                {
+                    "target": "def f(): pass",
+                    "output_path": outside,
+                }
+            )
+        )
+        assert result["success"] is False
+        assert "outside" in result["error"] or "system directory" in result["error"]
+        # The validation must reject BEFORE mkdir runs.
+        assert not outside_parent.exists()
+
+    def test_author_docs_handles_pipeline_failure(self, tmp_path: Path) -> None:
+        """Pipeline-level RuntimeError should produce a clean error dict."""
+        from unittest.mock import patch
+
+        h = AttuneAuthorHandlers(workspace_root=str(tmp_path))
+        with patch(
+            "attune_author.doc_gen.generate_docs",
+            side_effect=RuntimeError("boom"),
+        ):
+            result = asyncio.run(
+                h.author_docs(
+                    {
+                        "target": "def f(): pass",
+                    }
+                )
+            )
+        assert result["success"] is False
+        assert "boom" in result["error"]

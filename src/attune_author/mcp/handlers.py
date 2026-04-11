@@ -238,13 +238,17 @@ class AttuneAuthorHandlers:
 
     async def author_docs(self, args: dict[str, Any]) -> dict[str, Any]:
         """Generate documentation via the 3-stage pipeline."""
+        # INTENTIONAL: the doc_gen subpackage depends on the optional
+        # `[ai]` extra. ImportError is the expected failure mode when
+        # the extra is missing — return a helpful install hint rather
+        # than crashing the MCP loop.
         try:
             from attune_author.doc_gen import DocGenConfig, generate_docs
         except ImportError:
             return {
                 "success": False,
                 "error": (
-                    "Doc generation requires the [ai] extra: " "pip install 'attune-author[ai]'"
+                    "Doc generation requires the [ai] extra: pip install 'attune-author[ai]'"
                 ),
             }
 
@@ -264,12 +268,15 @@ class AttuneAuthorHandlers:
         output_path: str | None = None
         if args.get("output_path"):
             try:
-                # Use parent dir for validation since output may not exist yet
+                # Validate the parent BEFORE creating it. The parent
+                # may not exist yet, but we must reject paths outside
+                # the workspace before mkdir() so we never materialize
+                # a directory tree at an attacker-controlled location.
                 out = Path(args["output_path"])
-                out.parent.mkdir(parents=True, exist_ok=True)
                 validated_parent = validate_file_path(
                     str(out.parent), allowed_dir=self._workspace_root
                 )
+                validated_parent.mkdir(parents=True, exist_ok=True)
                 output_path = str(validated_parent / out.name)
             except ValueError as e:
                 return {"success": False, "error": str(e)}
@@ -299,7 +306,11 @@ class AttuneAuthorHandlers:
 
     async def author_lookup(self, args: dict[str, Any]) -> dict[str, Any]:
         """Look up help for a topic by name or tag."""
-        from attune_author.manifest import load_manifest, resolve_topic
+        from attune_author.manifest import (
+            is_safe_feature_name,
+            load_manifest,
+            resolve_topic,
+        )
 
         query = args.get("query")
         if not query:
@@ -330,6 +341,12 @@ class AttuneAuthorHandlers:
                 "error": f"No feature matches query: {query}",
                 "available": sorted(manifest.features),
             }
+
+        # Defense in depth: load_manifest already validates names at
+        # parse time, but the lookup path is the most security-sensitive
+        # boundary so we re-check before joining onto the help dir.
+        if not is_safe_feature_name(feature_name):
+            return {"success": False, "error": f"Invalid feature name: {feature_name!r}"}
 
         template_path = help_dir / "templates" / feature_name / f"{depth}.md"
         if not template_path.exists():
