@@ -31,7 +31,9 @@ class TestBuildSourceSummary:
         assert "Classes:" in result
         assert "Foo: Foo class" in result
         assert "Functions:" in result
-        assert "bar(): bar function" in result
+        # v0.2.0: summary now uses em-dash separator and
+        # omits parentheses when no signature is available
+        assert "bar() — bar function" in result
         assert "Total source files: 5" in result
 
     def test_empty_inputs(self) -> None:
@@ -57,7 +59,9 @@ class TestBuildSourceSummary:
 
     def test_truncates_long_lists(self) -> None:
         """Test that long lists are truncated."""
-        many_classes = [{"name": f"Class{i}", "doc": "", "file": "f.py"} for i in range(20)]
+        many_classes = [
+            {"name": f"Class{i}", "doc": "", "file": "f.py"} for i in range(20)
+        ]
         result = build_source_summary(
             public_classes=many_classes,
             public_functions=[],
@@ -82,7 +86,9 @@ class TestPolishTemplate:
 
     def test_returns_original_on_llm_error(self) -> None:
         """Test fallback to original when LLM call fails."""
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
+        ):  # pragma: allowlist secret
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.side_effect = RuntimeError("API down")
                 content = "# Test\nOriginal."
@@ -91,7 +97,9 @@ class TestPolishTemplate:
 
     def test_returns_polished_on_success(self) -> None:
         """Test successful polish returns LLM output."""
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
+        ):  # pragma: allowlist secret
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.return_value = "# Test\nPolished content."
                 result = polish_template("orig", "test", "summary")
@@ -107,9 +115,11 @@ class TestPolishTemplate:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ", {"ANTHROPIC_API_KEY": "fake"}
+        ):  # pragma: allowlist secret
             with patch("anthropic.Anthropic", return_value=mock_client):
-                result = _call_llm("content", "feature", "summary")
+                result = _call_llm("content", "feature", "summary", "concept")
 
         assert result == "polished output"
         mock_client.messages.create.assert_called_once()
@@ -122,4 +132,4 @@ class TestPolishTemplate:
 
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
-                _call_llm("content", "feature", "summary")
+                _call_llm("content", "feature", "summary", "concept")
