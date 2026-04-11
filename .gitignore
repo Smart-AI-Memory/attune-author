@@ -36,3 +36,8 @@ Thumbs.db
 
 # uv
 .uv/
+
+# Local tooling state (Claude Code plans, attune project index, coverage)
+.claude/
+.attune/
+coverage.json
