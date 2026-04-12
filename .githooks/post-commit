@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Auto-regenerate stale help templates after each commit.
+#
+# Uses attune-author's run_hook() which only regenerates
+# features whose source files were touched in the commit.
+#
+# Activate with: git config core.hooksPath .githooks
+# Silently exits 0 if the tool isn't available so it never
+# blocks your workflow.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Only run if .help/features.yaml exists
+if [ ! -f "$REPO_ROOT/.help/features.yaml" ]; then
+    exit 0
+fi
+
+# Run the maintenance hook via Python
+python -c "
+import sys, os
+os.chdir('$REPO_ROOT')
+sys.path.insert(0, '$REPO_ROOT/src')
+from attune_author.maintenance import run_hook
+result = run_hook('.help', '.')
+if result and result.regenerated_count > 0:
+    print(f'[attune-author] Regenerated {result.regenerated_count} help template(s)')
+" 2>/dev/null || true
