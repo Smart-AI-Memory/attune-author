@@ -2,8 +2,8 @@
 type: reference
 feature: bootstrap
 depth: reference
-generated_at: 2026-04-11T04:51:52.587262+00:00
-source_hash: ba3e45edbaf44fba671f221a61e39cae7381b0b1c8ce9a02129f76b20bc6f331
+generated_at: 2026-04-12T04:19:17.895639+00:00
+source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
 
@@ -17,15 +17,7 @@ status: generated
 
 ## Functions
 
-| Function | Parameters | Returns | Description |
-|----------|------------|---------|-------------|
-| `scan_project()` | `project_root: str \| Path` | `list[ProposedFeature]` | Scan a project and propose features |
-| `proposals_to_manifest()` | `proposals: list[ProposedFeature]` | `FeatureManifest` | Convert accepted proposals to a FeatureManifest |
-
-## Source files
-
-- `src/attune_author/bootstrap.py`
-
-## Tags
-
-`setup`, `scanning`, `manifest`
+| Function | Description | Parameters | Returns |
+|----------|-------------|------------|---------|
+| `scan_project()` | Scan a project and propose features | `project_root: str \| Path` | `list[ProposedFeature]` |
+| `proposals_to_manifest()` | Convert accepted proposals to a FeatureManifest | `proposals: list[ProposedFeature]` | `FeatureManifest` |

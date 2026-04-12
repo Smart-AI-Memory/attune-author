@@ -2,8 +2,8 @@
 type: concept
 feature: doc-gen-pipeline
 depth: concept
-generated_at: 2026-04-11T05:00:10.627990+00:00
-source_hash: dcd99211b2080853c45dbe17f061733f0b7ff80387279d574d2bd011d8114aa2
+generated_at: 2026-04-12T04:20:55.484949+00:00
+source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
@@ -11,23 +11,23 @@ status: generated
 
 ## How it works
 
-The doc gen pipeline orchestrates a three-stage process for creating documentation: outline, write, and review. Instead of generating documentation in a single pass, this approach breaks the work into deliberate phases that produce higher-quality output.
+The doc gen pipeline is a three-stage system that generates documentation by having an LLM first create an outline, then write content from that outline, and finally review and polish the result.
 
-Here's how the stages connect:
+Each stage builds on the previous one:
 
-1. **Outline stage** — `build_outline()` analyzes your source content and creates a structured plan that defines what sections the documentation should cover
-2. **Write stage** — `write_content()` takes that outline and fills in each section with actual documentation content
-3. **Review stage** — `review_content()` polishes the draft by checking for clarity, completeness, and consistency
+1. **Outline stage** — `build_outline()` analyzes your source content and creates a structured plan for the documentation
+2. **Writing stage** — `write_content()` uses the outline to generate draft documentation, optionally focusing on specific sections
+3. **Review stage** — `review_content()` polishes the draft by checking it against the original source
 
-You start the entire process with `generate_docs()`, which accepts a target file or content string and runs it through all three stages automatically.
+You control the entire process through `generate_docs()`, which orchestrates all three stages and returns a `DocGenResult` with the final documentation.
 
-## Core components
+## Configuration and results
 
-**`DocGenConfig`** controls pipeline behavior like which LLM model to use, token limits, target audience, and documentation type. You can pass a custom config to `generate_docs()` or let it use sensible defaults.
+**`DocGenConfig`** holds your pipeline settings, including the target audience, document type, and LLM parameters like model choice and token limits.
 
-**`DocGenResult`** contains the final documentation along with any metadata about the generation process. This gives you both the output and information about how it was created.
+**`DocGenResult`** contains the generated documentation along with metadata about the generation process.
 
-The pipeline also includes `parse_outline_sections()` to extract section titles from outlines, which helps coordinate the writing stage's focus on specific parts of the documentation.
+The pipeline can parse outline sections with `parse_outline_sections()` to enable focused writing on specific parts of your documentation.
 
 ## Integration points
 

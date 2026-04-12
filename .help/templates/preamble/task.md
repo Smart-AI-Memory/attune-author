@@ -2,72 +2,47 @@
 type: task
 feature: preamble
 depth: task
-generated_at: 2026-04-11T04:55:27.164476+00:00
-source_hash: 3e02ceee37af71750f50dd40ecd95359ea5c4aaf1a1a7e50691cfb6250d133b0
+generated_at: 2026-04-12T04:19:55.900394+00:00
+source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
 
 # Work with preamble
 
-Use preamble when you need to display contextual one-liner descriptions for workflow features or find related features based on shared functionality.
+Use preamble when you need to display contextual one-liner descriptions for workflow features or find related features based on shared functionality tags.
 
 ## Prerequisites
 
 - Access to the project source code
-- Python development environment set up
+- Familiarity with the files under src/attune_author/preamble.py
 
-## Retrieve a feature preamble
+## Identify the target function
 
-1. **Import the preamble module:**
-   ```python
-   from attune_author.preamble import get_preamble
-   ```
+1. **Determine your goal:**
+   - To retrieve a single feature's description: use `get_preamble()`
+   - To find related features by tags: use `get_related_preambles()`
 
-2. **Call get_preamble with the feature name:**
-   ```python
-   preamble_text = get_preamble("your_feature_name")
-   ```
+2. **Locate the function in `src/attune_author/preamble.py`:**
+   - `get_preamble(feature_name, help_dir)` — Returns the one-liner description for a specific feature
+   - `get_related_preambles(feature_name, help_dir, max_results)` — Returns up to 3 features with shared tags
 
-3. **Handle the result:**
-   - If the feature exists, you get a string with the preamble text
-   - If the feature doesn't exist, you get `None`
+## Modify preamble behavior
 
-## Find related features
+1. **Read the function's docstring and parameters** to confirm it handles your use case.
 
-1. **Import the related preambles function:**
-   ```python
-   from attune_author.preamble import get_related_preambles
-   ```
+2. **Update the function logic** following the existing code style:
+   - Use the same naming conventions as surrounding functions
+   - Handle errors consistently with the existing error patterns
+   - Add logging statements that match the current format
 
-2. **Get related features by shared tags:**
-   ```python
-   related = get_related_preambles("your_feature_name", max_results=3)
-   ```
-
-3. **Process the results:**
-   The function returns a list of dictionaries, each containing feature information for related features.
-
-## Modify preamble functionality
-
-1. **Locate the target function in `src/attune_author/preamble.py`:**
-   - Use `get_preamble()` to change how individual preambles are retrieved
-   - Use `get_related_preambles()` to modify the related feature discovery logic
-
-2. **Read the function's docstring and parameters** to confirm it handles your use case.
-
-3. **Implement your changes** following the existing code style, error handling patterns, and naming conventions in the file.
-
-4. **Test your changes:**
+3. **Test your changes** by running:
    ```bash
    pytest -k "preamble"
    ```
 
 ## Verify success
 
-Your preamble integration works when:
-- `get_preamble()` returns the expected string for valid features
-- `get_related_preambles()` returns a list of related features with the correct structure
-- All preamble tests pass without errors
+Your changes work correctly when the preamble tests pass and your target function returns the expected preamble text or related feature list based on your modifications.
 
 ## Key files
 

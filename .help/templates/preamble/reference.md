@@ -2,19 +2,21 @@
 type: reference
 feature: preamble
 depth: reference
-generated_at: 2026-04-11T04:55:37.555599+00:00
-source_hash: 3e02ceee37af71750f50dd40ecd95359ea5c4aaf1a1a7e50691cfb6250d133b0
+generated_at: 2026-04-12T04:20:04.815691+00:00
+source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
 
 # Preamble reference
 
+Context-sensitive preamble for workflow skills.
+
 ## Functions
 
-| Function | Description | Parameters | Return Type |
-|----------|-------------|------------|-------------|
-| `get_preamble()` | Get the one-liner preamble for a feature | `feature_name: str`, `help_dir: str \| Path \| None = None` | `str \| None` |
-| `get_related_preambles()` | Get preambles for features related by shared tags | `feature_name: str`, `help_dir: str \| Path \| None = None`, `max_results: int = 3` | `list[dict[str, str]]` |
+| Function | Parameters | Returns | Description |
+|----------|------------|---------|-------------|
+| `get_preamble()` | `feature_name: str`<br>`help_dir: str \| Path \| None = None` | `str \| None` | Get the one-liner preamble for a feature |
+| `get_related_preambles()` | `feature_name: str`<br>`help_dir: str \| Path \| None = None`<br>`max_results: int = 3` | `list[dict[str, str]]` | Get preambles for features related by shared tags |
 
 ## Source files
 

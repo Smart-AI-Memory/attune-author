@@ -2,8 +2,8 @@
 type: reference
 feature: template-generation
 depth: reference
-generated_at: 2026-04-11T04:46:41.584415+00:00
-source_hash: c984ed6eeee4ee72f8b218ec3aebe243eb03ae557e252ba48d52da016704935e
+generated_at: 2026-04-12T04:18:15.645794+00:00
+source_hash: fac9c2bf60f422bb00b839a6c2ae022747745371b4a85621dd89daba9515f706
 status: generated
 ---
 
@@ -13,14 +13,14 @@ status: generated
 
 | Class | Description |
 |-------|-------------|
-| `GeneratedTemplate` | Result of generating one template file |
-| `GenerationResult` | Result of generating templates for a feature |
+| `GeneratedTemplate` | Represents the result of generating a single template file |
+| `GenerationResult` | Contains the results of generating all templates for a feature |
 
 ## Functions
 
 | Function | Description | Parameters |
 |----------|-------------|------------|
-| `generate_feature_templates()` | Generate help templates for a feature | `feature`, `help_dir`, `project_root`, `depths`, `overwrite` |
+| `generate_feature_templates()` | Generates help templates for a feature from source code analysis | `feature` (Feature), `help_dir` (str \| Path), `project_root` (str \| Path), `depths` (list[str] \| None), `overwrite` (bool) |
 
 ## Source files
 

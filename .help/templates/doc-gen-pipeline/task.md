@@ -2,84 +2,106 @@
 type: task
 feature: doc-gen-pipeline
 depth: task
-generated_at: 2026-04-11T05:00:20.078968+00:00
-source_hash: dcd99211b2080853c45dbe17f061733f0b7ff80387279d574d2bd011d8114aa2
+generated_at: 2026-04-12T04:21:04.043752+00:00
+source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
 # Work with doc gen pipeline
 
-Use the doc gen pipeline when you need to generate high-quality documentation through a three-stage process that creates an outline, writes content, and reviews the output.
+Use the doc gen pipeline when you need to generate high-quality documentation through a structured three-stage process that creates an outline, writes content, and reviews the output.
 
 ## Prerequisites
 
 - Access to the project source code
-- Familiarity with the files under `src/attune_author/doc_gen/`
+- Anthropic API client configured
+- Understanding of the target documentation type and audience
 
 ## Generate documentation
 
-1. **Import the pipeline module.**
+1. **Import the pipeline module:**
    ```python
-   from attune_author.doc_gen.pipeline import generate_docs
-   from attune_author.doc_gen.config import DocGenConfig
+   from attune_author.doc_gen.pipeline import generate_docs, DocGenConfig
    ```
 
-2. **Configure the generation settings.**
-   Create a `DocGenConfig` object with your target audience, document type, and model preferences:
+2. **Create a configuration (optional):**
    ```python
    config = DocGenConfig(
        doc_type="tutorial",
-       audience="developers",
-       model="gpt-4",
+       audience="beginner",
+       model="claude-3-sonnet-20241022"
+   )
+   ```
+
+3. **Run the documentation generation:**
+   ```python
+   result = generate_docs(
+       target="path/to/source.py",
+       config=config,
+       output_path="docs/output.md"
+   )
+   ```
+
+4. **Verify the output:**
+   Check that the `DocGenResult` contains your generated documentation and that the output file exists at the specified path.
+
+## Customize individual stages
+
+1. **Set up the Anthropic client:**
+   ```python
+   from anthropic import Anthropic
+   client = Anthropic()
+   ```
+
+2. **Generate an outline first:**
+   ```python
+   from attune_author.doc_gen.stages import build_outline
+
+   outline = build_outline(
+       client=client,
+       source_content=source_text,
+       doc_type="guide",
+       audience="intermediate",
+       model="claude-3-sonnet-20241022",
        max_tokens=2000
    )
    ```
 
-3. **Run the generation pipeline.**
-   Call `generate_docs()` with your source file or content:
+3. **Write content from the outline:**
    ```python
-   result = generate_docs("path/to/source.py", config, "output/docs.md")
+   from attune_author.doc_gen.stages import write_content
+
+   draft = write_content(
+       client=client,
+       outline=outline,
+       source_content=source_text,
+       doc_type="guide",
+       audience="intermediate",
+       model="claude-3-sonnet-20241022",
+       max_tokens=4000
+   )
    ```
 
-4. **Verify the output.**
-   Check that the result contains structured documentation with outline, content, and review stages completed. The output file should contain polished documentation that follows the specified format.
-
-## Customize individual stages
-
-1. **Import the stage functions.**
+4. **Review and polish the draft:**
    ```python
-   from attune_author.doc_gen.stages import build_outline, write_content, review_content
+   from attune_author.doc_gen.stages import review_content
+
+   final_doc = review_content(
+       client=client,
+       draft=draft,
+       source_content=source_text,
+       doc_type="guide",
+       audience="intermediate",
+       model="claude-3-sonnet-20241022",
+       max_tokens=4000
+   )
    ```
 
-2. **Generate a custom outline.**
-   Use `build_outline()` to create a structured plan before writing:
-   ```python
-   outline = build_outline(client, source_content, "api-reference", "developers", "gpt-4", 1000)
-   ```
-
-3. **Write focused content.**
-   Use `write_content()` with specific section focus to target particular areas:
-   ```python
-   content = write_content(client, outline, source_content, "tutorial", "beginners", "gpt-4", 2000, ["setup", "examples"])
-   ```
-
-4. **Review and polish.**
-   Use `review_content()` to improve the initial draft:
-   ```python
-   final_content = review_content(client, draft, source_content, "guide", "experts", "gpt-4", 1500)
-   ```
-
-## Test your changes
-
-Run the pipeline tests to verify your modifications work correctly:
-```bash
-pytest -k "doc-gen-pipeline"
-```
-
-Success indicators include passing tests and generated documentation that follows the expected three-stage structure.
+5. **Verify completion:**
+   Confirm that each stage returns non-empty content and that the final documentation meets your quality standards.
 
 ## Key files
 
 - `src/attune_author/doc_gen/pipeline.py` — Main orchestration and `generate_docs()` function
-- `src/attune_author/doc_gen/stages.py` — Individual pipeline stages
-- `src/attune_author/doc_gen/config.py` — Configuration classes
+- `src/attune_author/doc_gen/stages.py` — Individual stage functions and outline parsing
+- `src/attune_author/doc_gen/config.py` — Configuration classes and defaults

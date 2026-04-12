@@ -149,6 +149,15 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code (0 for success).
     """
+    # Load .env early so downstream code (polish, doc-gen) can
+    # find ANTHROPIC_API_KEY without users exporting it manually.
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:
+        pass
+
     parser = _build_parser()
     args = parser.parse_args(argv)
 

@@ -2,28 +2,23 @@
 type: concept
 feature: cli
 depth: concept
-generated_at: 2026-04-11T04:56:52.006728+00:00
-source_hash: a51e03870f89add843bf351e1f8f4a23c174c46122a5a2780eca70d10e873bce
+generated_at: 2026-04-12T04:53:33.991615+00:00
+source_hash: b40b5cd02e5e4ea8d4a6bf7a3a528cdf03aee2a0e01db1dbdc1a9be426d9af1f
 status: generated
 ---
 
 # CLI
 
-The CLI module provides the command-line interface for attune-author, serving as the primary entry point for users to interact with the tool's functionality.
+The CLI is the command-line interface that provides the primary entry point for attune-author operations.
 
-## Command structure
+## Entry point architecture
 
-The CLI organizes attune-author's capabilities into subcommands that handle different aspects of the authoring workflow:
+The `main()` function serves as the single entry point for all command-line interactions with attune-author. When you run the attune-author command, this function processes the command-line arguments and routes them to the appropriate subcommands for bootstrap, generate, status, and maintain operations.
 
-- **bootstrap** — Set up initial project structure
-- **generate** — Create content from templates
-- **status** — Check project state
-- **maintain** — Perform ongoing project maintenance
-
-## Entry point
-
-The `main()` function serves as the single entry point for all command-line operations. When you run attune-author from the command line, this function processes the arguments and routes them to the appropriate subcommand handler.
+## Interface structure
 
 | Function | Purpose | Location |
 |----------|---------|----------|
-| `main()` | Processes command-line arguments and executes subcommands | `src/attune_author/cli.py` |
+| `main()` | Processes command-line arguments and executes the requested operation | `src/attune_author/cli.py` |
+
+The function accepts an optional `argv` parameter, allowing it to process either system command-line arguments or custom argument lists for testing and programmatic use.

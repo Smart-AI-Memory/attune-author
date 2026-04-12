@@ -2,60 +2,49 @@
 type: task
 feature: polish
 depth: task
-generated_at: 2026-04-11T04:48:11.796825+00:00
-source_hash: 024a299e9a8252b83e070c5a5297e1292dd243e8eddc631dcf298bae31fb8dc0
+generated_at: 2026-04-12T04:18:28.601212+00:00
+source_hash: 9f00fa4d4bf451430bdb559d13e2781477df4a00e9c10586bff49eaa38404dbc
 status: generated
 ---
 
 # Work with polish
 
-Use the polish feature when you need to improve the quality of auto-generated documentation templates through LLM-powered rewrites.
+Use polish when you need to enhance auto-generated help templates by applying LLM-based refinements with template-specific prompts and source code context.
 
 ## Prerequisites
 
 - Access to the project source code
-- Familiarity with the files under `src/attune_author/polish.py`
+- Familiarity with `src/attune_author/polish.py` and `src/attune_author/polish_prompts.py`
 
-## Configure polish behavior
+## Steps
 
-1. **Locate the polish configuration.**
-   Open `src/attune_author/polish.py` to see the main polish functions.
+1. **Identify the polish component to modify**
 
-2. **Modify the source summary generation.**
-   Edit `build_source_summary()` to change what context the LLM receives about your codebase. This function controls which classes, functions, and metadata appear in the polish prompt.
+   Examine these three core functions to determine which handles your use case:
+   - `polish_template()` — Sends templates to the LLM with context and prompts
+   - `build_source_summary()` — Creates source code summaries for LLM context
+   - `get_system_prompt()` — Retrieves template-type-specific system prompts
 
-3. **Update system prompts for template types.**
-   Open `src/attune_author/polish_prompts.py` and modify `get_system_prompt()` to adjust polish instructions for specific template types (task, concept, reference, etc.).
+2. **Review the target function's implementation**
 
-## Polish a template
+   Read the function's docstring, parameters, and return type. Check how it handles the `PolishError` exception and any strict mode requirements.
 
-1. **Call the polish function.**
-   Use `polish_template()` with your generated template content:
-   ```python
-   polished = polish_template(
-       content=raw_template,
-       feature_name="your_feature",
-       source_summary=summary,
-       template_type="task"
-   )
-   ```
+3. **Implement your changes**
 
-2. **Handle polish failures.**
-   Catch `PolishError` exceptions when running in strict mode to handle cases where the LLM polish fails.
+   Modify the function while maintaining the existing parameter signatures and error handling patterns. Ensure strict mode behavior remains consistent.
 
-3. **Verify the output.**
-   Check that the polished template maintains the original YAML frontmatter and preserves the core structure while improving readability and clarity.
+4. **Test the polish functionality**
 
-## Test your changes
-
-Run targeted tests to verify polish behavior:
-```bash
-pytest -k "polish"
-```
-
-The tests pass when your polish modifications correctly transform templates without breaking the original structure or losing essential information.
+   Run `pytest -k "polish"` to verify your changes work correctly and don't break existing functionality.
 
 ## Key files
 
-- `src/attune_author/polish.py` — Main polish functions
+- `src/attune_author/polish.py` — Core polish functions
 - `src/attune_author/polish_prompts.py` — Template-specific system prompts
+
+## Success criteria
+
+Your changes work when:
+- The polish tests pass without errors
+- Templates are refined according to your modifications
+- `PolishError` is raised appropriately in strict mode when polish fails

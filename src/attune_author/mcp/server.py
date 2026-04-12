@@ -175,6 +175,13 @@ def main() -> None:
     """Entry point for the attune-author MCP server."""
     import tempfile
 
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:
+        pass
+
     log_dir = Path(tempfile.gettempdir()) / "attune-author"
     log_dir.mkdir(exist_ok=True)
     logging.basicConfig(

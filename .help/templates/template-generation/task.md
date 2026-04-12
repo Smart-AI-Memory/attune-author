@@ -2,51 +2,53 @@
 type: task
 feature: template-generation
 depth: task
-generated_at: 2026-04-11T04:46:34.079276+00:00
-source_hash: c984ed6eeee4ee72f8b218ec3aebe243eb03ae557e252ba48d52da016704935e
+generated_at: 2026-04-12T04:18:08.689196+00:00
+source_hash: fac9c2bf60f422bb00b839a6c2ae022747745371b4a85621dd89daba9515f706
 status: generated
 ---
 
-# Work with template generation
+# Generate help templates from source code
 
-Use template generation when you need to create markdown help files from your codebase's feature definitions and source code analysis.
+Use template generation when you need to create markdown help files automatically from feature definitions and source code analysis.
 
 ## Prerequisites
 
 - Access to the project source code
-- Python development environment set up
+- Python development environment with pytest installed
 
 ## Generate templates for a feature
 
-1. **Import the generator module:**
+1. **Import the generation function:**
    ```python
    from attune_author.generator import generate_feature_templates
    ```
 
-2. **Prepare the required parameters:**
-   - Feature object containing your feature definition
-   - Path to your help directory where templates will be written
-   - Path to your project root for source code analysis
-
-3. **Call the generation function:**
+2. **Define your feature and paths:**
    ```python
    result = generate_feature_templates(
        feature=your_feature,
        help_dir="docs/help",
        project_root=".",
-       overwrite=True  # Set to False to preserve existing files
+       depths=["overview", "task", "reference"],
+       overwrite=True
    )
    ```
 
-4. **Check the generation result:**
-   The function returns a `GenerationResult` object containing details about created templates.
+3. **Check the generation results:**
+   The function returns a `GenerationResult` containing:
+   - List of successfully generated templates
+   - Any errors encountered during generation
+   - File paths for each created template
 
 ## Verify template generation
 
-- Check that new markdown files appear in your specified help directory
-- Verify each generated template contains proper YAML frontmatter
-- Confirm template content reflects your source code structure
-- Run `pytest -k "template-generation"` to validate the generation process
+Run the test suite to confirm your templates generate correctly:
+
+```bash
+pytest -k "template-generation"
+```
+
+**Success criteria:** All tests pass and you can find the generated markdown files in your specified help directory. Each template should have proper YAML frontmatter and structured content based on your source code.
 
 ## Key files
 

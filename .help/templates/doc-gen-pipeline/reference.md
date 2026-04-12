@@ -2,8 +2,8 @@
 type: reference
 feature: doc-gen-pipeline
 depth: reference
-generated_at: 2026-04-11T05:00:31.340215+00:00
-source_hash: dcd99211b2080853c45dbe17f061733f0b7ff80387279d574d2bd011d8114aa2
+generated_at: 2026-04-12T04:21:15.544790+00:00
+source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
@@ -13,30 +13,18 @@ status: generated
 
 | Class | Description | File |
 |-------|-------------|------|
-| `DocGenResult` | Document generation result containing output and metadata | `src/attune_author/doc_gen/pipeline.py` |
-| `DocGenConfig` | Pipeline configuration settings for document generation | `src/attune_author/doc_gen/config.py` |
+| `DocGenResult` | Result of document generation | `src/attune_author/doc_gen/pipeline.py` |
+| `DocGenConfig` | Configuration for the document generation pipeline | `src/attune_author/doc_gen/config.py` |
 
 ## Functions
 
-### Pipeline orchestration
-
-| Function | Description | File |
-|----------|-------------|------|
-| `generate_docs(target, config, output_path)` | Orchestrates the full documentation generation workflow | `src/attune_author/doc_gen/pipeline.py` |
-
-### Generation stages
-
-| Function | Description | File |
-|----------|-------------|------|
-| `build_outline(client, source_content, doc_type, audience, model, max_tokens)` | Creates structured outline from source content | `src/attune_author/doc_gen/stages.py` |
-| `write_content(client, outline, source_content, doc_type, audience, model, max_tokens, section_focus)` | Generates documentation content from outline | `src/attune_author/doc_gen/stages.py` |
-| `review_content(client, draft, source_content, doc_type, audience, model, max_tokens)` | Reviews and improves draft documentation | `src/attune_author/doc_gen/stages.py` |
-
-### Utilities
-
-| Function | Description | File |
-|----------|-------------|------|
-| `parse_outline_sections(outline)` | Extracts section titles from outline text | `src/attune_author/doc_gen/stages.py` |
+| Function | Parameters | Description | File |
+|----------|------------|-------------|------|
+| `generate_docs()` | `target: str, config: DocGenConfig \| None = None, output_path: str \| None = None` | Generate documentation for a source file or content | `src/attune_author/doc_gen/pipeline.py` |
+| `build_outline()` | `client: Anthropic, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int` | Generate a structured documentation outline | `src/attune_author/doc_gen/stages.py` |
+| `write_content()` | `client: Anthropic, outline: str, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int, section_focus: list[str] \| None = None` | Write documentation content from an outline | `src/attune_author/doc_gen/stages.py` |
+| `review_content()` | `client: Anthropic, draft: str, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int` | Review and polish draft documentation | `src/attune_author/doc_gen/stages.py` |
+| `parse_outline_sections()` | `outline: str` | Parse top-level section titles from an outline | `src/attune_author/doc_gen/stages.py` |
 
 ## Source files
 

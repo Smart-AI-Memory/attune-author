@@ -2,33 +2,33 @@
 type: concept
 feature: template-generation
 depth: concept
-generated_at: 2026-04-11T04:46:26.557539+00:00
-source_hash: c984ed6eeee4ee72f8b218ec3aebe243eb03ae557e252ba48d52da016704935e
+generated_at: 2026-04-12T04:18:01.441617+00:00
+source_hash: fac9c2bf60f422bb00b839a6c2ae022747745371b4a85621dd89daba9515f706
 status: generated
 ---
 
 # Template Generation
 
-## How it works
+Template generation creates markdown help files by analyzing source code and applying Jinja2 templates to feature definitions.
 
-Template generation creates markdown help files by analyzing source code and applying Jinja2 templates to extract documentation from feature definitions and AST inspection.
+## Process overview
 
-When you call `generate_feature_templates()`, the system examines your source files to understand the structure of classes, functions, and modules, then renders this information into formatted help templates. You can control which template depths to generate and whether to overwrite existing files.
+When you run template generation, the system inspects your source code's Abstract Syntax Tree (AST) to extract class and function information, then renders this data through meta-templates to produce structured help documentation.
 
-## Generation workflow
+The `generate_feature_templates()` function orchestrates this process, taking a feature definition and producing markdown files in your specified help directory. You can control which template depths to generate and whether to overwrite existing files.
 
-The process produces two types of results:
+## Output structure
 
-- **`GeneratedTemplate`** — Contains the rendered content and metadata for a single template file
-- **`GenerationResult`** — Aggregates all templates generated for a complete feature, tracking success status and any errors
+Template generation produces two types of results:
 
-## Template creation process
+- **`GeneratedTemplate`** — Represents a single rendered markdown file, containing the template content and metadata about what was generated
+- **`GenerationResult`** — Aggregates all templates created for a feature, providing a complete picture of the generation outcome
 
-Template generation connects to several core systems:
+## Integration points
 
-| Component | Role | Location |
-|-----------|------|----------|
-| `GeneratedTemplate` | Holds individual template output and generation metadata | `src/attune_author/generator.py` |
-| `GenerationResult` | Collects all templates for a feature with status tracking | `src/attune_author/generator.py` |
+Other parts of the codebase interact with template generation through these interfaces:
 
-The system relies on AST parsing to extract structural information from Python source files, then applies Jinja2 meta-templates to transform this data into readable documentation.
+| Interface | Purpose | File |
+|-----------|---------|------|
+| `GeneratedTemplate` | Result of generating one template file. | `src/attune_author/generator.py` |
+| `GenerationResult` | Result of generating templates for a feature. | `src/attune_author/generator.py` |
