@@ -493,5 +493,410 @@
     "condition": "baseline",
     "question": "What is the default value of the `help_dir` argument across the MCP tools?",
     "answer": "Based on the repository context, I need to check the MCP tool schemas and handlers to answer this.\n\n## File: src/attune_author/mcp/tool_schemas.py\n\n```python\nTOOLS = [\n    {\n        \"name\": \"author_init\",\n        \"description\": \"Initialize the .help/ directory structure for a project.\",\n        \"inputSchema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"project_dir\": {\n                    \"type\": \"string\",\n                    \"description\": \"Root of the project to initialize.\",\n                    \"default\": \".\"\n                }\n            }\n        }\n    },\n    {\n        \"name\": \"author_status\",\n        \"description\": \"Check which help templates are stale.\",\n        \"inputSchema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"help_dir\": {\n                    \"type\": \"string\",\n                    \"description\": \"Path to the .help/ directory.\",\n                    \"default\": \".help\"\n                }\n            }\n        }\n    },\n    ...\n]\n```\n\n## File: src/attune_author/mcp/handlers.py\n\nThe handlers also use `.help` as the default, e.g.:\n\n```python\nhelp_dir = params.get(\"help_dir\", \".help\")\n```\n\nThe default value of the `help_dir` argument across the MCP tools is **`\".help\"`**.\n\n(Note: `author_init` is the exception \u2014 it takes `project_dir` instead of `help_dir`, with a default of `\".\"`, since its job is to *create* the `.help/` directory structure.)"
+  },
+  "q20|opus|treated": {
+    "qid": 20,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What is the default value of the `help_dir` argument across the MCP tools?",
+    "answer": "The default value of `help_dir` across all MCP tools that accept it is **`'.help'`**.\n\nThis applies to `author_status`, `author_generate`, `author_maintain`, and `author_lookup`."
+  },
+  "q21|sonnet|baseline": {
+    "qid": 21,
+    "category": "default",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What is the default value of `overwrite` in `generate_feature_templates`?",
+    "answer": "To answer this precisely, I need to look at the `generator.py` file where `generate_feature_templates` is defined. That file is listed in the repository but its contents are not provided in the context given to me.\n\nI cannot verify the default value of `overwrite` in `generate_feature_templates` from the provided context."
+  },
+  "q21|sonnet|treated": {
+    "qid": 21,
+    "category": "default",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What is the default value of `overwrite` in `generate_feature_templates`?",
+    "answer": "`False`"
+  },
+  "q21|opus|baseline": {
+    "qid": 21,
+    "category": "default",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What is the default value of `overwrite` in `generate_feature_templates`?",
+    "answer": "The default value of `overwrite` in `generate_feature_templates` is `False`.\n\nThis can be verified from the function signature in `src/attune_author/generator.py`."
+  },
+  "q21|opus|treated": {
+    "qid": 21,
+    "category": "default",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What is the default value of `overwrite` in `generate_feature_templates`?",
+    "answer": "The default value of `overwrite` in `generate_feature_templates` is **`False`**."
+  },
+  "q23|sonnet|baseline": {
+    "qid": 23,
+    "category": "default",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What is the default value of `template_type` in `polish_template`?",
+    "answer": "To answer this precisely, I need to look at the `polish.py` file where `polish_template` is defined. That file is listed in the repository but its contents are not provided in the context given to me.\n\nI cannot verify the default value of `template_type` in `polish_template` from the provided context."
+  },
+  "q23|sonnet|treated": {
+    "qid": 23,
+    "category": "default",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What is the default value of `template_type` in `polish_template`?",
+    "answer": "The default value of `template_type` in `polish_template` is `'generic'`."
+  },
+  "q23|opus|baseline": {
+    "qid": 23,
+    "category": "default",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What is the default value of `template_type` in `polish_template`?",
+    "answer": "Based on the repository context, I need to check the `polish.py` file to answer this question.\n\nLooking at the file tree, the relevant file is `src/attune_author/polish.py`, but its contents are not provided in the context.\n\nHowever, I can check `src/attune_author/polish_prompts.py` and test files like `tests/test_polish.py` or `tests/test_polish_improvements.py` for clues \u2014 but those contents are also not provided.\n\n**I cannot verify the default value of `template_type` in `polish_template` from the context provided.** The source code of `src/attune_author/polish.py` would need to be included to give a definitive answer."
+  },
+  "q23|opus|treated": {
+    "qid": 23,
+    "category": "default",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What is the default value of `template_type` in `polish_template`?",
+    "answer": "The default value of `template_type` in `polish_template` is `'generic'`."
+  },
+  "q25|sonnet|baseline": {
+    "qid": 25,
+    "category": "enum",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What are the allowed string values for the `depth` parameter in the `author_lookup` MCP tool?",
+    "answer": "I need to check the MCP tool schemas to find the allowed values for the `depth` parameter.\n\n## File: `src/attune_author/mcp/tool_schemas.py`\n\n```python\nAUTHOR_LOOKUP_SCHEMA = {\n    ...\n    \"depth\": {\n        \"type\": \"string\",\n        \"enum\": [\"concept\", \"task\", \"reference\"],\n        ...\n    }\n}\n```\n\nBased on the repository context provided, I can see the file `src/attune_author/mcp/tool_schemas.py` exists, but its **contents are not included** in the provided context. I cannot verify the exact allowed string values for the `depth` parameter from what's been shared.\n\nWhat I can infer from the README's feature description is that the three core depths are **`concept`**, **`task`**, and **`reference`**, with optional problem-shaped kinds (`error`, `warning`, `troubleshooting`, `faq`) and guidance-shaped kinds (`quickstart`, `tip`, `note`, `comparison`). However, whether all of these are valid values for the `depth` parameter specifically in `author_lookup`, or only the three core ones, cannot be confirmed without the actual file contents."
+  },
+  "q25|sonnet|treated": {
+    "qid": 25,
+    "category": "enum",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What are the allowed string values for the `depth` parameter in the `author_lookup` MCP tool?",
+    "answer": "The allowed values for the `depth` parameter in the `author_lookup` MCP tool are: `concept`, `task`, `reference`."
+  },
+  "q25|opus|baseline": {
+    "qid": 25,
+    "category": "enum",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What are the allowed string values for the `depth` parameter in the `author_lookup` MCP tool?",
+    "answer": "Based on the repository context, I need to check the MCP tool schemas and handlers to find the allowed values for the `depth` parameter.\n\n## File: src/attune_author/mcp/tool_schemas.py\n\n```python\nTOOLS = [\n    {\n        \"name\": \"author_init\",\n        \"description\": (\n            \"Initialise the attune-author help system in a project directory. \"\n            \"Creates .help/features.yaml and template directories.\"\n        ),\n        \"inputSchema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"project_dir\": {\n                    \"type\": \"string\",\n                    \"description\": \"Absolute path to the project root.\",\n                },\n            },\n            \"required\": [\"project_dir\"],\n        },\n    },\n    {\n        \"name\": \"author_status\",\n        \"description\": (\n            \"Check which help templates are stale (source has drifted since \"\n            \"the template was last generated).\"\n        ),\n        \"inputSchema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"project_dir\": {\n                    \"type\": \"string\",\n                    \"description\": \"Absolute path to the project root.\",\n                },\n            },\n            \"required\": [\"project_dir\"],\n        },\n    },\n    {\n        \"name\": \"author_generate\",\n        \"description\": (\n            \"Generate help templates for a single feature. \"\n            \"Produces concept, task, and reference Markdown files.\"\n        ),\n        \"inputSchema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"project_dir\": {\n                    \"type\": \"string\",\n                    \"description\": \"Absolute path to the project root.\",\n                },\n                \"feature\": {\n                    \"type\": \"string\",\n                    \"description\": \"Feature name as listed in features.yaml.\",\n                },\n            },\n            \"required\": [\"project_dir\", \"feature\"],\n        },\n    },\n    {\n        \"name\": \"author_maintain\",\n        \"description\": (\n            \"Regenerate all stale help templates in one pass.\"\n        ),\n        \"inputSchema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"project_dir\": {\n                    \"type\": \"string\",\n                    \"description\": \"Absolute path to the project root.\",\n                },\n            },\n            \"required\": [\"project_dir\"],\n        },\n    },\n    {\n        \"name\": \"author_lookup\",\n        \"description\": (\n            \"Return the content of a specific help template for a feature \"\n            \"at a given depth. Use this to answer user questions about a \"\n            \"feature without reading raw source.\"\n        ),\n        \"inputSchema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"project_dir\": {\n                    \"type\": \"string\",\n                    \"description\": \"Absolute path to the project root.\",\n                },\n                \"feature\": {\n                    \"type\": \"string\",\n                    \"description\": \"Feature name as listed in features.yaml.\",\n                },\n                \"depth\": {\n                    \"type\": \"string\",\n                    \"description\": (\n                        \"One of: concept, task, reference, error, warning, \"\n                        \"troubleshooting, faq, quickstart, tip, note, comparison.\"\n                    ),\n                    \"enum\": [\n                        \"concept\",\n                        \"task\",\n                        \"reference\",\n                        \"error\",\n                        \"warning\",\n                        \"troubleshooting\",\n                        \"faq\",\n                        \"quickstart\",\n                        \"tip\",\n                        \"note\",\n                        \"comparison\",\n                    ],\n                },\n            },\n            \"required\": [\"project_dir\", \"feature\", \"depth\"],\n        },\n    },\n    {\n        \"name\": \"author_docs\",\n        \"description\": (\n            \"Return embedded documentation about attune-author itself \u2014 \"\n            \"how to use the CLI, MCP tools, manifest format, etc. \"\n            \"Use this when the user asks *about* attune-author rather than \"\n            \"about a specific feature in their project.\"\n        ),\n        \"inputSchema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"topic\": {"
+  },
+  "q25|opus|treated": {
+    "qid": 25,
+    "category": "enum",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What are the allowed string values for the `depth` parameter in the `author_lookup` MCP tool?",
+    "answer": "The allowed values for the `depth` parameter in the `author_lookup` MCP tool are **`concept`**, **`task`**, and **`reference`**. The default is `'concept'`."
+  },
+  "q26|sonnet|baseline": {
+    "qid": 26,
+    "category": "enum",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "Name at least three additional template kinds (beyond concept/task/reference) that `generate_feature_templates` supports when passed an explicit `depths` list.",
+    "answer": "Based on the README's features section, which lists the template kinds explicitly:\n\n**Problem-shaped kinds:**\n1. `error`\n2. `warning`\n3. `troubleshooting`\n4. `faq`\n\n**Guidance-shaped kinds:**\n5. `quickstart`\n6. `tip`\n7. `note`\n8. `comparison`\n\nAll of these are confirmed by both the README description and the file tree (e.g., `src/attune_author/meta_templates/error.md.j2`, `quickstart.md.j2`, `tip.md.j2`, `comparison.md.j2`, etc.)."
+  },
+  "q26|sonnet|treated": {
+    "qid": 26,
+    "category": "enum",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "Name at least three additional template kinds (beyond concept/task/reference) that `generate_feature_templates` supports when passed an explicit `depths` list.",
+    "answer": "Based on the reference document, the additional template kinds beyond concept/task/reference are:\n\n**Problem templates:** `error`, `warning`, `troubleshooting`, `faq`\n\n**Guidance templates:** `quickstart`, `tip`, `note`, `comparison`\n\nSo three examples would be: **error**, **quickstart**, and **faq**."
+  },
+  "q26|opus|baseline": {
+    "qid": 26,
+    "category": "enum",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "Name at least three additional template kinds (beyond concept/task/reference) that `generate_feature_templates` supports when passed an explicit `depths` list.",
+    "answer": "Based on the README and the file tree, `generate_feature_templates` supports the following additional template kinds beyond **concept**, **task**, and **reference** when passed an explicit `depths` list:\n\n1. **error** \u2014 problem-shaped template for error documentation\n2. **warning** \u2014 problem-shaped template for warnings\n3. **troubleshooting** \u2014 problem-shaped template for troubleshooting guides\n4. **faq** \u2014 problem-shaped template for frequently asked questions\n5. **quickstart** \u2014 guidance-shaped template for getting-started guides\n6. **tip** \u2014 guidance-shaped template for tips\n7. **note** \u2014 guidance-shaped template for notes\n8. **comparison** \u2014 guidance-shaped template for comparisons\n\nThis is evidenced by the meta-templates in `src/attune_author/meta_templates/` (which has `.md.j2` files for each of these kinds) and the corresponding generated output directories under `.help/templates/` (each feature directory contains files for all of these kinds). The README also explicitly groups them as **problem-shaped** (error, warning, troubleshooting, faq) and **guidance-shaped** (quickstart, tip, note, comparison)."
+  },
+  "q26|opus|treated": {
+    "qid": 26,
+    "category": "enum",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "question": "Name at least three additional template kinds (beyond concept/task/reference) that `generate_feature_templates` supports when passed an explicit `depths` list.",
+    "answer": "Based on the reference documentation, `generate_feature_templates` supports the following additional template kinds beyond the core three (concept/task/reference):\n\n**Problem-shaped kinds:**\n1. **error**\n2. **warning**\n3. **troubleshooting**\n4. **faq**\n\n**Guidance-shaped kinds:**\n5. **quickstart**\n6. **tip**\n7. **note**\n8. **comparison**\n\nSo to name three: **error**, **quickstart**, and **tip** (any three from the eight above would be valid). These are defined in the constants `_PROBLEM_TEMPLATE_NAMES` and `_GUIDANCE_TEMPLATE_NAMES`, and corresponding Jinja2 meta-templates exist for each (e.g., `error.md.j2`, `quickstart.md.j2`, `tip.md.j2`) in `src/attune_author/meta_templates/`."
+  },
+  "q27|sonnet|baseline": {
+    "qid": 27,
+    "category": "enum",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What are the tokens that make a feature name unsafe, per the `_UNSAFE_NAME_TOKENS` constant in manifest.py?",
+    "answer": "Looking at the repository context provided, I can see `manifest.py` exists in the file tree, but its contents are not included in the provided context. I cannot verify what `_UNSAFE_NAME_TOKENS` contains without seeing the actual source of that file."
+  },
+  "q27|sonnet|treated": {
+    "qid": 27,
+    "category": "enum",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What are the tokens that make a feature name unsafe, per the `_UNSAFE_NAME_TOKENS` constant in manifest.py?",
+    "answer": "Based on the reference documentation provided, the constant is named `UNSAFE_NAME_TOKENS` (not `_UNSAFE_NAME_TOKENS`), and its value is:\n\n```python\n('/', '\\\\', '..', '\\x00')\n```\n\nThose four tokens are: forward slash, backslash, double dot, and the null character."
+  },
+  "q27|opus|baseline": {
+    "qid": 27,
+    "category": "enum",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What are the tokens that make a feature name unsafe, per the `_UNSAFE_NAME_TOKENS` constant in manifest.py?",
+    "answer": "Based on the file tree, `src/attune_author/manifest.py` is present in the repository, but its contents were not provided in the context. I cannot verify the exact value of `_UNSAFE_NAME_TOKENS` without seeing the source code of that file.\n\nIf you can share the contents of `src/attune_author/manifest.py`, I can give you the precise answer."
+  },
+  "q27|opus|treated": {
+    "qid": 27,
+    "category": "enum",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What are the tokens that make a feature name unsafe, per the `_UNSAFE_NAME_TOKENS` constant in manifest.py?",
+    "answer": "Per the manifest reference, the `UNSAFE_NAME_TOKENS` constant contains:\n\n```python\n('/', '\\\\', '..', '\\x00')\n```\n\nThat is: forward slash, backslash, double-dot (`..`), and the null byte."
+  },
+  "q30|sonnet|baseline": {
+    "qid": 30,
+    "category": "enum",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What strings, when set as the value of `ATTUNE_AUTHOR_STRICT_POLISH`, turn OFF strict mode?",
+    "answer": "Looking at the repository context provided, I can see the `ATTUNE_AUTHOR_STRICT_POLISH` environment variable is referenced in the file tree (likely in `src/attune_author/polish.py` or `src/attune_author/polish_prompts.py`), but the **actual file contents** of those files are not included in the provided context.\n\nI cannot verify the exact strings that turn off strict mode from the information given. You would need to check the source of `src/attune_author/polish.py` or `src/attune_author/polish_prompts.py` directly."
+  },
+  "q30|sonnet|treated": {
+    "qid": 30,
+    "category": "enum",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What strings, when set as the value of `ATTUNE_AUTHOR_STRICT_POLISH`, turn OFF strict mode?",
+    "answer": "Based on the reference, the `FALSY` internal constant contains the strings that turn OFF strict mode: `'0'`, `'false'`, `'no'`, `'off'`."
+  },
+  "q30|opus|baseline": {
+    "qid": 30,
+    "category": "enum",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What strings, when set as the value of `ATTUNE_AUTHOR_STRICT_POLISH`, turn OFF strict mode?",
+    "answer": "Looking at the polish module to find how `ATTUNE_AUTHOR_STRICT_POLISH` is interpreted:\n\nBased on the repository context, I need to check the relevant source file. Let me examine what's available:\n\nThe environment variable `ATTUNE_AUTHOR_STRICT_POLISH` is read in the polish module. Based on standard patterns in Python for boolean environment variables, the strings that turn **OFF** strict mode are:\n\n**`\"0\"`, `\"false\"`, and `\"no\"`**\n\nThese are typically compared case-insensitively (via `.lower()`), so variants like `\"False\"`, `\"FALSE\"`, `\"No\"`, `\"NO\"`, etc. would also turn off strict mode.\n\nHowever, I cannot verify the exact implementation without seeing the contents of `src/attune_author/polish.py`. If you need the precise set of strings and their case handling, I'd need to see that file's source code to confirm."
+  },
+  "q30|opus|treated": {
+    "qid": 30,
+    "category": "enum",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What strings, when set as the value of `ATTUNE_AUTHOR_STRICT_POLISH`, turn OFF strict mode?",
+    "answer": "According to the reference, the internal constant `FALSY` contains the strings that turn off strict mode:\n\n**`'0'`, `'false'`, `'no'`, `'off'`**\n\nWhen `ATTUNE_AUTHOR_STRICT_POLISH` is set to any of these values, strict mode is disabled."
+  },
+  "q31|sonnet|baseline": {
+    "qid": 31,
+    "category": "behavior",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What does `is_safe_feature_name('../etc')` return, and why?",
+    "answer": "Looking at the MCP security module:\n\n## File: `src/attune_author/mcp/path_validation.py`\n\nBased on the file tree, `path_validation.py` exists in the MCP module, and there's a dedicated test file `tests/test_mcp_security.py`. However, the actual source code of `path_validation.py` was not provided in the repository context given to me.\n\nI can tell you the function exists and is tested, but I cannot give you the exact return value or implementation details without seeing the source code. I would be guessing if I said it returns `False` \u2014 even though that would be the expected behavior for a path traversal attempt like `'../etc'`.\n\nIf you share the contents of `src/attune_author/mcp/path_validation.py` or `tests/test_mcp_security.py`, I can give you a precise answer."
+  },
+  "q31|sonnet|treated": {
+    "qid": 31,
+    "category": "behavior",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What does `is_safe_feature_name('../etc')` return, and why?",
+    "answer": "`is_safe_feature_name('../etc')` returns `False`.\n\nThe reason is that `'..'` is one of the tokens listed in `UNSAFE_NAME_TOKENS = ('/', '\\\\', '..', '\\x00')`, and the function checks whether any of those tokens appear in the name. Since `'../etc'` contains `'..'`, the check fails and the function returns `False`."
+  },
+  "q31|opus|baseline": {
+    "qid": 31,
+    "category": "behavior",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What does `is_safe_feature_name('../etc')` return, and why?",
+    "answer": "`is_safe_feature_name('../etc')` returns `False`.\n\nLet me verify the exact implementation:\n\n## File: `src/attune_author/mcp/path_validation.py`\n\nBased on the repository structure, the `is_safe_feature_name` function lives in the MCP path-validation module. Its purpose is to prevent path-traversal attacks when feature names are passed through MCP tools.\n\nThe input `'../etc'` fails because it contains `..`, which is a directory-traversal sequence. The function rejects any feature name that could be used to escape the intended `.help/` directory tree. Specifically, feature names containing path separators (`/`, `\\`) or parent-directory references (`..`) are considered unsafe.\n\nThis is a security boundary: MCP tools accept feature names from untrusted clients (e.g., an AI assistant), and those names are eventually interpolated into file paths. Without this check, a malicious name like `../etc` could cause reads or writes outside the project's `.help/` directory."
+  },
+  "q31|opus|treated": {
+    "qid": 31,
+    "category": "behavior",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What does `is_safe_feature_name('../etc')` return, and why?",
+    "answer": "`is_safe_feature_name('../etc')` returns **`False`**.\n\nThe function checks whether the given name contains any of the tokens defined in the constant `UNSAFE_NAME_TOKENS`, which includes `'..'`. Since `'../etc'` contains `'..'`, the name is considered unsafe for use as a path component, and the function returns `False`.\n\nThis is a path-traversal guard \u2014 it prevents feature names from escaping the intended directory structure."
+  },
+  "q33|sonnet|baseline": {
+    "qid": 33,
+    "category": "behavior",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What exception does `validate_file_path` raise when passed a path containing a null byte?",
+    "answer": "Looking at the repository file tree, I can see `src/attune_author/mcp/path_validation.py` exists, but its contents are not provided in the context. I cannot verify what exception `validate_file_path` raises for null bytes without seeing the actual source code."
+  },
+  "q33|sonnet|treated": {
+    "qid": 33,
+    "category": "behavior",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What exception does `validate_file_path` raise when passed a path containing a null byte?",
+    "answer": "`ValueError` with the message `'path contains null bytes'`."
+  },
+  "q33|opus|baseline": {
+    "qid": 33,
+    "category": "behavior",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What exception does `validate_file_path` raise when passed a path containing a null byte?",
+    "answer": "`ValueError` with the message `\"Null bytes in path\"`.\n\nThis can be verified from the path validation module at `src/attune_author/mcp/path_validation.py`."
+  },
+  "q33|opus|treated": {
+    "qid": 33,
+    "category": "behavior",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What exception does `validate_file_path` raise when passed a path containing a null byte?",
+    "answer": "`validate_file_path` raises a `ValueError` with the message `'path contains null bytes'`."
+  },
+  "q35|sonnet|baseline": {
+    "qid": 35,
+    "category": "behavior",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "If `generate_feature_templates` is called and the feature name fails `is_safe_feature_name`, what exception is raised?",
+    "answer": "Looking at the repository context, I can see there's a `path_validation.py` file in the MCP module and various source files, but the actual source code content of `generator.py` (which would contain `generate_feature_templates`) and `path_validation.py` is not provided in the context.\n\nI cannot verify what exception is raised in that case from the information given."
+  },
+  "q35|sonnet|treated": {
+    "qid": 35,
+    "category": "behavior",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "If `generate_feature_templates` is called and the feature name fails `is_safe_feature_name`, what exception is raised?",
+    "answer": "Based on the reference documentation, a `ValueError` is raised with the message `'Invalid feature name: {...}'`."
+  },
+  "q35|opus|baseline": {
+    "qid": 35,
+    "category": "behavior",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "If `generate_feature_templates` is called and the feature name fails `is_safe_feature_name`, what exception is raised?",
+    "answer": "A `ValueError` is raised. The `generate_feature_templates` function in `src/attune_author/generator.py` validates the feature name with `is_safe_feature_name` and raises `ValueError` if it fails."
+  },
+  "q35|opus|treated": {
+    "qid": 35,
+    "category": "behavior",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "question": "If `generate_feature_templates` is called and the feature name fails `is_safe_feature_name`, what exception is raised?",
+    "answer": "A `ValueError` is raised with the message `'Invalid feature name: {\u2026}'` (where `{\u2026}` is the offending feature name)."
+  },
+  "q37|sonnet|baseline": {
+    "qid": 37,
+    "category": "dataclass",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What fields does `GeneratedTemplate` have?",
+    "answer": "The repository context doesn't include the source code content of the files, only the file tree. `GeneratedTemplate` isn't defined in any file whose contents are provided here.\n\nBased on the file tree, it would likely be defined in one of:\n- `src/attune_author/doc_gen/pipeline.py`\n- `src/attune_author/doc_gen/stages.py`\n- `src/attune_author/generator.py`\n\nBut I cannot tell you the actual fields without seeing those files' contents."
+  },
+  "q37|sonnet|treated": {
+    "qid": 37,
+    "category": "dataclass",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What fields does `GeneratedTemplate` have?",
+    "answer": "Based on the reference documentation, `GeneratedTemplate` has four fields:\n\n| Field | Type | Default |\n|-------|------|---------|\n| `feature` | `str` | (required) |\n| `depth` | `str` | (required) |\n| `path` | `Path` | (required) |\n| `source_hash` | `str` | (required) |"
+  },
+  "q37|opus|baseline": {
+    "qid": 37,
+    "category": "dataclass",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What fields does `GeneratedTemplate` have?",
+    "answer": "Based on the repository context, I don't have the source code for the file where `GeneratedTemplate` is defined. It's most likely defined in `src/attune_author/generator.py` or possibly in `src/attune_author/__init__.py`, but neither file's contents were provided in the context.\n\nI cannot verify the exact fields of `GeneratedTemplate` from the information given. To answer accurately, I would need to see the source code of the module where it is defined."
+  },
+  "q37|opus|treated": {
+    "qid": 37,
+    "category": "dataclass",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What fields does `GeneratedTemplate` have?",
+    "answer": "`GeneratedTemplate` has four fields:\n\n| Field | Type | Default |\n|-------|------|---------|\n| `feature` | `str` | *(required)* |\n| `depth` | `str` | *(required)* |\n| `path` | `Path` | *(required)* |\n| `source_hash` | `str` | *(required)* |"
+  },
+  "q39|sonnet|baseline": {
+    "qid": 39,
+    "category": "dataclass",
+    "feature": "staleness-and-maintenance",
+    "model": "sonnet",
+    "condition": "baseline",
+    "question": "What properties does the `StalenessReport` class expose (beyond its `entries` field)?",
+    "answer": "Looking at the repository context, I can see `check_staleness` returns a `StalenessReport` and that `report.stale` is used in the README example, but the actual definition of `StalenessReport` is in `src/attune_author/staleness.py`, which is listed in the file tree but its **contents are not provided** in the context given to me.\n\nI cannot verify what properties `StalenessReport` exposes beyond `entries` and `stale` without seeing the source of that file."
+  },
+  "q39|sonnet|treated": {
+    "qid": 39,
+    "category": "dataclass",
+    "feature": "staleness-and-maintenance",
+    "model": "sonnet",
+    "condition": "treated",
+    "question": "What properties does the `StalenessReport` class expose (beyond its `entries` field)?",
+    "answer": "Based on the reference documentation, `StalenessReport` exposes three properties beyond its `entries` field:\n\n| Property | Type | Description |\n|----------|------|-------------|\n| `stale_count` | `int` | Count of stale features |\n| `current_count` | `int` | Count of up-to-date features |\n| `stale_features` | `list[str]` | Names of stale features |"
+  },
+  "q39|opus|baseline": {
+    "qid": 39,
+    "category": "dataclass",
+    "feature": "staleness-and-maintenance",
+    "model": "opus",
+    "condition": "baseline",
+    "question": "What properties does the `StalenessReport` class expose (beyond its `entries` field)?",
+    "answer": "Based on the repository context, I can see that `StalenessReport` is referenced in the README (`check_staleness` returns a report with a `.stale` property), but I need to check the actual implementation.\n\nLooking at the file tree, the relevant file is `src/attune_author/staleness.py`, and the public API in `__init__.py` exports `check_staleness`. However, **the contents of `src/attune_author/staleness.py` were not provided** in the repository context, so I cannot give you the exact list of properties beyond what the README demonstrates.\n\nFrom the README alone, I can confirm that the report object exposes at least:\n\n- **`.stale`** \u2014 an iterable of stale features, where each entry has at least `.name` and `.reason` attributes.\n\n```python\nreport = check_staleness(\".help/\")\nfor feature in report.stale:\n    print(f\"  {feature.name}: {feature.reason}\")\n```\n\nI cannot verify the full set of properties (e.g., whether there's a `.fresh` counterpart, a `.summary()` method, or other computed properties) without seeing the source of `staleness.py`. If you can share that file's contents, I can give a precise answer."
+  },
+  "q39|opus|treated": {
+    "qid": 39,
+    "category": "dataclass",
+    "feature": "staleness-and-maintenance",
+    "model": "opus",
+    "condition": "treated",
+    "question": "What properties does the `StalenessReport` class expose (beyond its `entries` field)?",
+    "answer": "The `StalenessReport` class exposes three properties beyond its `entries` field:\n\n| Property | Type | Description |\n|----------|------|-------------|\n| `stale_count` | `int` | Count of stale features |\n| `current_count` | `int` | Count of up-to-date features |\n| `stale_features` | `list[str]` | Names of stale features |"
   }
 }
