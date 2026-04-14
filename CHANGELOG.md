@@ -8,6 +8,36 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Work in progress for the next release. Add entries here as
+changes land, not at tag time.
+
+### Added
+
+- **Weekly cross-repo compat CI** — new
+  `.github/workflows/cross-repo-compat.yml` installs
+  attune-help from its `main` branch every Monday and runs
+  this repo's test suite against it. First `tests`-style
+  workflow in the repo; also triggerable on demand.
+
+### Changed
+
+- **`attune-help` dependency upper-capped** — now
+  `>=0.5.1,<0.6` (was `>=0.5.1`), with an inline comment
+  documenting the schema-contract rationale
+  (attune-author writes content that attune-help renders).
+- **PyPI project URLs point to the extracted repo**
+  (`Smart-AI-Memory/attune-author`) instead of the parent
+  `attune-ai` monorepo. Added `Changelog` and `Issues`
+  URLs.
+
+### In flight
+
+- v0.3.8 hallucination benchmark suite (see
+  `benchmarks/hallucination-v0.3.8/`) and any reference-template
+  regenerations that come out of it.
+
 ## [0.3.7] - 2026-04-14
 
 ### Added (0.3.7)

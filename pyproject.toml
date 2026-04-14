@@ -41,7 +41,7 @@ dependencies = [
     "jinja2>=3.1.0",
     "python-frontmatter>=1.0.0",
     "pyyaml>=6.0",
-    "attune-help>=0.5.1",
+    "attune-help>=0.5.1,<0.6",  # Schema contract: attune-author generates content that attune-help renders. Upper cap: pre-1.0 minor bumps may break.
 ]
 
 [project.optional-dependencies]
@@ -68,9 +68,11 @@ attune-author = "attune_author.cli:main"
 attune-author-mcp = "attune_author.mcp.server:main"
 
 [project.urls]
-Homepage = "https://github.com/Smart-AI-Memory/attune-ai"
-Repository = "https://github.com/Smart-AI-Memory/attune-ai"
-Documentation = "https://github.com/Smart-AI-Memory/attune-ai/tree/main/packages/attune-author"
+Homepage = "https://github.com/Smart-AI-Memory/attune-author"
+Repository = "https://github.com/Smart-AI-Memory/attune-author"
+Documentation = "https://github.com/Smart-AI-Memory/attune-author/blob/main/README.md"
+Changelog = "https://github.com/Smart-AI-Memory/attune-author/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Smart-AI-Memory/attune-author/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
