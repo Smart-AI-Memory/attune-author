@@ -2,48 +2,50 @@
 type: warning
 feature: staleness-and-maintenance
 depth: warning
-generated_at: 2026-04-11T04:53:53.511494+00:00
-source_hash: ef4c74abf7547edaa6f0d693a7097d1cff76652402f49144080c3f03136dfb6e
+generated_at: 2026-04-14T14:06:00.627235+00:00
+source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
-# Staleness and maintenance cautions
+# Staleness And Maintenance cautions
 
 ## What to watch for
 
-The staleness detection system tracks when help templates fall behind their source code and can automatically regenerate outdated files. Several aspects of this automation can cause unexpected behavior if you're not aware of how they work.
+The staleness detection system tracks when your source code changes make help templates outdated. Watch for hash mismatches that cause unnecessary regeneration and maintenance operations that skip files you expect to update.
 
 ## Risk areas
 
-### Hash computation misses relevant changes
+### Hash computation includes unexpected files
 
-`compute_source_hash()` only tracks specific file types when building the hash for staleness detection. If your feature depends on configuration files, data files, or other assets outside the standard source patterns, changes to those files won't trigger regeneration. Your templates will appear current while actually being stale.
+`compute_source_hash()` walks your entire feature directory tree, excluding common cache folders like `__pycache__` and `.git`. If your feature contains large data files, temporary outputs, or nested repositories, the hash calculation becomes slow and may include files that shouldn't trigger regeneration.
 
-### Selective staleness checks skip features silently
+**Mitigation:** Review `matched_files` in the `FeatureStaleness` result to see which files influenced the hash. Add directories to `_EXCLUDED_DIRS` if they contain build artifacts or other non-source content.
 
-When you pass a `features` list to `check_staleness()` or `run_maintenance()`, any features not in that list are ignored completely — they don't appear in counts or reports. This can hide widespread staleness if you're only checking a subset of features during development.
+### Maintenance operations fail silently on permission errors
 
-### Dry-run mode doesn't validate write permissions
+`run_maintenance()` catches file system errors and adds affected features to the `failed` list without raising exceptions. A feature marked as failed won't get regenerated even if it's stale, leaving your templates outdated.
 
-`run_maintenance()` with `dry_run=True` reports what would be regenerated but doesn't test whether the actual write operations would succeed. You might see a clean dry-run report, then hit permission errors or disk space issues when running the real maintenance.
+**Mitigation:** Check `MaintenanceResult.failed` after maintenance runs. Ensure your help directory is writable and that no other processes have files open during regeneration.
 
-### Git hook assumes clean repository state
+### Post-commit hook misses uncommitted changes
 
-`run_hook()` is designed for post-commit automation and expects to find changed files from the most recent commit. If you run it in a repository with uncommitted changes or in a detached HEAD state, `get_changed_files()` may return unexpected results or miss relevant changes entirely.
+`run_hook()` uses `get_changed_files()` to identify which features need checking based on the most recent commit. If you have uncommitted changes that affect feature source files, the hook won't detect the staleness until after your next commit.
 
-### Maintenance results don't distinguish failure types
+**Mitigation:** Run manual maintenance with `run_maintenance()` before committing when you're unsure about template freshness. The hook is meant for automated consistency, not comprehensive detection.
 
-`MaintenanceResult` counts successful regenerations but doesn't track which features failed to regenerate or why. A result showing `stale_count=5` and `regenerated_count=3` tells you that 2 features remain stale, but not whether they failed due to syntax errors, missing dependencies, or other issues.
+### Dry run mode conceals real file system issues
+
+Setting `dry_run=True` in `run_maintenance()` skips the actual file writing but still performs staleness detection and hash computation. This can mask permission problems, disk space issues, or path resolution failures that would surface during actual regeneration.
+
+**Mitigation:** Follow up dry runs with actual maintenance operations in a test environment to verify that file operations succeed.
 
 ## How to avoid problems
 
-1. **Verify hash coverage for complex features.** If your feature uses non-standard file types, test that changes to those files actually trigger staleness detection. Run `check_staleness()` before and after modifying the files to confirm they're included in the hash.
+1. **Monitor staleness reports regularly.** Use `format_status_report()` to get human-readable summaries of which features are stale. Address staleness quickly to avoid accumulating outdated templates.
 
-2. **Use full maintenance runs for production.** When running maintenance in CI or production environments, avoid the `features` parameter unless you specifically need to limit scope. A full scan catches staleness that selective checks might miss.
+2. **Test maintenance operations in isolation.** Run `check_staleness()` independently before calling `run_maintenance()` to understand what will change. Use the `features` parameter to limit operations to specific features during testing.
 
-3. **Test write permissions before maintenance.** In environments where disk space or permissions might be constrained, run a dry-run first, but also verify that the target directory is writable and has sufficient space for the expected regenerations.
-
-4. **Check repository state before hook execution.** If you're calling `run_hook()` programmatically rather than from an actual Git hook, ensure you're in a clean repository state with committed changes that represent the actual modifications you want to detect.
+3. **Validate feature manifests after changes.** Source file additions or deletions can break the feature discovery logic that maintenance depends on. Ensure your `FeatureManifest` correctly identifies all source files before running maintenance.
 
 ## Source files
 

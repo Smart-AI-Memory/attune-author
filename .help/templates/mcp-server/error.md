@@ -2,42 +2,47 @@
 type: error
 feature: mcp-server
 depth: error
-generated_at: 2026-04-11T04:58:40.335182+00:00
-source_hash: d99e670e0306a6da8972a9bf7c1b94a808c3f1fb3c17fad5dee28bdc1183bac4
+generated_at: 2026-04-14T14:11:12.513385+00:00
+source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
-# MCP Server errors
+# MCP server errors
 
-The attune-author MCP server exposes six tools to Claude through the Model Context Protocol. Errors typically occur during server initialization, tool execution, or path validation.
+Failures in the Model Context Protocol server that exposes attune-author's documentation tools to Claude Code.
 
 ## Common error signatures
 
-- **Tool execution failures**: `RuntimeError` when underlying attune-author operations fail during `call_tool()`
-- **Path validation errors**: `ValueError` from `validate_file_path()` when file paths are outside allowed directories
-- **Server initialization failures**: `FileNotFoundError` or `PermissionError` when workspace_root is invalid
-- **Tool schema errors**: `KeyError` or `TypeError` when tool definitions are malformed
-- **MCP protocol violations**: Connection errors when the server doesn't conform to MCP specifications
+**Path validation errors:**
+- `ValueError: path must be a non-empty string`
+- `ValueError: path contains null bytes`
+- `ValueError: Path is outside the project: /etc is a system directory`
+- `ValueError: Invalid path: <path>`
+- `ValueError: Path '/some/path' is outside allowed directory '/project'`
+
+**Tool execution errors:**
+- `KeyError` when required tool arguments are missing
+- `FileNotFoundError` when workspace_root or help directories don't exist
+- Authentication errors when ANTHROPIC_API_KEY is required but missing
 
 ## Where errors originate
 
-MCP server errors stem from these key components:
+The MCP server has four main failure points:
 
-- **`AttuneAuthorMCPServer.call_tool()`** — Routes tool calls to handlers and catches execution failures
-- **`AttuneAuthorHandlers` methods** — Execute the six attune-author tools (init, status, generate, maintain, docs, lookup)
-- **`validate_file_path()`** — Prevents directory traversal attacks by validating user-provided paths
-- **`main()`** — Server startup and MCP protocol initialization
-- **`get_tools()`** — Tool schema definition and registration
+- **Server initialization** in `AttuneAuthorMCPServer.__init__()` — Invalid workspace_root paths
+- **Tool dispatch** in `AttuneAuthorMCPServer.call_tool()` — Unknown tool names or malformed arguments
+- **Path validation** in `validate_file_path()` — Security checks that reject dangerous or invalid paths
+- **Tool handlers** in `AttuneAuthorHandlers` methods — Feature-specific failures like missing API keys or invalid project structure
 
 ## How to diagnose
 
-1. **Check the tool name and arguments**. Tool execution errors often indicate which of the six attune-author tools failed and what arguments were passed. Invalid tool names trigger immediate failures in `call_tool()`.
+1. **Check the tool name and arguments.** Most MCP errors stem from incorrect tool calls. Verify that the tool name matches one of the six supported tools (`author_init`, `author_status`, `author_generate`, `author_maintain`, `author_docs`, `author_lookup`) and that required arguments are provided.
 
-2. **Examine path validation failures**. If `validate_file_path()` raises a `ValueError`, the user provided a path outside the allowed workspace directory. Check the workspace_root setting and the specific path that was rejected.
+2. **Validate the workspace setup.** If you see path-related errors, ensure the workspace_root exists and is accessible. The server defaults to the current working directory if no workspace_root is specified.
 
-3. **Verify workspace state**. Many tool handler failures occur when the workspace isn't properly initialized or lacks required files. Run `author_status` to check workspace health before debugging specific tool failures.
+3. **Review path restrictions.** Path validation rejects system directories (`/etc`, `/sys`, `/proc`, etc.) and paths outside the allowed workspace. Check that file paths in tool arguments point to locations within your project.
 
-4. **Test tools individually**. Use the MCP development tools or call `AttuneAuthorHandlers` methods directly to isolate whether the issue is in the MCP protocol layer or the underlying attune-author functionality.
+4. **Verify environment prerequisites.** The `author_docs` tool requires ANTHROPIC_API_KEY. The `author_*` tools expect a `.help/` directory structure created by `author_init`.
 
 ## Source files
 

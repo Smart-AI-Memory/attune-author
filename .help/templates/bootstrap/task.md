@@ -2,62 +2,66 @@
 type: task
 feature: bootstrap
 depth: task
-generated_at: 2026-04-12T04:19:10.432869+00:00
+generated_at: 2026-04-14T14:03:30.154713+00:00
 source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
 
 # Work with bootstrap
 
-Use bootstrap when you need to automatically generate an initial feature manifest by analyzing your project's directory structure and Python package layout.
+Use bootstrap when you need to automatically generate a feature manifest by scanning a project's directory structure and identifying Python packages, entry points, and configuration files.
 
 ## Prerequisites
 
 - Access to the project source code
-- Python environment with the bootstrap module available
+- Python project with standard directory layout
+- Familiarity with `src/attune_author/bootstrap.py`
 
 ## Scan a project for features
 
-1. **Import the scanning function:**
+1. **Call the scan function with your project path.**
    ```python
    from attune_author.bootstrap import scan_project
-   ```
 
-2. **Run the project scan:**
-   ```python
    proposals = scan_project("/path/to/your/project")
    ```
 
-   The function returns a list of `ProposedFeature` objects representing detected features.
+2. **Review the proposed features.**
+   Each `ProposedFeature` includes:
+   - Feature name and description
+   - Associated files
+   - Confidence level (low, medium, high)
+   - Discovery reasoning
 
-3. **Review the proposals:**
-   Examine each `ProposedFeature` to verify the scanner correctly identified your project's structure.
-
-## Convert proposals to a manifest
-
-1. **Import the conversion function:**
+3. **Filter proposals by confidence if needed.**
    ```python
-   from attune_author.bootstrap import proposals_to_manifest
+   high_confidence = [p for p in proposals if p.confidence == 'high']
    ```
 
-2. **Generate the manifest:**
+## Convert proposals to manifest
+
+1. **Generate the manifest from accepted proposals.**
    ```python
+   from attune_author.bootstrap import proposals_to_manifest
+
    manifest = proposals_to_manifest(proposals)
    ```
 
-3. **Verify the output:**
-   Check that the resulting `FeatureManifest` contains the expected features for your project.
-
-## Test the bootstrap process
-
-1. **Run bootstrap-specific tests:**
-   ```bash
-   pytest -k "bootstrap"
+2. **Save the manifest to your project.**
+   ```python
+   with open('.help/features.yaml', 'w') as f:
+       f.write(manifest.to_yaml())
    ```
 
-2. **Verify success:**
-   All tests pass and no new test failures appear in the output.
+## Verify the results
+
+Check that the generated manifest includes expected features by examining:
+- Entry point files (main.py, app.py, cli.py, etc.)
+- Configuration modules matching patterns like "config", "settings", "conf"
+- Python packages with meaningful directory structures
+
+The bootstrap skips common build and cache directories defined in `_SKIP_DIRS`.
 
 ## Key files
 
-- `src/attune_author/bootstrap.py` — Contains `scan_project()` and `proposals_to_manifest()` functions
+- `src/attune_author/bootstrap.py` — Main scanning and conversion logic

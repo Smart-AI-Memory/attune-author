@@ -2,8 +2,8 @@
 type: concept
 feature: mcp-server
 depth: concept
-generated_at: 2026-04-12T04:52:21.501576+00:00
-source_hash: ede5ab36c4a3cf2b73e64330e50a7c9cd90cbe45b9b8d5be3909ee9d4c036883
+generated_at: 2026-04-14T14:10:22.395227+00:00
+source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
@@ -11,25 +11,28 @@ status: generated
 
 ## How it works
 
-The MCP (Model Context Protocol) server exposes attune-author's documentation workflow as callable tools that Claude Code can invoke directly.
+The MCP server exposes attune-author's documentation generation capabilities to Claude through the Model Context Protocol, allowing you to bootstrap help systems, generate templates, and maintain documentation directly from your editor.
 
-When Claude Code connects to this server, it gains access to six attune-author operations:
-- `author_init` — Initialize a new documentation project
-- `author_status` — Check the current project state
-- `author_generate` — Create documentation from source code
-- `author_maintain` — Update existing documentation
-- `author_docs` — Generate API documentation
-- `author_lookup` — Search for specific documentation elements
+The server architecture centers on two classes:
 
-The server architecture separates concerns between tool registration and execution:
+- **`AttuneAuthorMCPServer`** — Routes tool calls and manages the schema registry for all six MCP tools
+- **`AttuneAuthorHandlers`** — Executes the actual documentation operations like `author_generate` and `author_maintain`
 
-- **`AttuneAuthorMCPServer`** handles the MCP protocol, registering tools and routing calls
-- **`AttuneAuthorHandlers`** implements the actual business logic for each tool
+When Claude calls a tool, the server validates the request against predefined schemas, then delegates to the appropriate handler method. For example, calling `author_init` triggers the bootstrap process that scans your project and creates a `.help/` directory with `features.yaml`.
 
-All file paths that users provide through the MCP interface pass through `validate_file_path()` to prevent directory traversal attacks and ensure operations stay within the designated workspace.
+## Available tools
 
-## Integration points
+The server exposes six tools that mirror attune-author's command-line interface:
 
-The MCP server connects attune-author to external AI coding assistants, particularly Claude Code. You can start the server using the `main()` entry point or create instances programmatically with `create_server()`.
+- **`author_init`** — Bootstraps a `.help/` directory by scanning for features and creating `features.yaml`
+- **`author_status`** — Reports which templates are stale by comparing source file hashes
+- **`author_generate`** — Creates concept, task, and reference templates for a single feature
+- **`author_maintain`** — Detects and regenerates all stale templates in one pass
+- **`author_docs`** — Generates documentation from source files using the 3-stage LLM pipeline
+- **`author_lookup`** — Retrieves help content by feature name, tag, or substring
 
-Tool definitions are centralized in `get_tools()`, which returns the schema that Claude Code uses to understand what each tool does and what arguments it expects.
+Each tool accepts structured arguments and returns JSON responses, making them suitable for integration with Claude's tool-calling capabilities.
+
+## Security model
+
+The server includes path validation through `validate_file_path()` to prevent directory traversal attacks. This function blocks access to system directories like `/etc`, `/proc`, and `/usr/bin`, ensuring that MCP tools can only operate on your project files and the designated `.help/` directory.

@@ -2,40 +2,38 @@
 type: error
 feature: bootstrap
 depth: error
-generated_at: 2026-04-11T04:51:56.429823+00:00
-source_hash: ba3e45edbaf44fba671f221a61e39cae7381b0b1c8ce9a02129f76b20bc6f331
+generated_at: 2026-04-14T14:03:46.012270+00:00
+source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
 
 # Bootstrap errors
 
-Bootstrap errors occur when project scanning fails or when converting scan results to a feature manifest goes wrong.
+Project scanning and manifest generation failures occur when the bootstrap module cannot analyze your project structure or convert feature proposals into a valid manifest.
 
 ## Common error signatures
 
-- `OSError` or `PermissionError` when `scan_project()` cannot read directories or files
-- `ValueError` when project structure doesn't match expected Python package layout
-- `TypeError` when `proposals_to_manifest()` receives invalid or malformed `ProposedFeature` objects
-- `FileNotFoundError` when scanning a project root that doesn't exist
+- `FileNotFoundError` - Project root path does not exist or is inaccessible
+- `PermissionError` - Cannot read directories or files during project scan
+- `ValueError` - Invalid project structure or malformed feature proposals
+- `AttributeError` - Missing required fields when converting proposals to manifest
 
 ## Where errors originate
 
 Bootstrap errors come from two main functions:
 
-- `scan_project()` — Fails when the project root is inaccessible, has unexpected structure, or contains unreadable files
-- `proposals_to_manifest()` — Fails when the list of proposals contains invalid data or cannot be converted to a valid manifest format
+- `scan_project()` - Fails when traversing directories, reading files, or analyzing project structure
+- `proposals_to_manifest()` - Fails when validating or converting ProposedFeature objects to FeatureManifest format
 
 ## How to diagnose
 
-1. **Verify the project root path.** Check that the path passed to `scan_project()` exists and points to a valid Python project directory.
+1. **Verify project path exists and is readable.** The most common cause is passing a non-existent or inaccessible project root to `scan_project()`.
 
-2. **Check filesystem permissions.** Ensure you have read access to the project directory and its subdirectories. Bootstrap needs to traverse the entire project structure.
+2. **Check directory permissions.** Bootstrap skips protected directories but needs read access to the project root and discoverable subdirectories.
 
-3. **Examine the project layout.** Bootstrap expects standard Python package structure. Missing `__init__.py` files or non-standard directory organization may cause scanning to fail.
+3. **Validate ProposedFeature data.** If `proposals_to_manifest()` fails, inspect the proposals list for missing required fields (name, description) or invalid confidence values.
 
-4. **Validate proposal objects.** If `proposals_to_manifest()` fails, inspect the `ProposedFeature` objects returned by scanning. They should have all required attributes populated correctly.
-
-5. **Test with a minimal project.** Create a simple Python package with basic structure to isolate whether the issue is environment-specific or related to your project's layout.
+4. **Review excluded directories.** Bootstrap automatically skips common build and cache directories. If your project structure conflicts with the exclusion patterns in `_SKIP_DIRS`, this may affect feature discovery.
 
 ## Source files
 

@@ -2,71 +2,56 @@
 type: quickstart
 feature: staleness-and-maintenance
 depth: quickstart
-generated_at: 2026-04-11T04:54:40.306769+00:00
-source_hash: ef4c74abf7547edaa6f0d693a7097d1cff76652402f49144080c3f03136dfb6e
+generated_at: 2026-04-14T14:06:47.087055+00:00
+source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
 # Quickstart: staleness and maintenance
 
-Check which help templates are outdated and regenerate them automatically:
+Check which help templates are stale and automatically regenerate them.
+
+```python
+from attune_author.staleness import run_maintenance
+
+# Check for stale templates and regenerate them
+result = run_maintenance("docs/help", ".")
+print(f"Found {result.stale_count} stale features")
+print(f"Regenerated {result.regenerated_count} templates")
+```
+
+## Check staleness without regenerating
+
+To see which templates are out of date without changing anything:
 
 ```python
 from attune_author.staleness import check_staleness
-from attune_author.manifest import load_manifest
+from attune_author.core import load_manifest
 
-manifest = load_manifest("help/manifest.yaml")
-report = check_staleness(manifest, "help", ".")
-print(f"Found {report.stale_count()} stale templates")
+manifest = load_manifest("docs/help")
+report = check_staleness(manifest, "docs/help", ".")
+print(f"Stale features: {report.stale_features}")
 ```
 
-## Check template staleness
+## Set up automatic maintenance
 
-Run a staleness check to see which templates need updating:
+Add a post-commit hook to regenerate templates when source files change:
 
 ```python
-from attune_author.staleness import check_staleness, format_status_report
-from attune_author.manifest import load_manifest
+from attune_author.staleness import run_hook
 
-manifest = load_manifest("help/manifest.yaml")
-report = check_staleness(manifest, "help", ".")
-print(format_status_report(report, "help"))
-```
-
-Expected output:
-```
-Staleness Report for help/
-3 features current, 1 stale
-Stale features: api-client
-```
-
-## Regenerate stale templates
-
-Update outdated templates with a single command:
-
-```python
-from attune_author.maintenance import run_maintenance
-
-result = run_maintenance("help", ".", dry_run=False)
-print(f"Regenerated {result.regenerated_count()} templates")
-```
-
-Expected output:
-```
-Regenerated 1 templates
-```
-
-## Set up automated maintenance
-
-Add the post-commit hook to regenerate templates after code changes:
-
-```python
-from attune_author.maintenance import run_hook
-
-# Call this from your git post-commit hook
-result = run_hook("help", ".")
+# Returns None if no files changed, otherwise MaintenanceResult
+result = run_hook("docs/help", ".")
 if result:
-    print(f"Auto-regenerated {result.regenerated_count()} templates")
+    print(f"Updated {result.regenerated_count} templates")
 ```
 
-**Next:** Set up the [git post-commit hook](../how-to/setup-git-hooks.md) to automate template maintenance.
+Expected output when templates are regenerated:
+```
+Found 2 stale features
+Regenerated 2 templates
+```
+
+## Next steps
+
+Read the [maintenance concept guide](../concepts/maintenance.md) to understand how staleness detection works and when templates are considered out of date.

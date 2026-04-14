@@ -2,8 +2,8 @@
 type: faq
 feature: doc-gen-pipeline
 depth: faq
-generated_at: 2026-04-11T05:01:22.477846+00:00
-source_hash: dcd99211b2080853c45dbe17f061733f0b7ff80387279d574d2bd011d8114aa2
+generated_at: 2026-04-14T14:14:15.010423+00:00
+source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
@@ -11,38 +11,61 @@ status: generated
 
 ## What is the doc gen pipeline?
 
-A three-stage documentation generator that creates higher-quality output by breaking the process into outline, write, and review phases.
+A three-stage documentation generation system that uses AI to create higher-quality docs through structured planning: first building an outline, then writing content, and finally reviewing and polishing the result.
 
 ## When should I use the doc gen pipeline?
 
-Use it when you need structured, high-quality documentation generated from source code or content. The three-stage approach produces better results than single-pass generation, especially for complex documentation types.
+Use it when you want AI-generated documentation that's more structured and thoughtful than single-pass generation. The multi-stage approach produces better organization and content quality, especially for complex API references or detailed guides.
 
 ## What's the main entry point?
 
-Start with `generate_docs()` — it orchestrates the entire pipeline and handles configuration automatically. If you need more control over individual stages, use:
+Start with `generate_docs()` — it runs the complete three-stage pipeline and returns a `DocGenResult` with the final content plus intermediate outputs from each stage.
 
-- `build_outline()` to create a structured outline first
-- `write_content()` to generate content from an existing outline
-- `review_content()` to polish draft documentation
+For more control, you can call the individual stage functions:
+- `build_outline()` — Creates the documentation structure
+- `write_content()` — Fills in the content from the outline
+- `review_content()` — Polishes the draft
 
 ## How do I configure the pipeline?
 
-Pass a `DocGenConfig` object to `generate_docs()`, or let it use defaults. The config controls document type, target audience, AI model selection, and output limits.
+Create a `DocGenConfig` object to control the generation process:
 
-## What does each stage do?
+```python
+config = DocGenConfig(
+    doc_type='user-guide',  # or 'api-reference'
+    audience='end-users',   # or 'developers'
+    model='claude-sonnet-4-20250514',
+    max_write_tokens=8000
+)
+```
 
-- **Outline stage**: Analyzes your source content and creates a structured documentation plan
-- **Write stage**: Generates full content following the outline structure
-- **Review stage**: Polishes the draft for clarity, accuracy, and style
+You can also pass configuration directly to `generate_docs()` or use the defaults.
 
-## How do I debug pipeline issues?
+## What do I get back from generate_docs()?
 
-Run `pytest -k "doc-gen-pipeline" -v` to check if the core functionality works. If tests pass but your code fails, add debug logging at the problem point and check the `DocGenResult` object for stage-specific error details.
+A `DocGenResult` object containing:
+- `content` — The final polished documentation
+- `outline` — The structure created in stage 1
+- `draft` — The unpolished content from stage 2
+- `stages_completed` — Which pipeline stages finished successfully
+- `source_path` — Path to the source file that was processed
+
+## How do I debug pipeline failures?
+
+Run `pytest -k "doc-gen-pipeline" -v` first to check if the issue is environmental.
+
+If tests pass but your generation fails, check the `stages_completed` field in your `DocGenResult` to see where the pipeline stopped. The pipeline saves intermediate outputs, so you can inspect the `outline` or `draft` fields to debug content issues.
+
+## Do I need special dependencies?
+
+Yes, you need the AI extras: `pip install 'attune-author[ai]'`
+
+The pipeline will raise an `AnthropicCallError` with installation instructions if the dependencies are missing.
 
 ## Where are the source files?
 
-- `src/attune_author/doc_gen/pipeline.py`
-- `src/attune_author/doc_gen/stages.py`
-- `src/attune_author/doc_gen/config.py`
+- `src/attune_author/doc_gen/pipeline.py` — Main orchestration
+- `src/attune_author/doc_gen/stages.py` — Individual stage implementations
+- `src/attune_author/doc_gen/config.py` — Configuration classes
 
 **Tags:** `doc-gen`, `pipeline`, `llm`, `multi-stage`

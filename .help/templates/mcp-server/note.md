@@ -2,8 +2,8 @@
 type: note
 feature: mcp-server
 depth: note
-generated_at: 2026-04-11T04:59:48.085457+00:00
-source_hash: d99e670e0306a6da8972a9bf7c1b94a808c3f1fb3c17fad5dee28bdc1183bac4
+generated_at: 2026-04-14T14:12:23.590348+00:00
+source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
@@ -11,29 +11,38 @@ status: generated
 
 ## Context
 
-The Model Context Protocol (MCP) server exposes attune-author's capabilities as callable tools that Claude Code and other MCP clients can invoke remotely.
+The MCP server enables Claude Code to access attune-author's documentation generation capabilities through the Model Context Protocol. When you configure Claude Code with this server, the six attune-author tools become available as callable functions within your coding sessions.
 
-## Content
+## Architecture
 
-The MCP server implementation centers around two main classes:
+The MCP server centers around two main classes that handle different aspects of the protocol:
 
-- `AttuneAuthorMCPServer` - The primary server class that handles tool registration and dispatch
-- `AttuneAuthorHandlers` - Async handlers that implement the six core attune-author tools: `author_init`, `author_status`, `author_generate`, `author_maintain`, `author_docs`, and `author_lookup`
+**AttuneAuthorMCPServer** serves as the protocol endpoint. It registers the six attune-author tools (`author_init`, `author_status`, `author_generate`, `author_maintain`, `author_docs`, `author_lookup`) and routes tool calls to the appropriate handlers. The server maintains a tool schema registry that defines the input parameters and descriptions for each tool.
 
-Supporting functions provide server lifecycle management and input validation:
+**AttuneAuthorHandlers** implements the actual tool logic. Each of the six methods corresponds to one attune-author command, accepting structured arguments and returning results that Claude Code can interpret. The handlers operate asynchronously to avoid blocking the MCP protocol during long-running operations like template generation.
 
-- `create_server()` - Factory function for creating server instances
-- `main()` - Server entry point that handles the MCP protocol lifecycle
-- `get_tools()` - Returns tool schema definitions for all available tools
-- `validate_file_path()` - Validates user-provided file paths against the workspace root
+## Tool capabilities
 
-The server accepts an optional workspace root directory at initialization. When no workspace is specified, it operates in the current directory. All file operations are validated against this workspace boundary for security.
+The server exposes these tools to Claude Code:
+
+- `author_init` — Bootstrap a `.help/` directory and scan for features
+- `author_status` — Report which templates are stale compared to source code
+- `author_generate` — Generate templates for a single feature
+- `author_maintain` — Regenerate all stale templates in batch
+- `author_docs` — Generate standalone documentation using the 3-stage pipeline
+- `author_lookup` — Search and retrieve help content by topic
+
+Path validation ensures that user-provided file paths stay within the project boundaries and don't access system directories.
+
+## Entry point
+
+You start the server with `main()`, which creates an `AttuneAuthorMCPServer` instance and begins listening for MCP protocol messages. The `create_server()` function provides a programmatic way to instantiate the server for testing or integration scenarios.
 
 ## Source files
 
-- `src/attune_author/mcp/server.py` - Server class and entry point
-- `src/attune_author/mcp/handlers.py` - Tool implementation handlers
-- `src/attune_author/mcp/tool_schemas.py` - MCP tool schema definitions
-- `src/attune_author/mcp/path_validation.py` - File path validation utilities
+- `src/attune_author/mcp/server.py`
+- `src/attune_author/mcp/handlers.py`
+- `src/attune_author/mcp/tool_schemas.py`
+- `src/attune_author/mcp/path_validation.py`
 
 **Tags:** `mcp`, `integration`, `claude-code`

@@ -2,8 +2,8 @@
 type: troubleshooting
 feature: staleness-and-maintenance
 depth: troubleshooting
-generated_at: 2026-04-11T04:54:12.489046+00:00
-source_hash: ef4c74abf7547edaa6f0d693a7097d1cff76652402f49144080c3f03136dfb6e
+generated_at: 2026-04-14T14:06:19.355677+00:00
+source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
@@ -11,89 +11,76 @@ status: generated
 
 ## Before you start
 
-This feature detects when generated help templates are out of date with their source files and regenerates stale ones. Use this guide when staleness checks fail or maintenance operations don't behave as expected.
+The staleness and maintenance system detects when generated help templates are out of sync with their source files and automatically regenerates stale ones. Issues typically involve hash mismatches, file detection problems, or regeneration failures.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| `FileNotFoundError` during staleness check | Verify `help_dir` and `project_root` paths exist and are accessible |
-| Hash computation fails | Run `compute_source_hash()` directly with the failing feature to see the exact error |
-| Wrong staleness results | Compare source file timestamps with generated template timestamps in the help directory |
-| Maintenance runs but doesn't regenerate | Check if `dry_run=True` or if the feature list excludes your target features |
-| Hook doesn't trigger after commit | Verify `run_hook()` is properly configured in your git post-commit hook |
+| Templates not regenerating despite source changes | Run `check_staleness()` manually and examine the `StalenessReport.stale_features` list |
+| Hash mismatch errors | Compare `current_hash` vs `stored_hash` in the `FeatureStaleness` object for the affected feature |
+| Files missing from staleness check | Inspect `matched_files` field to see which source files were detected |
+| Post-commit hook not triggering | Verify `get_changed_files()` returns the expected file paths |
+| Regeneration skipped unexpectedly | Check `MaintenanceResult.skipped_manual` for features marked as manual-only |
 
 ## Step-by-step diagnosis
 
-1. **Test staleness detection in isolation.**
-   Run a minimal staleness check to confirm the basic mechanism works:
+1. **Reproduce with a single feature.**
+   Isolate the problem by running staleness detection on one feature:
    ```python
-   from attune_author.staleness import check_staleness
-   from attune_author.manifest import load_manifest
-
-   manifest = load_manifest("path/to/manifest.yml")
-   report = check_staleness(manifest, "help/", ".", features=["your-feature"])
-   print(f"Stale: {report.stale_count()}, Current: {report.current_count()}")
+   report = check_staleness(manifest, help_dir, project_root, features=['your-feature'])
+   print(report.stale_features)
    ```
 
 2. **Check hash computation.**
-   If staleness detection seems wrong, verify the source hash calculation:
+   Verify that source file hashing works correctly:
    ```python
-   from attune_author.staleness import compute_source_hash
-   from attune_author.manifest import load_manifest
-
-   manifest = load_manifest("path/to/manifest.yml")
-   feature = manifest.features["your-feature"]
-   hash_val, files = compute_source_hash(feature, ".")
-   print(f"Hash: {hash_val}, Files: {files}")
+   current_hash, matched_files = compute_source_hash(feature, project_root)
+   print(f"Hash: {current_hash}")
+   print(f"Files: {matched_files}")
    ```
 
-3. **Enable maintenance dry-run mode.**
-   Test what maintenance would do without making changes:
-   ```python
-   from attune_author.maintenance import run_maintenance
+3. **Enable detailed logging.**
+   Set logging to `DEBUG` level before calling maintenance functions. The system logs file discovery, hash comparisons, and regeneration decisions.
 
-   result = run_maintenance("help/", ".", dry_run=True)
-   print(f"Would regenerate {result.regenerated_count()} of {result.stale_count()} stale features")
+4. **Examine maintenance results.**
+   Run maintenance with dry_run enabled to see what would happen:
+   ```python
+   result = run_maintenance(help_dir, project_root, dry_run=True)
+   print(f"Stale: {result.stale_count}")
+   print(f"Failed: {result.failed}")
    ```
 
-4. **Inspect file change detection.**
-   If the post-commit hook isn't working, check what files it detects:
+5. **Test the hook mechanism.**
+   If using the post-commit hook, verify file change detection:
    ```python
-   from attune_author.maintenance import get_changed_files
-
-   changed = get_changed_files(".")
-   print(f"Changed files: {changed}")
+   changed_files = get_changed_files(project_root)
+   print(f"Changed files: {changed_files}")
    ```
 
 ## Common fixes
 
-- **Fix missing directories.** Create the help directory if it doesn't exist:
+- **Clear stale hash cache.** Delete stored hash files in your help directory and re-run maintenance to force fresh hash computation.
+
+- **Fix file permissions.** Ensure the maintenance process can read source files and write to the help directory:
   ```bash
-  mkdir -p help/
+  chmod -R u+rw /path/to/help/dir
+  chmod -R u+r /path/to/source/files
   ```
 
-- **Update stale git hooks.** Ensure your post-commit hook calls `run_hook()`:
+- **Update excluded directories.** If source files are in non-standard locations, check that they're not being filtered out by `_EXCLUDED_DIRS` (includes `__pycache__`, `.git`, `node_modules`, etc.).
+
+- **Verify feature manifest.** Ensure your feature is properly defined in the manifest with correct source file patterns.
+
+- **Check Git status.** The hook relies on Git to detect changed files. Ensure you're in a Git repository and the relevant files are committed:
   ```bash
-  # In .git/hooks/post-commit
-  #!/bin/bash
-  python -c "from attune_author.maintenance import run_hook; run_hook('help/', '.')"
+  git status
+  git log --name-only -1
   ```
 
-- **Clear template cache.** Remove generated templates to force regeneration:
-  ```bash
-  find help/ -name "*.md" -type f -delete
-  ```
-
-- **Check file permissions.** Ensure the process can read source files and write to the help directory:
-  ```bash
-  chmod -R u+rw help/
-  chmod -R u+r src/
-  ```
-
-- **Verify manifest syntax.** Invalid YAML in the feature manifest can break staleness detection:
-  ```bash
-  python -c "import yaml; yaml.safe_load(open('manifest.yml'))"
+- **Regenerate manually.** If automatic maintenance fails, force regeneration of specific features:
+  ```python
+  result = run_maintenance(help_dir, project_root, features=['problematic-feature'])
   ```
 
 ## Source files

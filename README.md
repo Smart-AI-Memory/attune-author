@@ -1,7 +1,16 @@
 # attune-author
 
-Documentation authoring and maintenance for the attune
-ecosystem.
+Create and maintain **dynamic, context-sensitive help** for
+your codebase — help content that stays in sync with source
+and is served on demand at the right depth to whoever asks:
+a human reader, an IDE, or an AI coding assistant over MCP.
+
+Not a static docs site and not a wiki. Help content is
+authored as a manifest of features, generated from source
+(concept → task → reference depths), tracked by content
+hash, regenerated when source drifts, and delivered
+progressively so readers — human or AI — get exactly the
+depth they asked for.
 
 ```
 attune-help (reader) --> attune-author (authoring) --> attune-ai (full workflows)
@@ -47,23 +56,30 @@ for feature in report.stale:
 
 ## Features
 
-- **Manifest parsing** -- Load and validate
-  `.help/features.yaml`
-- **Staleness detection** -- Track source hash drift,
-  detect outdated templates
-- **Template generation** -- Jinja2-based concept, task,
-  and reference templates
-- **LLM polish** -- Optional AI pass to improve generated
-  content (requires `[ai]`)
-- **Bulk maintenance** -- Regenerate stale templates in
-  one command
-- **API reference** -- Generate docs from Python source
-  (requires `[ai]`)
-- **CLI** -- `attune-author` command for all operations
-- **MCP server** -- Expose every CLI capability to Claude
-  Code as callable tools (`author_status`,
-  `author_generate`, `author_maintain`, `author_lookup`,
-  `author_docs`, `author_init`)
+- **Progressive-depth templates** -- Every feature gets a
+  concept (overview), task (how-to), and reference (API)
+  view, plus optional problem-shaped (error, warning,
+  troubleshooting, faq) and guidance-shaped (quickstart,
+  tip, note, comparison) kinds
+- **Context-sensitive delivery** -- Readers fetch only the
+  depth they need via `attune-help`; AI assistants pull
+  the right slice through the MCP `author_lookup` tool
+- **Staleness detection** -- Source-hash drift is tracked
+  in template frontmatter; drift triggers regeneration on
+  the next `regenerate` or post-commit hook
+- **Grounded generation** -- Templates are rendered from
+  the actual source AST (signatures, defaults, raises,
+  dataclass fields, Literal enums), optionally polished
+  by an LLM against a strict source-info anchor
+- **Bulk maintenance** -- Regenerate every stale feature
+  in one command, or let the post-commit hook do it for
+  you scoped to files that actually changed
+- **CLI** -- `attune-author` for all operations
+- **MCP server** -- Six tools (`author_init`,
+  `author_status`, `author_generate`, `author_maintain`,
+  `author_lookup`, `author_docs`) that make every CLI
+  capability callable by Claude Code and any other MCP
+  client
 
 ## MCP Integration
 

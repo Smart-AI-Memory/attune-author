@@ -2,8 +2,8 @@
 type: warning
 feature: preamble
 depth: warning
-generated_at: 2026-04-11T04:55:48.787758+00:00
-source_hash: 3e02ceee37af71750f50dd40ecd95359ea5c4aaf1a1a7e50691cfb6250d133b0
+generated_at: 2026-04-14T14:07:53.089945+00:00
+source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
 
@@ -11,34 +11,25 @@ status: generated
 
 ## What to watch for
 
-The preamble system renders context-sensitive one-liners for workflow skills, but it fails silently when feature names don't match and can return unexpected results when help directories are misconfigured.
+The preamble system renders context-sensitive descriptions for workflow skills, but its file-based lookups can fail silently in ways that break the user experience.
 
 ## Risk areas
 
-### Missing feature names return None without error
+**Missing preamble files cause silent degradation.** When `get_preamble()` can't find a matching file for a feature, it returns `None` instead of raising an error. This means workflows continue running but users see empty or broken context descriptions. The failure often goes unnoticed until someone manually tests the affected feature.
 
-`get_preamble()` returns `None` when the feature name doesn't exist in the help system. This silent failure can leave your workflow skills without context, making them harder for users to understand. Always check the return value or have a fallback message ready.
+**Related preamble searches may return stale results.** `get_related_preambles()` uses tag-based matching to find similar features, but it doesn't validate that the returned preambles are current or that their source files still exist. If you rename or move feature files without updating the tag system, users get outdated suggestions.
 
-### Help directory paths affect preamble lookup
-
-Both `get_preamble()` and `get_related_preambles()` accept an optional `help_dir` parameter. When you pass `None` (the default), the functions use a default help directory. If this default doesn't match your project structure, preambles won't load. Explicitly set the help directory when working with non-standard project layouts.
-
-### Related preambles can return fewer than expected results
-
-`get_related_preambles()` limits results to 3 by default via the `max_results` parameter. When features share multiple tags, you might expect more related items but only get the first few matches. The function also returns empty lists when no related features exist, rather than falling back to similar alternatives.
+**Help directory resolution depends on runtime context.** Both functions use an optional `help_dir` parameter that defaults to autodiscovery. In development environments or non-standard deployments, the autodiscovery may point to the wrong directory or fail entirely, causing all preamble lookups to return empty results.
 
 ## How to avoid problems
 
-1. **Validate feature names before lookup.** Check that the feature exists in your help system before calling `get_preamble()`. Consider maintaining a list of valid feature names or implementing a feature existence check.
+1. **Validate preamble files exist before deployment.** Add a test that verifies every feature referenced in your workflow has a corresponding preamble file. This catches missing files before they reach production.
 
-2. **Set explicit help directory paths.** Don't rely on default help directory behavior. Pass an explicit `help_dir` parameter that matches your project's documentation structure.
+2. **Set help directory explicitly in production code.** Rather than relying on autodiscovery, pass a known-good `help_dir` path when calling preamble functions in production workflows. This eliminates environment-dependent failures.
 
-3. **Handle None returns gracefully.** Always provide fallback text when `get_preamble()` returns `None`:
-   ```python
-   preamble = get_preamble(feature_name) or "General workflow assistance"
-   ```
+3. **Monitor for None returns.** When `get_preamble()` returns `None`, log the feature name and help directory path. This gives you visibility into which lookups are failing and why.
 
-4. **Test with your actual help directory structure.** Preamble lookup depends on your help files being organized correctly. Test with your real directory structure, not just mock data.
+4. **Limit related preamble results.** The `max_results` parameter defaults to 3, but returning fewer results (1-2) reduces the chance of showing stale suggestions to users.
 
 ## Source files
 

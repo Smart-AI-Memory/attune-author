@@ -2,8 +2,8 @@
 type: faq
 feature: polish
 depth: faq
-generated_at: 2026-04-11T04:49:08.223931+00:00
-source_hash: 024a299e9a8252b83e070c5a5297e1292dd243e8eddc631dcf298bae31fb8dc0
+generated_at: 2026-04-14T14:00:32.501462+00:00
+source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
 status: generated
 ---
 
@@ -11,31 +11,27 @@ status: generated
 
 ## What is polish?
 
-Polish improves auto-generated help templates by rewriting them with an LLM. It uses specialized prompts for different template types and includes source code context to ensure accuracy.
+Polish improves auto-generated help templates by rewriting them with an LLM that understands different template types and has access to your source code context.
 
 ## When should I use polish?
 
-Use polish when you have auto-generated templates that need improvement. The LLM rewrite makes them clearer, removes formulaic language, and follows documentation best practices while preserving technical accuracy.
+Use polish when you want to improve the quality of generated documentation templates. It transforms raw, auto-generated content into polished, readable help that follows documentation best practices.
 
-## How do I polish a template?
+## What's the main entry point?
 
-Call `polish_template()` with your template content, feature name, source summary, and template type. The function returns the improved version.
+Start with `polish_template()` — it takes your generated template content and returns an improved version. You'll also need `build_source_summary()` to create the source context that guides the polish pass.
 
-## What template types does polish support?
+## How does the polishing work?
 
-Polish has specialized prompts for different template types like FAQ, reference, and concept pages. Use `get_system_prompt()` to see what types are available.
-
-## How do I create a source summary?
-
-Use `build_source_summary()` with your code's public classes, functions, docstrings, and file count. This summary helps the LLM understand what your code actually does.
+The polish process uses template-specific system prompts that know how to improve different kinds of documentation (FAQs, reference pages, troubleshooting guides). The `get_system_prompt()` function provides the right instructions for each template type.
 
 ## What happens if polishing fails?
 
-In strict mode, polish raises a `PolishError` if the LLM can't improve the template. Otherwise, it returns the original content unchanged.
+If you're running in strict mode, polish raises a `PolishError` when the LLM pass fails. You can control strict mode through the `STRICT_ENV_VAR` environment variable or the `strict` parameter.
 
 ## How do I debug polish issues?
 
-Run `pytest -k "polish" -v` first. If tests pass but your code fails, add debug logging at the failure point and check the LLM's response for errors.
+Run `pytest -k "polish" -v` to check if the polish functionality is working correctly. If tests pass but you're still having issues, add debug logging at the failure point and check the LLM response for clues about what went wrong.
 
 ## Where are the source files?
 

@@ -2,25 +2,21 @@
 type: tip
 feature: template-generation
 depth: tip
-generated_at: 2026-04-11T04:47:36.270039+00:00
-source_hash: c984ed6eeee4ee72f8b218ec3aebe243eb03ae557e252ba48d52da016704935e
+generated_at: 2026-04-14T13:58:50.932279+00:00
+source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
 
-# Use `generate_feature_templates()` as your starting point
+# Use `generate_feature_templates()` for all template creation
 
-Start with `generate_feature_templates()` when you need to create help documentation from code. This function handles the complete workflow from feature definition to rendered markdown templates, including file organization and conflict detection.
+## Recommendation
 
-## Why this works
+Call `generate_feature_templates()` instead of building templates manually or using internal functions. This function handles AST inspection, depth selection, and file generation in one operation.
 
-The function encapsulates the complexity of AST inspection, template selection, and file management in a single call. Trying to orchestrate these steps manually leads to inconsistent outputs and missed edge cases that the main function already handles.
+## Why this matters
 
-## The tradeoff
+The generation pipeline has many moving parts — feature validation, source file discovery, template matching, and hash computation. The public API orchestrates these steps correctly and handles edge cases you might miss.
 
-You get less control over individual template generation steps. If you need to customize how specific templates are rendered or where they're written, you'll need to work with the `GeneratedTemplate` and `GenerationResult` classes directly.
+## Trade-offs
 
-## Source files
-
-- `src/attune_author/generator.py`
-
-**Tags:** `generation`, `jinja2`, `ast`, `meta-templates`
+You lose fine-grained control over individual template types, but you gain consistency and avoid reimplementing the depth logic (`_CORE_DEPTH_NAMES` and template type constants).

@@ -2,8 +2,8 @@
 type: note
 feature: cli
 depth: note
-generated_at: 2026-04-11T04:57:56.653037+00:00
-source_hash: a51e03870f89add843bf351e1f8f4a23c174c46122a5a2780eca70d10e873bce
+generated_at: 2026-04-14T14:10:05.707215+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
@@ -11,15 +11,13 @@ status: generated
 
 ## Context
 
-The CLI provides the command-line interface for attune-author, supporting subcommands for bootstrap, generate, status, and maintain operations.
+The attune-author CLI provides subcommands for bootstrap, generate, status, and maintain operations through a single entry point.
 
-## Implementation
+## Content
 
-The CLI implementation centers on a single entry point function:
+The CLI module centers on the `main()` function in `src/attune_author/cli.py`, which serves as the primary entry point for all command-line operations. When you run attune-author from the command line, this function processes your arguments and routes them to the appropriate subcommand handlers.
 
-- `main(argv: list[str] | None = None) -> int` in `src/attune_author/cli.py`
-
-You can call `main()` directly or use it as the console script entry point. The function accepts an optional argument list (defaulting to `sys.argv` when `None`) and returns an integer exit code following standard Unix conventions.
+The module displays "attune-author — documentation authoring for the attune ecosystem" as its welcome header when you invoke the CLI.
 
 ## Source files
 

@@ -2,8 +2,8 @@
 type: warning
 feature: cli
 depth: warning
-generated_at: 2026-04-11T04:57:17.325001+00:00
-source_hash: a51e03870f89add843bf351e1f8f4a23c174c46122a5a2780eca70d10e873bce
+generated_at: 2026-04-14T14:09:28.061010+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
@@ -11,35 +11,36 @@ status: generated
 
 ## What to watch for
 
-The attune-author CLI provides subcommands for bootstrap, generate, status, and maintain operations. While the interface appears straightforward, several characteristics of command-line tools can create unexpected behavior in production environments.
+The CLI module provides the command-line interface for attune-author. While straightforward, there are specific areas where unexpected behavior can occur.
 
 ## Risk areas
 
-**Argument parsing conflicts with shell expansion**
-The CLI accepts file paths and pattern arguments that shells may expand before the program sees them. Glob patterns, spaces in filenames, and special characters can cause the CLI to receive different arguments than you intended.
+**Exit code handling in `main()`**
+The `main()` function returns an integer exit code, but the mapping between internal errors and exit codes may not be obvious. Different failure modes (invalid arguments, missing files, processing errors) should return distinct codes for proper shell integration.
 
-**Exit code handling masks underlying errors**
-The `main()` function returns integer exit codes, but intermediate exceptions or subprocess failures may get converted to generic error codes. This can make debugging difficult when the CLI is called from scripts or CI systems.
+**Argument parsing edge cases**
+Command-line argument parsing can fail silently or produce unexpected results with malformed input, especially when dealing with file paths containing spaces or special characters.
 
-**Environment variable dependencies**
-Command-line tools often inherit behavior from environment variables that aren't obvious from the command syntax. Changes to PATH, working directory, or tool-specific environment variables can alter CLI behavior without any change to your command arguments.
+**Standard stream handling**
+Output formatting and error messages may behave differently when stdout/stderr are redirected or when running in non-interactive environments.
 
 ## How to avoid problems
 
-1. **Quote arguments containing paths and patterns.** Always quote file paths and use explicit path separators to prevent shell expansion issues:
+1. **Test with realistic command lines.** Don't just test the happy path — try malformed arguments, missing files, and edge cases that real users might encounter:
    ```bash
-   attune-author generate "path/with spaces/file.txt"
+   # Test these scenarios
+   attune-author --nonexistent-flag
+   attune-author generate ""
+   attune-author bootstrap /path/with spaces/
    ```
 
-2. **Check exit codes in scripts.** When calling the CLI from automation, explicitly check the return value and capture stderr for debugging:
-   ```bash
-   if ! attune-author status; then
-       echo "CLI failed with exit code $?"
-       exit 1
-   fi
+2. **Verify exit codes explicitly.** When testing CLI functionality, check that the process exits with the expected code:
+   ```python
+   result = main(['generate', 'missing-file'])
+   assert result != 0  # Should fail gracefully
    ```
 
-3. **Test in clean environments.** Run CLI tests in isolated environments to catch environment variable dependencies that might not be obvious in your development setup.
+3. **Test in different environments.** CLI behavior can vary between interactive shells, scripts, and CI environments. Test with redirected output and in non-TTY contexts.
 
 ## Source files
 

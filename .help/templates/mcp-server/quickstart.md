@@ -2,66 +2,57 @@
 type: quickstart
 feature: mcp-server
 depth: quickstart
-generated_at: 2026-04-11T04:59:34.607664+00:00
-source_hash: d99e670e0306a6da8972a9bf7c1b94a808c3f1fb3c17fad5dee28bdc1183bac4
+generated_at: 2026-04-14T14:12:10.445206+00:00
+source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
 # Quickstart: MCP server
 
+Create an MCP server that exposes attune-author tools to Claude Code:
+
 ```python
 from attune_author.mcp.server import create_server
 
-# Create a server instance
 server = create_server()
-
-# List available tools
-tools = server.tools()
-print(f"Available tools: {list(tools.keys())}")
+print(f"Created server with {len(server.tools)} tools")
 ```
-
-This Model Context Protocol server exposes attune-author's capabilities to Claude Code as callable tools.
 
 ## Run the server
 
-1. **Create a server instance** with your workspace directory:
+1. **Start the MCP server** by running the main entry point:
+
+   ```bash
+   python -m attune_author.mcp.server
+   ```
+
+2. **Verify tools are available** by checking the server object:
+
    ```python
    from attune_author.mcp.server import create_server
 
    server = create_server()
-   # Or specify a workspace: AttuneAuthorMCPServer("/path/to/workspace")
+   for name, schema in server.tools.items():
+       print(f"Tool: {name} - {schema['description']}")
    ```
 
-2. **Check available tools** to confirm the server is working:
-   ```python
-   tools = server.tools()
-   print(list(tools.keys()))
+   Expected output shows six tools:
+   ```
+   Tool: author_init - Bootstrap a .help/ directory in the project...
+   Tool: author_status - Report which feature templates are stale...
+   Tool: author_generate - Generate concept, task, and reference templates...
+   Tool: author_maintain - Detect and regenerate all stale feature templates...
+   Tool: author_docs - Generate documentation from a source file...
+   Tool: author_lookup - Look up help for a topic by name or tag...
    ```
 
-3. **Call a tool** to verify the integration:
+3. **Call a tool** to test the integration:
+
    ```python
-   result = server.call_tool("author_status", {})
+   result = server.call_tool("author_status", {"project_root": "."})
    print(result)
    ```
 
-## Expected output
-
-The tools list should show six available commands:
-```
-['author_init', 'author_status', 'author_generate', 'author_maintain', 'author_docs', 'author_lookup']
-```
-
-The status call returns information about your workspace configuration and current state.
-
 ## Next steps
 
-Configure your MCP client (like Claude Code) to connect to this server using the `main()` function as the entry point.
-
-## Source files
-
-- `src/attune_author/mcp/server.py`
-- `src/attune_author/mcp/handlers.py`
-- `src/attune_author/mcp/tool_schemas.py`
-- `src/attune_author/mcp/path_validation.py`
-
-**Tags:** `mcp`, `integration`, `claude-code`
+Configure your Claude Code client to connect to this MCP server endpoint for automated help system management.

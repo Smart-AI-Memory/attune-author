@@ -2,8 +2,8 @@
 type: note
 feature: template-generation
 depth: note
-generated_at: 2026-04-11T04:47:42.255894+00:00
-source_hash: c984ed6eeee4ee72f8b218ec3aebe243eb03ae557e252ba48d52da016704935e
+generated_at: 2026-04-14T13:58:56.643762+00:00
+source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
 
@@ -11,19 +11,41 @@ status: generated
 
 ## Context
 
-The template generation feature creates markdown help templates by inspecting feature definitions and source code AST structures. This process transforms code into documentation templates that can be polished into final help content.
+The template generation system renders markdown help templates by combining feature definitions with source code AST inspection. It creates structured documentation files based on predefined template types and code analysis.
 
-## Implementation structure
+## Core types
 
-The feature centers on the `generate_feature_templates()` function, which analyzes source code and produces templates for different documentation types (concepts, tasks, references, and notes).
+The system defines three categories of template types through module constants:
 
-Two result classes capture the generation output:
+- **Core depths**: concept, task, and reference templates
+- **Problem templates**: error, warning, troubleshooting, and FAQ templates
+- **Guidance templates**: quickstart, tip, note, and comparison templates
 
-- `GeneratedTemplate` — Represents a single generated template file with its content and metadata
-- `GenerationResult` — Contains the collection of all templates generated for a feature
+## Data structures
 
-The generation process reads feature definitions, inspects source code using AST parsing, and renders Jinja2 templates to produce structured markdown files with consistent frontmatter and section organization.
+Template generation uses two main dataclasses to track results:
+
+**GeneratedTemplate** represents a single generated template file with:
+- Feature name and template depth
+- Output file path and source content hash
+
+**GenerationResult** aggregates the complete generation outcome with:
+- Feature name and source hash
+- List of all generated templates
+- Files that matched the generation criteria
+
+## Generation process
+
+The `generate_feature_templates()` function drives template creation by:
+- Accepting a Feature definition and target help directory
+- Optionally filtering to specific template depths
+- Supporting overwrite control for existing files
+- Returning a GenerationResult with all created templates
+
+The function validates feature names and raises `ValueError` for invalid inputs.
 
 ## Source files
 
 - `src/attune_author/generator.py`
+
+**Tags:** `generation`, `jinja2`, `ast`, `meta-templates`

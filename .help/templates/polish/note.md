@@ -2,8 +2,8 @@
 type: note
 feature: polish
 depth: note
-generated_at: 2026-04-11T04:49:30.657640+00:00
-source_hash: 024a299e9a8252b83e070c5a5297e1292dd243e8eddc631dcf298bae31fb8dc0
+generated_at: 2026-04-14T14:00:56.978485+00:00
+source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
 status: generated
 ---
 
@@ -11,23 +11,24 @@ status: generated
 
 ## Context
 
-The polish feature improves auto-generated help templates through an LLM rewrite pass. It uses template-specific system prompts and source code summaries to produce documentation that follows Google's developer documentation style guide.
+The polish feature improves generated documentation templates through an LLM-powered rewriting pass. It uses template-specific system prompts and source code summaries to ensure accuracy while enhancing readability.
 
-## Content
+## How it works
 
-The polish feature provides an LLM-based post-processing step for generated templates. After attune-author generates a help template from source code analysis, the polish pass rewrites the content to improve clarity, structure, and adherence to documentation standards.
+The polish process operates in two phases:
 
-The feature centers on the `polish_template()` function, which takes a generated template and returns a polished version. It uses different system prompts based on the template type (concept, task, reference, or note) to ensure appropriate tone and structure for each documentation format.
+1. **Source summarization** — `build_source_summary()` extracts key information from the codebase (classes, functions, constants) into a concise format for the LLM prompt
+2. **Template rewriting** — `polish_template()` sends the generated template and source summary to an LLM with template-type-specific instructions
 
-Supporting functions include:
-- `build_source_summary()` — Creates concise summaries of source code structure for the LLM context
-- `get_system_prompt()` — Retrieves template-type-specific prompts that guide the rewrite process
+The system prompts vary by template type (concept, task, reference, note) and include anti-patterns to avoid formulaic language that commonly appears in auto-generated content.
 
-The `PolishError` exception handles cases where the LLM fails to produce valid output, particularly when running in strict mode.
+## Error handling
+
+In strict mode (controlled by the `ATTUNE_AUTHOR_STRICT_POLISH` environment variable), polish failures raise `PolishError` rather than falling back to the unpolished template. This ensures quality gates in CI/CD pipelines.
 
 ## Source files
 
-- `src/attune_author/polish.py`
-- `src/attune_author/polish_prompts.py`
+- `src/attune_author/polish.py` — Core polish logic and source summarization
+- `src/attune_author/polish_prompts.py` — Template-specific system prompts
 
 **Tags:** `polish`, `llm`, `anthropic`, `quality`

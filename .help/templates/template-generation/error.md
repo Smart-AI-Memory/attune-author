@@ -2,42 +2,34 @@
 type: error
 feature: template-generation
 depth: error
-generated_at: 2026-04-11T04:46:44.555477+00:00
-source_hash: c984ed6eeee4ee72f8b218ec3aebe243eb03ae557e252ba48d52da016704935e
+generated_at: 2026-04-14T13:57:57.478670+00:00
+source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
 
 # Template Generation errors
 
-Template generation failures occur when creating help documentation templates from feature definitions and source code analysis.
+Template generation failures occur when the system cannot create help documentation files from feature definitions and source code analysis.
 
 ## Common error signatures
 
-- `FileNotFoundError` when source files referenced in the feature definition don't exist
-- `PermissionError` when the help directory is not writable or files cannot be overwritten
-- `ValueError` when feature definitions contain invalid depth specifications or malformed metadata
-- `TemplateNotFound` from Jinja2 when meta-template files are missing
-- `UndefinedError` from Jinja2 when template variables lack required data from AST inspection
+- `ValueError: Invalid feature name: {feature_name}` — The feature name passed to `generate_feature_templates()` doesn't match expected naming patterns or references a non-existent feature
 
 ## Where errors originate
 
-Template generation errors start in the main generation function:
-
-- `generate_feature_templates()` in `src/attune_author/generator.py` — Generate help templates for a feature.
-
-This function coordinates file discovery, AST parsing, template rendering, and file writing. Failures in any of these steps bubble up as exceptions.
+Template generation errors primarily stem from the `generate_feature_templates()` function in `src/attune_author/generator.py`. This function orchestrates the entire generation process, from feature validation through template file creation.
 
 ## How to diagnose
 
-1. **Check file permissions and paths.** Verify that your `help_dir` is writable and that all source files in the feature definition exist at the specified paths relative to `project_root`.
+1. **Verify the feature name.** Check that the feature parameter passed to `generate_feature_templates()` matches an actual feature in your project. Invalid feature names trigger `ValueError` exceptions immediately.
 
-2. **Validate the feature definition.** Ensure the `Feature` object has valid depth values and that referenced source files contain the expected classes and functions.
+2. **Check file system permissions.** If generation fails during file writing, verify that the help directory path is writable and that no permission restrictions block template file creation.
 
-3. **Examine the generation result.** When `generate_feature_templates()` completes successfully, inspect the returned `GenerationResult` object for any `GeneratedTemplate` entries with error states.
+3. **Validate source file integrity.** Generation relies on AST parsing of source files. If source files contain syntax errors or are corrupted, template generation will fail when attempting to extract metadata.
 
-4. **Test with `overwrite=True`.** If generation fails silently, existing template files might be blocking writes. Set the `overwrite` parameter to force file replacement.
+4. **Examine the overwrite setting.** When `overwrite=False` (default), generation skips existing template files. If you expect new templates but don't see them, check whether files already exist at the target paths.
 
-5. **Verify meta-template availability.** Template generation relies on Jinja2 meta-templates. Check that the template loader can find the required template files for your specified depths.
+5. **Inspect the depths parameter.** Template generation creates files for specific documentation depths (concept, task, reference) and problem types (error, warning, troubleshooting, faq). Invalid depth names or mismatched template types can cause generation to skip expected outputs.
 
 ## Source files
 

@@ -2,44 +2,44 @@
 type: warning
 feature: mcp-server
 depth: warning
-generated_at: 2026-04-11T04:58:53.758352+00:00
-source_hash: d99e670e0306a6da8972a9bf7c1b94a808c3f1fb3c17fad5dee28bdc1183bac4
+generated_at: 2026-04-14T14:11:26.060183+00:00
+source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
-# Mcp Server cautions
+# MCP Server cautions
 
 ## What to watch for
 
-The MCP server exposes attune-author's file operations and code generation capabilities to Claude through the Model Context Protocol. This creates security and reliability risks that require careful handling.
+The MCP server exposes attune-author's capabilities to Claude Code as callable tools. While the integration is designed to be safe, several areas require careful attention to prevent security issues and unexpected behavior.
 
 ## Risk areas
 
-### Path injection vulnerabilities
+### Path traversal in file operations
 
-`validate_file_path()` is your only defense against directory traversal attacks. User-controlled paths from MCP tool arguments must pass through this function before any file operations. Bypassing validation allows clients to access files outside the workspace boundary.
+The `validate_file_path()` function checks for directory traversal attacks, but you can still encounter problems if you bypass validation or misconfigure workspace boundaries. The function rejects paths containing null bytes, system directories (like `/etc`, `/proc`), and paths outside allowed directories, but it won't catch application-logic errors where you pass the wrong base directory.
 
-### Workspace root inconsistencies
+### Workspace root misconfiguration
 
-The `AttuneAuthorMCPServer` constructor accepts an optional `workspace_root`, but `AttuneAuthorHandlers` requires one. If you create the server with `workspace_root=None`, tool calls will fail with unclear errors when the handlers try to validate paths against a missing root directory.
-
-### Async handler context loss
-
-All six tool handlers (`author_init`, `author_status`, etc.) are async methods, but the MCP server's `call_tool()` method is synchronous. This mismatch can cause context loss if you're not careful about how async operations are awaited within the handler implementations.
+Both `AttuneAuthorMCPServer` and `AttuneAuthorHandlers` accept a `workspace_root` parameter. If you set this incorrectly, tools will operate on the wrong project directory. The server defaults to `None` (current directory), while handlers require an explicit path. This mismatch can cause tools to fail silently or modify unexpected files.
 
 ### Tool argument validation gaps
 
-Each MCP tool expects specific argument schemas, but the `call_tool()` method receives raw dictionaries. Missing or malformed arguments can cause cryptic failures deep in the handler chain rather than clear validation errors at the entry point.
+MCP tools receive unvalidated JSON from Claude Code. While each tool has a schema definition in `get_tools()`, the server only validates structure, not semantic correctness. For example, `author_generate` requires a valid feature name from `features.yaml`, but the MCP layer won't catch typos or missing features until runtime.
+
+### Async handler context loss
+
+The six tools in `AttuneAuthorHandlers` are async methods, but they run in the MCP server's synchronous `call_tool()` context. If you modify these handlers to perform async operations (like concurrent file I/O), you risk deadlocks or resource leaks because the server doesn't provide proper async context management.
 
 ## How to avoid problems
 
-1. **Always validate file paths.** Never pass user-controlled path strings directly to file operations. Route them through `validate_file_path()` first, even if they seem safe.
+1. **Always validate workspace boundaries.** Before calling any tool that accepts file paths, verify that your workspace_root setting points to the correct project directory and that all operations stay within bounds.
 
-2. **Set workspace boundaries explicitly.** Initialize `AttuneAuthorMCPServer` with a concrete `workspace_root` path rather than relying on the default `None`. This prevents runtime errors and makes the security boundary clear.
+2. **Test with invalid tool arguments.** Claude Code can send malformed requests, so test your MCP integration with missing required fields, wrong data types, and edge cases like empty strings or very long inputs.
 
-3. **Test with malicious inputs.** Include path traversal attempts (`../../../etc/passwd`) and invalid tool arguments in your test suite. The MCP protocol doesn't prevent clients from sending hostile data.
+3. **Monitor async tool performance.** The MCP server runs tools synchronously, so slow operations will block other requests. If a tool takes more than a few seconds, consider adding timeout handling or breaking large operations into smaller chunks.
 
-4. **Monitor tool execution errors.** Failed tool calls return error dictionaries rather than raising exceptions. Check the return structure before assuming success.
+4. **Verify feature names before generation.** When using `author_generate` or `author_maintain`, confirm that feature names exist in your `features.yaml` file. These tools will fail with cryptic errors if you reference non-existent features.
 
 ## Source files
 

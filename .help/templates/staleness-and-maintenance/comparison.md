@@ -2,8 +2,8 @@
 type: comparison
 feature: staleness-and-maintenance
 depth: comparison
-generated_at: 2026-04-11T04:55:03.768171+00:00
-source_hash: ef4c74abf7547edaa6f0d693a7097d1cff76652402f49144080c3f03136dfb6e
+generated_at: 2026-04-14T14:07:09.549916+00:00
+source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
@@ -11,50 +11,36 @@ status: generated
 
 ## Context
 
-You need to keep generated help templates in sync with source code changes. You can either detect staleness automatically and regenerate templates on demand, or manually regenerate templates whenever you remember to do so.
+When source code changes, generated help templates become outdated. You can either check for staleness and regenerate automatically, or manually update templates as needed.
 
 ## Feature comparison
 
-| Aspect | Automatic staleness detection | Manual regeneration |
-|--------|------------------------------|-------------------|
-| **Accuracy** | SHA-256 hashing catches all source changes | Relies on remembering which files changed |
-| **Integration** | Post-commit hooks run automatically | Requires manual command execution |
-| **Feedback speed** | Immediate detection via `check_staleness()` | Only discovered when templates are visibly wrong |
-| **Maintenance overhead** | Initial setup, then zero ongoing work | Constant vigilance required |
-| **Selective updates** | Can target specific features or changed files | All-or-nothing regeneration |
-| **Safety** | Dry-run mode prevents accidental overwrites | Easy to lose manual edits |
+| Aspect | Staleness detection | Manual maintenance |
+|--------|-------------------|-------------------|
+| **Accuracy** | SHA-256 hash ensures exact source-template sync | Relies on developer memory and discipline |
+| **Speed** | Instant detection across all features | Requires scanning each template individually |
+| **Automation** | Integrates with commit hooks for hands-off updates | Every update is a manual decision |
+| **Selective updates** | Can target specific features or run across all | Natural granular control |
+| **Error prevention** | Catches stale content before it misleads users | Stale templates can persist unnoticed |
+| **Setup cost** | Requires initial hook configuration | Works immediately |
 
-## Staleness detection workflow
+## Use staleness detection when...
 
-The automatic approach uses three main operations:
+- You have multiple features that change frequently
+- You want to catch outdated help content in CI/CD
+- Your team tends to forget manual documentation updates
+- You need confidence that help templates match current source code
 
-- **Detection**: `check_staleness()` compares current source hashes against stored values in template frontmatter
-- **Selective maintenance**: `run_maintenance()` regenerates only stale templates, with optional dry-run mode
-- **Hook integration**: `run_hook()` automatically runs after commits, processing only files that changed
-
-## Manual maintenance workflow
-
-Without staleness detection, you must:
-
-- Remember which source files you modified
-- Manually run regeneration commands
-- Hope you didn't miss any affected templates
-- Manually verify the results look correct
-
-## Use automatic staleness detection when...
-
-- You want zero-maintenance template freshness
-- Multiple people contribute to the codebase
-- You integrate help generation into CI/CD pipelines
-- You need to track which specific features are out of date
-
-**Automatic detection is the recommended approach** — it eliminates a entire class of human error and provides better development experience with minimal setup cost.
+The automated approach scales better than manual tracking. A single `run_maintenance()` call can check dozens of features in seconds and regenerate only what's actually stale.
 
 ## Use manual maintenance when...
 
-- You're doing one-off template generation
-- Your source files change infrequently (less than weekly)
-- You need custom regeneration logic that the maintenance system doesn't support
+- You have a small, stable codebase with infrequent changes
+- You want full editorial control over when templates update
+- You're working on experimental features that aren't ready for automatic documentation
+- You need to coordinate help updates with broader documentation releases
+
+Manual control works well for mature projects where help content changes deliberately rather than reactively.
 
 ## Source files
 

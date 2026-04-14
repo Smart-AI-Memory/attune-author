@@ -2,8 +2,8 @@
 type: reference
 feature: staleness-and-maintenance
 depth: reference
-generated_at: 2026-04-12T04:19:41.029381+00:00
-source_hash: 3fd0b912ad7c1588f2e6823e44da199dbb18303be141e9b9e8a7f5053f9157d2
+generated_at: 2026-04-14T14:05:36.533470+00:00
+source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
@@ -11,71 +11,59 @@ status: generated
 
 ## Classes
 
-| Class | Description |
-|-------|-------------|
-| `FeatureStaleness` | Staleness status for one feature |
-| `StalenessReport` | Staleness report across all features |
-| `MaintenanceResult` | Result of a help maintenance run |
+### FeatureStaleness fields
 
-### StalenessReport methods
+| Field | Type | Default |
+|-------|------|---------|
+| `feature` | `str` | — |
+| `is_stale` | `bool` | — |
+| `current_hash` | `str` | — |
+| `stored_hash` | `str \| None` | — |
+| `matched_files` | `list[str]` | `[]` |
 
-| Method | Return type | Description |
-|--------|-------------|-------------|
-| `stale_count()` | `int` | Number of features with stale help templates |
-| `current_count()` | `int` | Number of features with current help templates |
-| `stale_features()` | `list[str]` | Names of features with stale help templates |
+### StalenessReport fields
 
-### MaintenanceResult methods
+| Field | Type | Default |
+|-------|------|---------|
+| `entries` | `list[FeatureStaleness]` | — |
 
-| Method | Return type | Description |
-|--------|-------------|-------------|
-| `stale_count()` | `int` | Number of stale features found |
-| `regenerated_count()` | `int` | Number of features regenerated |
+### StalenessReport properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `stale_count` | `int` | Count of stale features |
+| `current_count` | `int` | Count of up-to-date features |
+| `stale_features` | `list[str]` | Names of stale features |
+
+### MaintenanceResult fields
+
+| Field | Type | Default |
+|-------|------|---------|
+| `staleness` | `StalenessReport` | — |
+| `regenerated` | `list[GenerationResult]` | `[]` |
+| `skipped_manual` | `list[str]` | `[]` |
+| `failed` | `list[str]` | `[]` |
+
+### MaintenanceResult properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `stale_count` | `int` | Number of stale features detected |
+| `regenerated_count` | `int` | Number of features regenerated |
 
 ## Functions
 
-| Function | Description |
-|----------|-------------|
-| `compute_source_hash()` | Compute SHA-256 hash of a feature's source files |
-| `check_staleness()` | Check which features have stale help templates |
-| `run_maintenance()` | Run help maintenance — check staleness and regenerate |
-| `get_changed_files()` | Get files changed in the most recent commit |
-| `run_hook()` | Post-commit hook entry point |
-| `format_status_report()` | Format a staleness report for display |
+| Function | Parameters | Returns | Description |
+|----------|------------|---------|-------------|
+| `compute_source_hash` | `feature: Feature, project_root: str \| Path` | `tuple[str, list[str]]` | Compute SHA-256 hash of a feature's source files |
+| `check_staleness` | `manifest: FeatureManifest, help_dir: str \| Path, project_root: str \| Path, features: list[str] \| None = None` | `StalenessReport` | Check which features have stale help templates |
+| `run_maintenance` | `help_dir: str \| Path, project_root: str \| Path, features: list[str] \| None = None, dry_run: bool = False` | `MaintenanceResult` | Run help maintenance — check staleness and regenerate |
+| `get_changed_files` | `project_root: str \| Path` | `list[str]` | Get files changed in the most recent commit |
+| `run_hook` | `help_dir: str \| Path, project_root: str \| Path` | `MaintenanceResult \| None` | Post-commit hook entry point |
+| `format_status_report` | `report: StalenessReport, help_dir: str \| Path \| None = None` | `str` | Format a staleness report for display |
 
-### Function signatures
+## Constants
 
-```python
-compute_source_hash(feature: Feature, project_root: str | Path) -> tuple[str, list[str]]
-```
-
-```python
-check_staleness(manifest: FeatureManifest, help_dir: str | Path,
-               project_root: str | Path, features: list[str] | None = None) -> StalenessReport
-```
-
-```python
-run_maintenance(help_dir: str | Path, project_root: str | Path,
-               features: list[str] | None = None, dry_run: bool = False) -> MaintenanceResult
-```
-
-```python
-get_changed_files(project_root: str | Path) -> list[str]
-```
-
-```python
-run_hook(help_dir: str | Path, project_root: str | Path) -> MaintenanceResult | None
-```
-
-```python
-format_status_report(report: StalenessReport, help_dir: str | Path | None = None) -> str
-```
-
-## Source files
-
-- `src/attune_author/staleness.py`
-- `src/attune_author/maintenance.py`
-
-## Tags
-
-`freshness`, `hashing`, `regeneration`
+| Constant | Value |
+|----------|-------|
+| `EXCLUDED_DIRS` | `{'__pycache__', '.mypy_cache', '.pytest_cache', '.ruff_cache', 'node_modules', '.git'}` |

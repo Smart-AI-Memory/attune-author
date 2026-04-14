@@ -2,8 +2,8 @@
 type: reference
 feature: cli
 depth: reference
-generated_at: 2026-04-12T04:53:48.436323+00:00
-source_hash: b40b5cd02e5e4ea8d4a6bf7a3a528cdf03aee2a0e01db1dbdc1a9be426d9af1f
+generated_at: 2026-04-14T14:09:16.171417+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
@@ -11,14 +11,12 @@ status: generated
 
 ## Functions
 
-| Function | Description | Parameters | Return Type |
-|----------|-------------|------------|-------------|
-| `main()` | CLI entry point for attune-author | `argv: list[str] \| None = None` | `int` |
+| Function | Parameters | Returns | Description |
+|----------|------------|---------|-------------|
+| `main()` | `argv: list[str] \| None = None` | `int` | CLI entry point |
 
-## Source files
+## Constants
 
-- `src/attune_author/cli.py`
-
-## Tags
-
-`cli`, `commands`, `entrypoint`
+| Constant | Value |
+|----------|-------|
+| `_WELCOME_HEADER` | `'attune-author — documentation authoring for the attune ecosystem'` |

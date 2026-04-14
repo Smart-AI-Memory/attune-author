@@ -2,49 +2,78 @@
 type: task
 feature: polish
 depth: task
-generated_at: 2026-04-12T04:18:28.601212+00:00
-source_hash: 9f00fa4d4bf451430bdb559d13e2781477df4a00e9c10586bff49eaa38404dbc
+generated_at: 2026-04-14T13:59:30.435223+00:00
+source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
 status: generated
 ---
 
 # Work with polish
 
-Use polish when you need to enhance auto-generated help templates by applying LLM-based refinements with template-specific prompts and source code context.
+Use the polish feature when you need to improve auto-generated help templates with LLM-powered rewrites that apply template-specific style rules and source-accurate content.
 
 ## Prerequisites
 
 - Access to the project source code
-- Familiarity with `src/attune_author/polish.py` and `src/attune_author/polish_prompts.py`
+- Python environment with the polish module available
 
-## Steps
+## Identify the polish function you need
 
-1. **Identify the polish component to modify**
+1. **Review the available functions** in `src/attune_author/polish.py`:
+   - `polish_template()` — Improves template content using LLM rewriting
+   - `build_source_summary()` — Creates source summaries for the LLM context
+   - `get_system_prompt()` — Retrieves template-specific style prompts
 
-   Examine these three core functions to determine which handles your use case:
-   - `polish_template()` — Sends templates to the LLM with context and prompts
-   - `build_source_summary()` — Creates source code summaries for LLM context
-   - `get_system_prompt()` — Retrieves template-type-specific system prompts
+2. **Check function signatures** to confirm parameters and return types match your use case.
 
-2. **Review the target function's implementation**
+## Polish a template
 
-   Read the function's docstring, parameters, and return type. Check how it handles the `PolishError` exception and any strict mode requirements.
+1. **Prepare your inputs:**
+   - Template content as a string
+   - Feature name the template documents
+   - Source summary from `build_source_summary()`
+   - Template type (defaults to 'generic')
 
-3. **Implement your changes**
+2. **Call `polish_template()`:**
+   ```python
+   polished_content = polish_template(
+       content=template_string,
+       feature_name="your_feature",
+       source_summary=summary,
+       template_type="task"  # or "reference", "explanation", etc.
+   )
+   ```
 
-   Modify the function while maintaining the existing parameter signatures and error handling patterns. Ensure strict mode behavior remains consistent.
+3. **Handle `PolishError` exceptions** when `strict=True` mode is enabled.
 
-4. **Test the polish functionality**
+## Build source summaries
 
-   Run `pytest -k "polish"` to verify your changes work correctly and don't break existing functionality.
+1. **Collect source information:**
+   - Public classes with their purposes
+   - Public functions with signatures and descriptions
+   - Module docstrings
+   - File count
 
-## Key files
+2. **Create the summary:**
+   ```python
+   summary = build_source_summary(
+       public_classes=class_list,
+       public_functions=function_list,
+       module_docstrings=docstring_list,
+       file_count=total_files
+   )
+   ```
 
-- `src/attune_author/polish.py` — Core polish functions
-- `src/attune_author/polish_prompts.py` — Template-specific system prompts
+## Test your changes
 
-## Success criteria
+Run targeted tests to verify polish functionality:
+```bash
+pytest -k "polish"
+```
 
-Your changes work when:
-- The polish tests pass without errors
-- Templates are refined according to your modifications
-- `PolishError` is raised appropriately in strict mode when polish fails
+## Verify success
+
+Your polish operation succeeds when:
+- The returned content maintains the original YAML frontmatter
+- Template structure follows the specified type's style guide
+- All source information remains factually accurate
+- No `PolishError` is raised in strict mode

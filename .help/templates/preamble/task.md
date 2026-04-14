@@ -2,47 +2,48 @@
 type: task
 feature: preamble
 depth: task
-generated_at: 2026-04-12T04:19:55.900394+00:00
+generated_at: 2026-04-14T14:07:30.302873+00:00
 source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
 
 # Work with preamble
 
-Use preamble when you need to display contextual one-liner descriptions for workflow features or find related features based on shared functionality tags.
+Use preamble when you need to display contextual one-liner descriptions for workflow features or discover related functionality through shared tags.
 
 ## Prerequisites
 
 - Access to the project source code
-- Familiarity with the files under src/attune_author/preamble.py
+- Python development environment set up
 
-## Identify the target function
+## Review existing functionality
 
-1. **Determine your goal:**
-   - To retrieve a single feature's description: use `get_preamble()`
-   - To find related features by tags: use `get_related_preambles()`
+1. **Examine the preamble module structure.**
+   Open `src/attune_author/preamble.py` and review the two main functions:
+   - `get_preamble()` — retrieves a single feature's descriptive one-liner
+   - `get_related_preambles()` — finds up to 3 related features by shared tags
 
-2. **Locate the function in `src/attune_author/preamble.py`:**
-   - `get_preamble(feature_name, help_dir)` — Returns the one-liner description for a specific feature
-   - `get_related_preambles(feature_name, help_dir, max_results)` — Returns up to 3 features with shared tags
+2. **Test current behavior.**
+   Run a few calls to see the existing output format and determine what changes you need.
 
 ## Modify preamble behavior
 
-1. **Read the function's docstring and parameters** to confirm it handles your use case.
+1. **Choose the appropriate function.**
+   - Modify `get_preamble()` if you need to change how individual feature descriptions are retrieved or formatted
+   - Modify `get_related_preambles()` if you need to adjust the relationship discovery logic or result limits
 
-2. **Update the function logic** following the existing code style:
-   - Use the same naming conventions as surrounding functions
-   - Handle errors consistently with the existing error patterns
-   - Add logging statements that match the current format
+2. **Implement your changes.**
+   Follow the existing error handling patterns and maintain the same return types: `str | None` for single preambles, `list[dict[str, str]]` for related preambles.
 
-3. **Test your changes** by running:
-   ```bash
-   pytest -k "preamble"
-   ```
+3. **Verify your changes work.**
+   Run `pytest -k "preamble"` to ensure your modifications don't break existing functionality.
 
 ## Verify success
 
-Your changes work correctly when the preamble tests pass and your target function returns the expected preamble text or related feature list based on your modifications.
+Your changes work correctly when:
+- `get_preamble()` returns the expected string format for valid feature names
+- `get_related_preambles()` returns a list of dictionaries with the correct structure
+- All preamble tests pass without errors
 
 ## Key files
 

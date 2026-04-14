@@ -2,87 +2,80 @@
 type: task
 feature: staleness-and-maintenance
 depth: task
-generated_at: 2026-04-12T04:19:29.971125+00:00
-source_hash: 3fd0b912ad7c1588f2e6823e44da199dbb18303be141e9b9e8a7f5053f9157d2
+generated_at: 2026-04-14T14:05:24.056338+00:00
+source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
 # Work with staleness and maintenance
 
-Use the staleness and maintenance system when you need to detect which help templates are out of sync with their source code and regenerate outdated documentation.
+Use staleness and maintenance when you need to detect outdated help templates and automatically regenerate them to stay synchronized with source code changes.
 
 ## Prerequisites
 
 - Access to the project source code
-- Familiarity with `src/attune_author/staleness.py` and `src/attune_author/maintenance.py`
+- Familiarity with the files under `src/attune_author/staleness.py` and `src/attune_author/maintenance.py`
 
-## Check template staleness
+## Check for stale templates
 
-1. **Import the staleness module:**
+1. Call `check_staleness()` with your feature manifest, help directory, and project root:
+
    ```python
    from attune_author.staleness import check_staleness
-   from attune_author.manifest import FeatureManifest
+
+   report = check_staleness(manifest, "docs/help", ".")
    ```
 
-2. **Load the feature manifest:**
+2. Examine the `StalenessReport` to see which features are outdated:
+
    ```python
-   manifest = FeatureManifest.from_file("manifest.yaml")
+   print(f"Stale features: {report.stale_features}")
+   print(f"Total stale: {report.stale_count}")
    ```
 
-3. **Run the staleness check:**
-   ```python
-   report = check_staleness(manifest, "help", ".", features=["your-feature"])
-   ```
+The report shows `True` for `is_stale` when a feature's current source hash differs from its stored hash.
 
-4. **Review the results:**
-   Check `report.stale_count()` and `report.stale_features()` to see which templates need regeneration.
+## Run maintenance to regenerate templates
 
-## Run maintenance to update stale templates
+1. Execute `run_maintenance()` to check staleness and regenerate outdated templates:
 
-1. **Import the maintenance module:**
    ```python
    from attune_author.maintenance import run_maintenance
+
+   result = run_maintenance("docs/help", ".", features=["my-feature"])
    ```
 
-2. **Run maintenance with dry-run first:**
+2. Check the results to verify what was updated:
+
    ```python
-   result = run_maintenance("help", ".", dry_run=True)
-   print(f"Would regenerate {result.stale_count()} templates")
+   print(f"Regenerated: {result.regenerated_count} templates")
+   print(f"Failed: {result.failed}")
    ```
 
-3. **Execute the actual maintenance:**
+3. Use `dry_run=True` to preview changes without writing files:
+
    ```python
-   result = run_maintenance("help", ".", dry_run=False)
-   print(f"Regenerated {result.regenerated_count()} templates")
+   result = run_maintenance("docs/help", ".", dry_run=True)
    ```
+
+You know maintenance succeeded when `result.failed` is empty and `regenerated_count` matches your expectations.
 
 ## Set up automatic maintenance with git hooks
 
-1. **Configure the post-commit hook:**
+1. Configure the post-commit hook to run maintenance automatically:
+
    ```python
    from attune_author.maintenance import run_hook
-   result = run_hook("help", ".")
+
+   # In your git post-commit hook
+   result = run_hook("docs/help", ".")
    ```
 
-2. **Add to your `.git/hooks/post-commit` file:**
-   ```bash
-   #!/bin/bash
-   python -c "from attune_author.maintenance import run_hook; run_hook('help', '.')"
-   ```
+2. The hook only processes features whose source files changed in the most recent commit.
 
-3. **Make the hook executable:**
-   ```bash
-   chmod +x .git/hooks/post-commit
-   ```
-
-## Verify success
-
-Your maintenance is working correctly when:
-- `check_staleness()` returns a report with `stale_count() == 0`
-- `run_maintenance()` returns a result showing the expected number of regenerated templates
-- Git hooks automatically update templates after commits that modify source files
+3. Verify the hook works by making a source change and committing — check that related help templates update automatically.
 
 ## Key files
 
-- `src/attune_author/staleness.py` — Core staleness detection logic
-- `src/attune_author/maintenance.py` — Template regeneration and git hook integration
+- `src/attune_author/staleness.py` — Staleness detection and hash computation
+- `src/attune_author/maintenance.py` — Template regeneration and git hook logic

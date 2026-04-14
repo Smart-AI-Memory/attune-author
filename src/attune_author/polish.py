@@ -238,6 +238,55 @@ __all__ = [
 ]
 
 
+#: Character cap for a single return-data block in the polish
+#: prompt. Sized to comfortably fit a realistic MCP tool-schema
+#: dump (6 tools × ~500 chars ≈ 3.5 KB) with headroom; kept
+#: bounded so a pathological literal can't dominate the prompt.
+_RETURN_DATA_MAX_CHARS = 8000
+
+
+def _format_return_data(value: object, indent: int = 0) -> str:
+    """Render a literal-return value as indented YAML-like text.
+
+    The output is meant to be fed to the polish LLM as context, so it
+    favors compactness and readability over round-trippable syntax.
+    Dicts and lists are rendered with two-space indentation; scalars
+    use their ``repr``. The whole rendering is length-capped so a
+    large tool-schema dict can't dominate the prompt.
+    """
+    out = _format_return_data_inner(value, indent)
+    if len(out) > _RETURN_DATA_MAX_CHARS:
+        out = out[:_RETURN_DATA_MAX_CHARS] + "\n... (truncated)"
+    return out
+
+
+def _format_return_data_inner(value: object, indent: int = 0) -> str:
+    pad = "  " * indent
+    if isinstance(value, dict):
+        if not value:
+            return pad + "{}"
+        lines: list[str] = []
+        for key, val in value.items():
+            if isinstance(val, dict | list):
+                lines.append(f"{pad}{key!r}:")
+                lines.append(_format_return_data_inner(val, indent + 1))
+            else:
+                lines.append(f"{pad}{key!r}: {val!r}")
+        return "\n".join(lines)
+    if isinstance(value, list):
+        if not value:
+            return pad + "[]"
+        lines = []
+        for item in value:
+            if isinstance(item, dict | list):
+                lines.append(f"{pad}-")
+                lines.append(_format_return_data_inner(item, indent + 1))
+            else:
+                lines.append(f"{pad}- {item!r}")
+        return "\n".join(lines)
+    return pad + repr(value)
+
+
 def build_source_summary(
     public_classes: list[dict[str, str]],
     public_functions: list[dict[str, str]],
@@ -245,6 +294,7 @@ def build_source_summary(
     file_count: int,
     function_signatures: list[dict[str, str]] | None = None,
     class_signatures: list[dict[str, str]] | None = None,
+    module_constants: list[dict[str, object]] | None = None,
 ) -> str:
     """Build a concise source summary for the polish prompt.
 
@@ -311,6 +361,16 @@ def build_source_summary(
                 if field_default:
                     line += f" = {field_default}"
                 parts.append(line)
+            for prop in cls.get("properties", []) or []:
+                prop_name = prop.get("name", "")
+                prop_type = prop.get("return_type", "")
+                prop_doc = prop.get("doc", "")
+                line = f"      property: {prop_name}"
+                if prop_type:
+                    line += f" -> {prop_type}"
+                if prop_doc:
+                    line += f"  # {prop_doc}"
+                parts.append(line)
 
     functions = function_signatures or [
         {
@@ -334,11 +394,35 @@ def build_source_summary(
                 header = f"{header} — {doc}"
             parts.append(header)
             raises = fn.get("raises") or []
-            if raises:
-                parts.append(f"      raises: {', '.join(raises)}")
+            for r in raises:
+                class_name = r.get("class_name", "") if isinstance(r, dict) else r
+                message = r.get("message", "") if isinstance(r, dict) else ""
+                if message:
+                    parts.append(f"      raises: {class_name} — {message!r}")
+                else:
+                    parts.append(f"      raises: {class_name}")
             param_literals = fn.get("param_literals") or {}
             for pname, values in param_literals.items():
                 parts.append(f"      {pname} allowed values: {', '.join(values)}")
+            return_data = fn.get("return_data")
+            if return_data is not None:
+                parts.append("      returns (literal data — render this content in the reference):")
+                rendered = _format_return_data(return_data)
+                for line in rendered.splitlines():
+                    parts.append(f"        {line}")
+
+    if module_constants:
+        parts.append("")
+        parts.append("Module constants (string values; includes underscore-prefixed):")
+        for const in module_constants[:20]:
+            name = const.get("name", "")
+            kind = const.get("kind", "")
+            values = const.get("values", [])
+            if kind == "str":
+                parts.append(f"  - {name} ({kind}) = {values[0]!r}")
+            else:
+                rendered = ", ".join(repr(v) for v in values)
+                parts.append(f"  - {name} ({kind}) = {{{rendered}}}")
 
     parts.append("")
     parts.append(f"Total source files: {file_count}")

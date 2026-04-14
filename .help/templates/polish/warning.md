@@ -2,8 +2,8 @@
 type: warning
 feature: polish
 depth: warning
-generated_at: 2026-04-11T04:48:41.260957+00:00
-source_hash: 024a299e9a8252b83e070c5a5297e1292dd243dcf298bae31fb8dc0
+generated_at: 2026-04-14T14:00:02.214737+00:00
+source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
 status: generated
 ---
 
@@ -11,32 +11,35 @@ status: generated
 
 ## What to watch for
 
-The polish feature rewrites generated documentation using LLM calls, which can fail unpredictably or produce inconsistent output when source information is incomplete.
+The polish feature uses LLM calls to rewrite generated templates, which introduces several failure modes that can break your documentation build or produce incorrect output.
 
 ## Risk areas
 
-**LLM failures in strict mode**
-When `polish_template()` runs with `strict=True` (the default), API failures or malformed responses raise `PolishError` instead of returning the original content. This can break automated workflows that expect polish to always succeed.
+### LLM API failures break the build in strict mode
 
-**Incomplete source summaries**
-`build_source_summary()` constructs the context that guides the polish pass. If you pass empty or minimal data (missing docstrings, incomplete function signatures), the LLM may hallucinate features or produce generic advice that doesn't match your actual code.
+When `polish_template()` runs with `strict=True` (the default in CI environments), any Anthropic API error raises `PolishError` and stops your build. Network timeouts, rate limits, and invalid API keys all trigger this behavior.
 
-**Template type mismatches**
-`get_system_prompt()` returns different instructions for each template type (warning, guide, reference, etc.). Using the wrong type can result in content that follows the wrong format or answers the wrong questions for your documentation needs.
+**Mitigation:** Set `ATTUNE_AUTHOR_STRICT_POLISH=false` in environments where you prefer degraded output over build failures. The function will return the unpolished template instead of raising an exception.
+
+### Template type mismatches produce irrelevant output
+
+The `get_system_prompt()` function returns different prompts for 'reference', 'tutorial', 'warning', and other template types. If you pass the wrong `template_type` to `polish_template()`, the LLM will follow inappropriate instructions—for example, trying to add code examples to a warning page.
+
+**Mitigation:** Ensure your `template_type` parameter matches the actual template structure. The type should align with the template's intended purpose, not its file extension or location.
+
+### Source summaries can exceed LLM context limits
+
+The `build_source_summary()` function concatenates module docstrings, function signatures, and class definitions. For large codebases, this summary may exceed the LLM's context window, causing truncated or failed requests.
+
+**Mitigation:** Monitor the length of generated summaries, especially when documenting modules with many public functions. Consider filtering or summarizing the input data before passing it to `build_source_summary()`.
 
 ## How to avoid problems
 
-1. **Handle polish failures gracefully.** Set `strict=False` when polish is optional, or catch `PolishError` and fall back to the original template:
-   ```python
-   try:
-       polished = polish_template(content, "myfeature", summary, strict=True)
-   except PolishError:
-       polished = content  # Use original on failure
-   ```
+1. **Test API connectivity early.** Run `polish_template()` with a minimal example before integrating it into your build pipeline. Verify that your Anthropic API key works and has sufficient quota.
 
-2. **Verify source summaries before polishing.** Check that `build_source_summary()` includes meaningful docstrings and function signatures. Empty summaries lead to generic, unhelpful output.
+2. **Match template types precisely.** Double-check that your `template_type` parameter corresponds to the content structure. A mismatch will waste API calls and produce confusing documentation.
 
-3. **Match template types to content.** Ensure the `template_type` parameter matches what you're actually generating. A reference template polished as a guide will have the wrong structure and tone.
+3. **Monitor context length.** For modules with more than 20-30 public functions, check the output of `build_source_summary()` before sending it to the LLM. Large summaries may need manual curation.
 
 ## Source files
 

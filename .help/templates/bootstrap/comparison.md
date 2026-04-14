@@ -2,8 +2,8 @@
 type: comparison
 feature: bootstrap
 depth: comparison
-generated_at: 2026-04-11T04:53:01.491703+00:00
-source_hash: ba3e45edbaf44fba671f221a61e39cae7381b0b1c8ce9a02129f76b20bc6f331
+generated_at: 2026-04-14T14:04:59.815483+00:00
+source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
 
@@ -11,44 +11,47 @@ status: generated
 
 ## Context
 
-When starting a new project, you need a feature manifest that defines your project's structure. You have two approaches: use the bootstrap scanner to generate proposals automatically, or create the manifest by hand.
+When starting a new project with attune-author, you need a feature manifest that describes your codebase structure. You can either use the bootstrap scanner to generate initial proposals automatically, or create the manifest file manually from scratch.
 
 ## Feature comparison
 
 | Aspect | Bootstrap scanner | Manual creation |
 |--------|------------------|-----------------|
-| **Setup time** | ~30 seconds to scan and review | 15-60 minutes depending on project size |
-| **Accuracy** | Catches standard Python patterns reliably | Perfect for your specific needs |
-| **Customization** | Generates proposals you then modify | Full control from the start |
-| **Learning curve** | Minimal — review and accept/reject | Requires understanding manifest format |
-| **Maintenance** | Re-scan when structure changes | Update by hand when structure changes |
+| **Setup time** | ~30 seconds to scan and review | 15-45 minutes depending on project size |
+| **Accuracy** | Finds obvious patterns (entry points, configs) but may miss domain-specific features | Perfect accuracy for your specific use case |
+| **Coverage** | Scans standard directories, skips build artifacts and version control | You control exactly what gets included |
+| **Maintenance** | Re-run when project structure changes significantly | Update manifest as you add features |
+| **Learning curve** | Immediate results, inspect output to understand manifest format | Requires understanding manifest schema upfront |
 
-## Use bootstrap when
+## Use bootstrap when...
 
-- **Starting fresh**: You have an existing Python project but no feature manifest yet
-- **Following conventions**: Your project uses standard Python package layouts that the scanner recognizes
-- **Want speed**: You prefer to review generated proposals rather than write from scratch
-- **Exploring structure**: You're not sure what features your project needs and want suggestions
+- You're starting fresh with an existing codebase
+- Your project follows standard Python conventions (has `main.py`, `config.py`, typical directory structure)
+- You want to understand what a feature manifest looks like before writing your own
+- You're prototyping or exploring the attune-author workflow
 
-The scanner works best on projects with clear directory boundaries and conventional Python packaging.
+The scanner recognizes common entry points like `main.py`, `app.py`, and `cli.py`, plus configuration patterns containing "config", "settings", or "conf". It automatically skips build directories, caches, and version control folders.
 
-## Use manual creation when
+## Use manual creation when...
 
-- **Non-standard layout**: Your project structure doesn't match typical Python patterns
-- **Specific requirements**: You need exact control over feature definitions from the start
-- **Small scope**: You're creating a simple manifest with just 2-3 features
-- **Learning the system**: You want to understand the manifest format in detail
+- Your project has unconventional structure that automated scanning won't understand
+- You need fine-grained control over feature definitions and confidence levels
+- You're working with a domain-specific codebase (embedded systems, data science notebooks, etc.)
+- You want to define features that don't correspond to file boundaries
 
-Manual creation gives you precise control but requires more upfront knowledge of the manifest schema.
+Manual creation gives you complete control over the `ProposedFeature` fields: name, description, associated files, tags, confidence level, and reasoning.
 
 ## Recommended workflow
 
-1. **Start with bootstrap**: Run `scan_project()` to get initial proposals
-2. **Review and modify**: Accept useful proposals, reject irrelevant ones
-3. **Convert to manifest**: Use `proposals_to_manifest()` to create your starting point
-4. **Refine manually**: Edit the generated manifest to match your exact needs
+Start with bootstrap scanning to get a foundation, then manually refine the results:
 
-This hybrid approach combines the speed of automation with the precision of manual tuning.
+1. Run `scan_project()` on your project root
+2. Review the generated `ProposedFeature` objects for accuracy
+3. Edit confidence levels, descriptions, and tags as needed
+4. Use `proposals_to_manifest()` to generate your initial manifest
+5. Maintain the manifest manually as your project evolves
+
+This hybrid approach gets you started quickly while ensuring the final result matches your project's reality.
 
 ## Source files
 

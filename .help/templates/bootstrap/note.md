@@ -2,8 +2,8 @@
 type: note
 feature: bootstrap
 depth: note
-generated_at: 2026-04-11T04:52:54.090042+00:00
-source_hash: ba3e45edbaf44fba671f221a61e39cae7381b0b1c8ce9a02129f76b20bc6f331
+generated_at: 2026-04-14T14:04:52.652295+00:00
+source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
 
@@ -11,19 +11,15 @@ status: generated
 
 ## Context
 
-The bootstrap feature scans Python projects to automatically propose an initial feature manifest. It analyzes directory structure and package layout to suggest logical feature boundaries, reducing the manual work needed to set up attune-author for a new project.
+The bootstrap feature automatically discovers project structure and generates an initial feature manifest. It scans directories and files to identify potential features based on common Python project patterns.
 
 ## Content
 
-Bootstrap provides a two-step workflow for generating feature manifests:
+Bootstrap uses a two-step process: scanning and manifest generation. The `scan_project()` function walks the project directory, skipping common non-source directories like `.git`, `__pycache__`, and `node_modules`. It identifies potential features by recognizing entry point files (`main.py`, `app.py`, `cli.py`, etc.) and configuration patterns (`config`, `settings`, `conf`).
 
-1. **Project scanning** — `scan_project()` traverses your project directory and returns a list of `ProposedFeature` objects based on discovered packages, modules, and directory patterns.
+Each discovered feature becomes a `ProposedFeature` with a name, description, associated files, tags, and confidence level. The scanner assigns confidence ratings based on how clearly it can identify the feature's purpose from file names and directory structure.
 
-2. **Manifest generation** — `proposals_to_manifest()` takes the proposed features (after you review and filter them) and converts them into a `FeatureManifest` that attune-author can use.
-
-The `ProposedFeature` class represents a potential feature discovered during scanning. Each instance contains information about the feature's scope, suggested name, and the files or directories it would encompass.
-
-This approach lets you quickly bootstrap a new project while maintaining control over the final feature boundaries through the proposal review step.
+The `proposals_to_manifest()` function converts the list of proposed features into a `FeatureManifest` that can be saved as the project's initial documentation structure.
 
 ## Source files
 

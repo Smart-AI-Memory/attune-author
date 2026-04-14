@@ -2,8 +2,8 @@
 type: quickstart
 feature: preamble
 depth: quickstart
-generated_at: 2026-04-11T04:56:21.860331+00:00
-source_hash: 3e02ceee37af71750f50dd40ecd95359ea5c4aaf1a1a7e50691cfb6250d133b0
+generated_at: 2026-04-14T14:08:27.187006+00:00
+source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
 
@@ -12,37 +12,44 @@ status: generated
 ```python
 from attune_author.preamble import get_preamble
 
-preamble = get_preamble("auth")
+preamble = get_preamble("authentication")
 print(preamble)
-# Output: "Handle user authentication and session management"
 ```
 
 ## Prerequisites
 
-- The project is cloned and installed locally
+- Python environment with `attune_author` installed
+- Access to help documentation files (optional for basic usage)
 
-## Get your first preamble
+## Steps
 
-1. **Import the function:**
+1. **Import the preamble module** and call `get_preamble()` with any feature name:
+
    ```python
    from attune_author.preamble import get_preamble
-   ```
 
-2. **Request a preamble for any feature:**
-   ```python
-   preamble = get_preamble("database")
+   preamble = get_preamble("authentication")
    print(preamble)
    ```
 
-3. **Find related features:**
+   Expected output: A one-line description of the authentication feature, or `None` if no preamble exists.
+
+2. **Find related features** using shared tags:
+
    ```python
    from attune_author.preamble import get_related_preambles
 
-   related = get_related_preambles("database", max_results=3)
+   related = get_related_preambles("authentication", max_results=3)
    for item in related:
        print(f"{item['feature']}: {item['preamble']}")
    ```
 
-You'll see one-line descriptions that provide context for each workflow skill based on your project's current state.
+   Expected output: Up to 3 feature names with their preambles, related by common tags.
 
-**Next:** Check the concept page to learn how preambles adapt to your project's activity patterns.
+3. **Specify a custom help directory** if your documentation lives elsewhere:
+
+   ```python
+   preamble = get_preamble("workflow", help_dir="/path/to/docs")
+   ```
+
+**Next:** Read the concept guide to understand how preambles are generated from feature metadata.

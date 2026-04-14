@@ -2,13 +2,21 @@
 type: tip
 feature: polish
 depth: tip
-generated_at: 2026-04-11T04:49:26.160278+00:00
-source_hash: 024a299e9a8252b83e070c5a5297e1292dd243e8eddc631dcf298bae31fb8dc0
+generated_at: 2026-04-14T14:00:51.150314+00:00
+source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
 status: generated
 ---
 
-# Use strict mode when polish quality matters
+# Tip: working effectively with polish
 
-Enable strict mode in `polish_template()` to catch LLM failures early rather than silently accepting low-quality output. This raises `PolishError` when the polish pass produces malformed or off-topic content, letting you retry or fall back to the original template.
+## Recommendation
 
-The tradeoff is slower execution since you'll need to handle failures, but strict mode prevents publishing broken documentation when the LLM has a bad day.
+Use `build_source_summary()` to create grounded prompts before calling `polish_template()`. The polish system relies on accurate source summaries to avoid hallucinating features that don't exist in your code.
+
+## Why
+
+Raw generated templates often contain generic advice like "follow existing patterns" — the source summary gives the LLM concrete patterns to reference instead, producing documentation that matches your actual API.
+
+## Tradeoff
+
+Building comprehensive source summaries adds overhead to the polish pass, but skipping this step typically produces bland, unhelpful output that reads like filler content.

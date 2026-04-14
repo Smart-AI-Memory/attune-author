@@ -2,28 +2,29 @@
 type: concept
 feature: preamble
 depth: concept
-generated_at: 2026-04-12T04:19:48.399274+00:00
+generated_at: 2026-04-14T14:07:21.835547+00:00
 source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
 
 # Preamble
 
-A preamble is a one-line description that appears at the start of workflow skills to provide context about what the skill does and when to use it.
+Preambles are one-line descriptions that provide context-sensitive summaries of workflow skills based on your project's current state and recent activity.
 
-## How preambles work
+## Core functionality
 
-The preamble system generates context-sensitive descriptions by matching feature names to stored one-liners. When you request a preamble for a specific feature, the system looks up the corresponding description and returns it as a string.
+When you're working with workflow skills, preambles help you quickly understand what each feature does and find related capabilities. The system delivers these brief explanations through two key operations:
 
-For example, if you request a preamble for a "code review" feature, you might get back "Analyze code changes for quality, security, and maintainability issues."
+- **Feature lookup** — `get_preamble()` retrieves the contextual description for any specific feature
+- **Related feature discovery** — `get_related_preambles()` finds up to three features with shared tags, helping you explore connected functionality
 
-## Related feature discovery
+## Integration points
 
-Beyond individual preambles, the system can find features that share common tags or purposes. When you call `get_related_preambles()`, it returns up to three related features along with their preambles. This helps users discover workflow skills that work well together.
+Other parts of the system access preamble functionality through these entry points:
 
-## Core functions
+| Function | Purpose | File |
+|----------|---------|------|
+| `get_preamble()` | Get the one-liner preamble for a feature. | `src/attune_author/preamble.py` |
+| `get_related_preambles()` | Get preambles for features related by shared tags. | `src/attune_author/preamble.py` |
 
-- **`get_preamble()`** — Retrieves the one-line description for a specific feature
-- **`get_related_preambles()`** — Finds up to three related features and their descriptions based on shared tags
-
-Both functions accept an optional `help_dir` parameter to specify where preamble data is stored, defaulting to the standard help directory location.
+The preamble system connects to context analysis, content rendering, and workflow management components to deliver relevant, timely descriptions.

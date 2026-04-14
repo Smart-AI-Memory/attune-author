@@ -13,16 +13,72 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
-### Added
+## [0.3.8] - 2026-04-14
 
+### Added (0.3.8)
+
+- **Diagnostic-stem extraction for `raises`** — the AST
+  extractor now captures the literal exception message
+  (e.g. `'Invalid feature name: {...}'`) alongside the
+  exception class, so reference templates surface the
+  grep-able error text users actually see when debugging.
+  Handles plain string literals and f-strings (computed
+  parts rendered as `{...}`). Same function raising the
+  same class with different messages now yields one entry
+  per distinct message.
+- **Module-constants extraction** — module-level list /
+  tuple / set literals of strings (e.g. `_FALSY`,
+  `_UNSAFE_NAME_TOKENS`) are now extracted into
+  `_SourceInfo.module_constants` and fed into the polish
+  prompt. Reference pages render an Allowed-values / Constants
+  table instead of summarizing the members in prose —
+  underscore-prefixed names are rendered because what users
+  need to know is the *values*, not the leading underscore.
+- **`@property` extraction** — class-level `@property`
+  accessors are extracted separately from methods so
+  reference pages render a dedicated Properties table
+  (`Property | Type | Description`, no parentheses) rather
+  than misrepresenting them as zero-arg methods.
+- **Literal return-data rendering for tool-schema factories**
+  — functions that return a dict of descriptors (`get_tools`,
+  any `get_commands`-shaped factory) have that structure
+  rendered into the polish prompt as indented YAML-like text
+  (8 KB cap), so reference pages present one sub-section
+  per tool with Parameters / Fields tables instead of a
+  generic "returns a dict" summary.
+- **v0.3.8 hallucination benchmark** —
+  `benchmarks/hallucination-v0.3.8/` with the full question /
+  context / answer / judgment set against the current
+  generator. `benchmarks/hallucination-v0.3.7/` archived
+  for regression comparison.
 - **Weekly cross-repo compat CI** — new
   `.github/workflows/cross-repo-compat.yml` installs
   attune-help from its `main` branch every Monday and runs
   this repo's test suite against it. First `tests`-style
   workflow in the repo; also triggerable on demand.
 
-### Changed
+### Changed (0.3.8)
 
+- **Polish prompt tightened around accuracy requirements**
+  — explicit rules now require: Returns columns for any
+  function with an annotated return type (full type
+  preserved — no prose summaries of `tuple[str, list[str]]`);
+  Parameters columns preserving defaults and `Literal[...]`
+  enum values verbatim; Raises columns rendering the
+  diagnostic stem when source info provides it; Fields
+  tables for dataclasses; Properties tables for `@property`
+  accessors; Constants / Allowed-values tables for
+  module-level string collections. Closes the remaining
+  hallucination gaps the v0.3.6 benchmark surfaced.
+- **60+ reference / task / concept templates regenerated**
+  under `.help/templates/**` against the grounded polish
+  prompt and the new source extraction.
+- **README rewritten** to lead with the dynamic,
+  context-sensitive help framing — manifest-driven,
+  source-hash-tracked, progressively-rendered help rather
+  than a static docs generator. Feature list re-grouped
+  around progressive depth, context-sensitive delivery,
+  and grounded generation.
 - **`attune-help` dependency upper-capped** — now
   `>=0.5.1,<0.6` (was `>=0.5.1`), with an inline comment
   documenting the schema-contract rationale
@@ -32,11 +88,15 @@ changes land, not at tag time.
   `attune-ai` monorepo. Added `Changelog` and `Issues`
   URLs.
 
-### In flight
+### Tests (0.3.8)
 
-- v0.3.8 hallucination benchmark suite (see
-  `benchmarks/hallucination-v0.3.8/`) and any reference-template
-  regenerations that come out of it.
+- **Source-extractor coverage** — 273 new lines in
+  `tests/test_source_extractors.py` covering the new
+  raises-message, module-constants, and `@property`
+  extraction paths, plus f-string message rendering and
+  duplicate-pair collapsing.
+- `tests/test_dogfood_help.py` updated to match the new
+  source-info shape.
 
 ## [0.3.7] - 2026-04-14
 

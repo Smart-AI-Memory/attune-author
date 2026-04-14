@@ -2,8 +2,8 @@
 type: comparison
 feature: preamble
 depth: comparison
-generated_at: 2026-04-11T04:56:39.197188+00:00
-source_hash: 3e02ceee37af71750f50dd40ecd95359ea5c4aaf1a1a7e50691cfb6250d133b0
+generated_at: 2026-04-14T14:08:46.849600+00:00
+source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
 
@@ -11,40 +11,41 @@ status: generated
 
 ## Context
 
-The preamble feature provides context-sensitive one-liners that summarize what workflow skills do based on your project's current state and recent activity. It helps you orient yourself when switching between tasks or onboarding new team members.
-
-## Feature comparison
-
-| Feature | Primary use | Output format | Context awareness | Best for |
-|---------|-------------|---------------|-------------------|----------|
-| **preamble** | Contextual skill summaries | Single-line descriptions | Yes - adapts to project state | Quick orientation, skill discovery |
-| Other help features | Static documentation | Multi-line explanations | No - same content always | Detailed learning, reference |
+The preamble feature generates context-sensitive one-liner descriptions for workflow skills. It analyzes project state and recent activity to provide relevant contextual information that helps users understand what each skill does in their current situation.
 
 ## When to use preamble
 
-Use preamble when you need quick, contextual summaries of what workflow skills do:
+Use preamble when you need dynamic, contextual descriptions for workflow features that adapt to the user's current project state. This feature excels at providing just-in-time information that's more relevant than static documentation.
 
-- **Rapid task switching** — Get oriented on what a skill does without reading full documentation
-- **Skill discovery** — Find related skills through `get_related_preambles()` when exploring workflow options
-- **Dynamic help systems** — Build interfaces that show relevant skills based on current project context
+Key capabilities that make preamble the right choice:
 
-The API provides two focused entry points:
-- `get_preamble()` — Returns a one-liner description for a specific skill
-- `get_related_preambles()` — Returns up to 3 related skills based on shared tags
+- `get_preamble()` — Retrieves a single contextual one-liner for a specific feature
+- `get_related_preambles()` — Finds up to 3 related features based on shared tags, useful for discovery
 
 ## When NOT to use preamble
 
-Preamble has a narrow scope that makes it unsuitable for several scenarios:
+Preamble has specific limitations that make it unsuitable for certain use cases:
 
-- **Detailed documentation needs** — Preambles are one-liners only; use full help features for comprehensive guides
-- **Static content generation** — The context-sensitivity requires runtime calls; pre-generated docs should use other help features
-- **Complex workflow orchestration** — Preambles describe individual skills but don't coordinate multi-step processes
+- **Static documentation needs** — If you need comprehensive, unchanging feature descriptions, use dedicated help files instead
+- **Bulk operations** — The API is designed for individual feature lookups, not batch processing of many features at once
+- **Complex contextual logic** — If you need sophisticated context analysis beyond project state and tags, you'll need a custom solution
+- **Non-workflow features** — Preamble is specifically designed for workflow skills, not general project components
 
-## Recommendations
+## Feature comparison
 
-**Use preamble when** you need contextual, bite-sized descriptions that adapt to your project's current state. It excels at helping you quickly understand what skills are available and relevant right now.
+| Aspect | Preamble | Static help files | Custom context logic |
+|--------|----------|------------------|---------------------|
+| **Context awareness** | Dynamic based on project state | Fixed content | Fully customizable |
+| **Performance** | Fast single lookups | Instant | Depends on implementation |
+| **Maintenance** | Automatic updates | Manual editing required | Custom maintenance burden |
+| **Scope** | Workflow skills only | Any documentation | Unlimited |
+| **Discovery** | Built-in related features | Manual cross-references | Custom relationship logic |
 
-**Use other help features when** you need detailed explanations, static documentation, or comprehensive guides that don't change based on context.
+## Use preamble when...
+
+You need contextual, adaptive descriptions for workflow skills that help users understand what's relevant to their current project situation. Preamble is particularly valuable in interactive environments where users need quick, relevant information without diving into full documentation.
+
+Choose alternatives when you need static comprehensive documentation, bulk processing capabilities, or context logic that goes beyond the built-in project state analysis.
 
 ## Source files
 

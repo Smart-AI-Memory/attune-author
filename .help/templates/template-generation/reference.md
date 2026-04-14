@@ -2,8 +2,8 @@
 type: reference
 feature: template-generation
 depth: reference
-generated_at: 2026-04-12T04:18:15.645794+00:00
-source_hash: fac9c2bf60f422bb00b839a6c2ae022747745371b4a85621dd89daba9515f706
+generated_at: 2026-04-14T13:57:51.712003+00:00
+source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
 
@@ -11,21 +11,50 @@ status: generated
 
 ## Classes
 
-| Class | Description |
-|-------|-------------|
-| `GeneratedTemplate` | Represents the result of generating a single template file |
-| `GenerationResult` | Contains the results of generating all templates for a feature |
+### GeneratedTemplate
+
+Result of generating one template file.
+
+| Field | Type | Default |
+|-------|------|---------|
+| feature | str | |
+| depth | str | |
+| path | Path | |
+| source_hash | str | |
+
+### GenerationResult
+
+Result of generating templates for a feature.
+
+| Field | Type | Default |
+|-------|------|---------|
+| feature | str | |
+| templates | list[GeneratedTemplate] | field(default_factory=list) |
+| source_hash | str | '' |
+| matched_files | list[str] | field(default_factory=list) |
 
 ## Functions
 
-| Function | Description | Parameters |
-|----------|-------------|------------|
-| `generate_feature_templates()` | Generates help templates for a feature from source code analysis | `feature` (Feature), `help_dir` (str \| Path), `project_root` (str \| Path), `depths` (list[str] \| None), `overwrite` (bool) |
+| Function | Parameters | Returns | Raises |
+|----------|------------|---------|---------|
+| `generate_feature_templates` | feature: Feature, help_dir: str \| Path, project_root: str \| Path, depths: list[str] \| None = None, overwrite: bool = False | GenerationResult | ValueError — 'Invalid feature name: {...}' |
 
-## Source files
+## Constants
 
-- `src/attune_author/generator.py`
+### Core depth names
 
-## Tags
+| Constant | Values |
+|----------|--------|
+| `_CORE_DEPTH_NAMES` | 'concept', 'task', 'reference' |
 
-`generation`, `jinja2`, `ast`, `meta-templates`
+### Problem template names
+
+| Constant | Values |
+|----------|--------|
+| `_PROBLEM_TEMPLATE_NAMES` | 'error', 'warning', 'troubleshooting', 'faq' |
+
+### Guidance template names
+
+| Constant | Values |
+|----------|--------|
+| `_GUIDANCE_TEMPLATE_NAMES` | 'quickstart', 'tip', 'note', 'comparison' |

@@ -105,6 +105,15 @@ Targets for this kind:
 Accuracy requirements — these are NOT optional when the
 source info contains the data:
 
+- Function tables MUST have a `Returns` column whenever
+  any function in the feature has a declared return type.
+  Render the full type exactly as in the signature —
+  including tuple types like `tuple[str, list[str]]` and
+  union types like `str | None`. Never summarize a return
+  type in prose elsewhere when the actual annotation is
+  available; prose renderings like "returns a SHA-256
+  hash" for a function annotated `-> tuple[str, list[str]]`
+  drop information callers depend on
 - Function tables MUST include a Parameters column that
   preserves every argument name and its default value
   exactly as shown in the signature. If the signature in
@@ -117,13 +126,47 @@ source info contains the data:
   string values, not just the type name
 - When a function has a `raises:` line in source info,
   render a Raises column or a per-function Raises
-  subsection naming each exception class. Never drop this
-  information
+  subsection naming each exception class. When the source
+  info also gives a quoted message (e.g., `raises:
+  ValueError — 'Invalid feature name: {...}'`), render
+  that diagnostic stem in a separate column or sub-line
+  so readers can grep the actual error text; `{...}` is
+  the conventional placeholder for interpolated values.
+  Never drop this information
 - When a class is tagged `[dataclass]` in source info,
   emit a Fields table with columns `Field | Type |
   Default` covering every field listed. Dataclass field
   lists are the primary thing users look up about a
   dataclass — never replace them with prose
+- When source info contains a `Module constants` section,
+  include a Constants or Allowed values table listing
+  each named constant and its members. Underscore-prefixed
+  names (e.g. `_UNSAFE_NAME_TOKENS`, `_FALSY`) ARE to be
+  rendered when the constant's values are what users need
+  to know — "what strings turn off strict mode?" is
+  answered by the members of `_FALSY`, so the constant
+  must appear in the reference. Strip the leading
+  underscore in the rendered heading if you prefer, but
+  preserve the exact string members and the real name
+  in the table
+- When a function's source-info entry has a
+  `returns (literal data — render this content in the reference):`
+  block, the data under that block IS the function's output
+  shape. The reference MUST present it — for tool-schema
+  factories (`get_tools`, `get_commands`, anything that
+  returns a dict of descriptors), render one sub-section
+  per top-level key with a Parameters or Fields table
+  that preserves argument names, types, defaults, enum
+  values, and which keys are `required`. Never summarize
+  a tool-schema dict as prose when the literal structure
+  is available
+- When a class has entries under `property:` in source
+  info (emitted by the @property extractor), render them
+  in a separate Properties table with columns `Property |
+  Type | Description` — WITHOUT parentheses. Properties
+  are accessed as attributes (``report.stale_count``),
+  not called as methods (``report.stale_count()``). Never
+  emit a property in a Methods table
 """,
     "error": """\
 You are polishing an ERROR template. Error pages answer

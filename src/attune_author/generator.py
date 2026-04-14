@@ -284,6 +284,7 @@ def _maybe_polish(
         file_count=source_info.file_count,
         function_signatures=source_info.function_signatures or None,
         class_signatures=source_info.class_signatures or None,
+        module_constants=source_info.module_constants or None,
     )
 
     return polish_template(
@@ -341,6 +342,7 @@ class _SourceInfo:
     file_count: int = 0
     function_signatures: list[dict[str, str]] = field(default_factory=list)
     class_signatures: list[dict[str, str]] = field(default_factory=list)
+    module_constants: list[dict[str, object]] = field(default_factory=list)
 
 
 def _docstring_first_line(node: ast.AST) -> str:
@@ -367,24 +369,71 @@ def _exception_name(exc: ast.expr) -> str | None:
     return None
 
 
-def _extract_raises(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
-    """Exception class names raised in a function body, in source order.
+def _raise_message(exc: ast.expr) -> str:
+    """Return the literal message text of a ``raise X(...)``, or "".
 
-    Walks the body for ``raise X(...)`` / ``raise X`` statements and
-    returns each unique class name once. Bare ``raise`` (re-raise)
-    statements are ignored because they rethrow whatever the current
-    exception handler caught — which is not a signature-level fact.
+    Handles three shapes:
+
+    - ``raise X("literal")`` → ``"literal"``
+    - ``raise X(f"Invalid name: {name!r}")`` → ``"Invalid name: {...}"``
+      (literal prefix preserved, computed parts replaced with ``{...}``
+      so the diagnostic stem callers grep for is still verifiable)
+    - Anything else (computed expression, variable, no args) → ``""``
+
+    The diagnostic stem is what reference pages want to surface:
+    ``"Invalid feature name:"`` is the part users recognize when
+    debugging, and it's verifiable from source.
+    """
+    if not isinstance(exc, ast.Call) or not exc.args:
+        return ""
+    first = exc.args[0]
+    if isinstance(first, ast.Constant) and isinstance(first.value, str):
+        return first.value
+    if isinstance(first, ast.JoinedStr):
+        parts: list[str] = []
+        for v in first.values:
+            if isinstance(v, ast.Constant) and isinstance(v.value, str):
+                parts.append(v.value)
+            else:
+                parts.append("{...}")
+        return "".join(parts)
+    return ""
+
+
+def _extract_raises(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[dict[str, str]]:
+    """Exceptions raised in a function body, in source order.
+
+    Returns a list of ``{"class_name", "message"}`` dicts — one
+    per unique (class_name, message) pair in source order. A single
+    function can raise the same exception class with several
+    different literal messages (e.g. ``validate_file_path`` raises
+    ``ValueError`` with a different diagnostic in each guard
+    clause); each distinct message becomes its own entry so the
+    rendered reference can list every diagnostic the caller might
+    see. Exact duplicate pairs within the same function are
+    collapsed.
+
+    Bare ``raise`` (re-raise) statements are ignored because they
+    rethrow whatever the current exception handler caught — which
+    is not a signature-level fact.
     """
     # Pre-order DFS via iter_child_nodes preserves source order;
     # ast.walk is BFS and would surface siblings before their
     # earlier-in-source nested statements.
-    seen: list[str] = []
+    seen: list[dict[str, str]] = []
+    seen_pairs: set[tuple[str, str]] = set()
 
     def visit(n: ast.AST) -> None:
         if isinstance(n, ast.Raise) and n.exc is not None:
             name = _exception_name(n.exc)
-            if name and name not in seen:
-                seen.append(name)
+            if name:
+                msg = _raise_message(n.exc)
+                pair = (name, msg)
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    seen.append({"class_name": name, "message": msg})
         for child in ast.iter_child_nodes(n):
             visit(child)
 
@@ -450,6 +499,144 @@ def _is_dataclass(node: ast.ClassDef) -> bool:
     return False
 
 
+def _string_collection_values(node: ast.expr) -> list[str] | None:
+    """Return the string values inside a list/tuple/set literal, or None.
+
+    Accepts ``["a", "b"]``, ``("a", "b")``, ``{"a", "b"}``. Returns
+    None if any element is not a string constant or the node is not
+    a supported collection literal — we deliberately don't surface
+    mixed-type collections since users ask about string enums.
+    """
+    if not isinstance(node, ast.List | ast.Tuple | ast.Set):
+        return None
+    out: list[str] = []
+    for elt in node.elts:
+        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+            out.append(elt.value)
+        else:
+            return None
+    return out
+
+
+def _extract_module_constant(node: ast.Assign | ast.AnnAssign) -> dict[str, object] | None:
+    """Return a structured record for a module-level string constant.
+
+    Recognizes four shapes that users routinely ask about:
+
+    - ``NAME = "value"``
+    - ``NAME = ("a", "b")`` / ``["a", "b"]`` / ``{"a", "b"}``
+    - ``NAME = frozenset({"a", "b"})`` / ``frozenset(["a", "b"])``
+    - ``NAME = set({"a", "b"})``
+
+    Returns ``{"name", "kind", "values"}`` where ``kind`` is one of
+    ``str`` / ``tuple`` / ``list`` / ``set`` / ``frozenset``, or
+    None if the shape is unrecognized. Non-string-valued constants
+    are intentionally skipped — those are runtime config, not the
+    string-enum-like constants this extractor surfaces.
+    """
+    if isinstance(node, ast.Assign):
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+            return None
+        name = node.targets[0].id
+        value = node.value
+    else:  # AnnAssign
+        if not isinstance(node.target, ast.Name) or node.value is None:
+            return None
+        name = node.target.id
+        value = node.value
+
+    if isinstance(value, ast.Constant) and isinstance(value.value, str):
+        return {"name": name, "kind": "str", "values": [value.value]}
+
+    if isinstance(value, ast.Tuple):
+        vals = _string_collection_values(value)
+        if vals is not None:
+            return {"name": name, "kind": "tuple", "values": vals}
+
+    if isinstance(value, ast.List):
+        vals = _string_collection_values(value)
+        if vals is not None:
+            return {"name": name, "kind": "list", "values": vals}
+
+    if isinstance(value, ast.Set):
+        vals = _string_collection_values(value)
+        if vals is not None:
+            return {"name": name, "kind": "set", "values": vals}
+
+    if isinstance(value, ast.Call):
+        func = value.func
+        call_name = None
+        if isinstance(func, ast.Name):
+            call_name = func.id
+        elif isinstance(func, ast.Attribute):
+            call_name = func.attr
+        if call_name in ("frozenset", "set") and len(value.args) == 1:
+            vals = _string_collection_values(value.args[0])
+            if vals is not None:
+                return {"name": name, "kind": call_name, "values": vals}
+    return None
+
+
+def _extract_return_data(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> object | None:
+    """Return the Python value of a function's literal return, or None.
+
+    Walks the function body in source order for the first ``return``
+    statement whose value is a fully-literal dict / list / tuple / set
+    / constant (handled via ``ast.literal_eval``). Surfaces
+    declarative-config factories — ``get_tools()``,
+    ``get_defaults()``, MCP-style tool-schema builders — so the
+    polish LLM can render the structure it returns rather than
+    hallucinating it from the signature alone. Returns ``None`` if
+    the first return is a computed expression (name reference,
+    function call, etc.) — we intentionally do not surface partial
+    or dynamic returns.
+    """
+    for child in node.body:
+        if not isinstance(child, ast.Return) or child.value is None:
+            continue
+        value = child.value
+        if not isinstance(value, ast.Dict | ast.List | ast.Tuple | ast.Set | ast.Constant):
+            return None
+        try:
+            return ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return None
+    return None
+
+
+def _extract_class_properties(node: ast.ClassDef) -> list[dict[str, str]]:
+    """Return ``[{name, return_type, doc}]`` for ``@property`` methods.
+
+    Only captures public properties. Parameterless by definition,
+    so no args surfaced. Recognizes the bare ``@property`` form and
+    the qualified ``@builtins.property`` / ``@abc.abstractproperty``
+    variants that show up in practice.
+    """
+    props: list[dict[str, str]] = []
+    for child in node.body:
+        if not isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        if child.name.startswith("_"):
+            continue
+        if not _has_property_decorator(child):
+            continue
+        ret = _unparse_annotation(child.returns) if child.returns else ""
+        props.append({"name": child.name, "return_type": ret, "doc": _docstring_first_line(child)})
+    return props
+
+
+def _has_property_decorator(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Check whether a method has a @property (or variant) decorator."""
+    for dec in node.decorator_list:
+        if isinstance(dec, ast.Name) and dec.id == "property":
+            return True
+        if isinstance(dec, ast.Attribute) and dec.attr in ("property", "abstractproperty"):
+            return True
+    return False
+
+
 def _extract_dataclass_fields(node: ast.ClassDef) -> list[dict[str, str]]:
     """Return ``[{name, type, default}]`` for each public annotated field.
 
@@ -486,6 +673,7 @@ def _collect_function(
             "file": rel_path,
             "raises": _extract_raises(node),
             "param_literals": _extract_param_literals(node),
+            "return_data": _extract_return_data(node),
         }
     )
 
@@ -506,6 +694,7 @@ def _collect_class(
             "file": rel_path,
             "is_dataclass": is_dc,
             "dataclass_fields": _extract_dataclass_fields(node) if is_dc else [],
+            "properties": _extract_class_properties(node),
         }
     )
 
@@ -552,6 +741,17 @@ def _extract_source_info(
             elif isinstance(node, ast.ClassDef):
                 if not node.name.startswith("_"):
                     _collect_class(node, rel_path, info)
+            elif isinstance(node, ast.Assign | ast.AnnAssign):
+                # Module-level string constants — both public and
+                # underscore-prefixed, because the leading underscore
+                # is the Python convention for "module-private" but
+                # the VALUES they hold (allowed tokens, env var
+                # names, enum members) are still the kind of detail
+                # reference docs answer questions about.
+                const = _extract_module_constant(node)
+                if const is not None:
+                    const["file"] = rel_path
+                    info.module_constants.append(const)
 
     return info
 
@@ -646,6 +846,11 @@ def _format_class_methods(node: ast.ClassDef) -> str:
         if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef):
             name = child.name
             if name.startswith("_") and name != "__init__":
+                continue
+            # @property methods are surfaced separately via
+            # _extract_class_properties — skip here so the
+            # polish LLM doesn't render them as callable methods.
+            if _has_property_decorator(child):
                 continue
             methods.append(_format_function_signature(child))
     return "\n".join(methods)

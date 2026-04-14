@@ -2,8 +2,8 @@
 type: troubleshooting
 feature: doc-gen-pipeline
 depth: troubleshooting
-generated_at: 2026-04-11T05:01:05.992103+00:00
-source_hash: dcd99211b2080853c45dbe17f061733f0b7ff80387279d574d2bd011d8114aa2
+generated_at: 2026-04-14T14:13:57.828638+00:00
+source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
@@ -11,49 +11,81 @@ status: generated
 
 ## Before you start
 
-The doc gen pipeline generates documentation through three stages: outline creation, content writing, and review. Each stage calls an LLM with specific prompts and parameters. Issues typically occur at stage boundaries or when LLM responses don't match expected formats.
+The doc gen pipeline generates documentation through three stages: outline, write, and review. Each stage calls an LLM model to progressively refine content from source code into polished documentation.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| `generate_docs()` raises an exception | Check the target file exists and is readable |
-| Empty or malformed outline | Verify `build_outline()` parameters: `doc_type`, `audience`, and `max_tokens` |
-| Content generation fails | Confirm the outline from `build_outline()` is valid text, not empty |
-| Review stage produces unchanged content | Check if `review_content()` received a complete draft, not a partial string |
-| Pipeline stops mid-stage | Inspect LLM client connection and API rate limits |
+| `AnthropicCallError` exception | Missing AI dependencies - install with `pip install 'attune-author[ai]'` |
+| Empty `DocGenResult.content` | Check if all three stages completed in `stages_completed` field |
+| Partial content generation | Verify `max_*_tokens` limits in config aren't too restrictive |
+| Wrong documentation type | Confirm `doc_type` in `DocGenConfig` matches your target format |
+| Slow generation | Check `sections_per_chunk` - lower values increase API calls but reduce per-call latency |
 
 ## Step-by-step diagnosis
 
-1. **Test each stage individually.**
-   Run `build_outline()`, `write_content()`, and `review_content()` separately with the same parameters that failed in `generate_docs()`. This isolates which stage breaks.
+1. **Verify AI dependencies are installed.**
+   The pipeline requires Anthropic's Claude model. Install missing dependencies:
+   ```bash
+   pip install 'attune-author[ai]'
+   ```
 
-2. **Validate your DocGenConfig.**
-   Print the config object before passing it to `generate_docs()`. Confirm `model`, `max_tokens`, and other LLM parameters are set correctly.
+2. **Test with minimal configuration.**
+   Create a basic `DocGenConfig` and generate docs for a simple source file:
+   ```python
+   from attune_author.doc_gen.pipeline import generate_docs, DocGenConfig
 
-3. **Check LLM responses.**
-   Add logging to capture the raw responses from each stage. Look for:
-   - Outline stage: structured headings and bullet points
-   - Write stage: complete sections matching outline structure
-   - Review stage: polished content with improvements
+   config = DocGenConfig()  # Uses defaults
+   result = generate_docs("path/to/simple_file.py", config)
+   print(f"Completed stages: {result.stages_completed}")
+   ```
 
-4. **Verify outline parsing.**
-   Call `parse_outline_sections()` on your outline output. If it returns an empty list, the outline format doesn't match the expected structure with clear section headings.
+3. **Check stage progression.**
+   Examine the `DocGenResult` to see which stages completed:
+   - `outline` stage creates structured documentation plan
+   - `write` stage generates content from outline
+   - `review` stage polishes the draft
 
-5. **Test with minimal input.**
-   Try `generate_docs()` with a simple source file (10-20 lines) and basic config. If this works, gradually add complexity until you reproduce the failure.
+   If stages fail partway through, the issue is likely in token limits or model availability.
+
+4. **Validate configuration parameters.**
+   Check your `DocGenConfig` values:
+   - `max_outline_tokens`, `max_write_tokens`, `max_review_tokens` - increase if content gets truncated
+   - `sections_per_chunk` - reduce if hitting rate limits, increase if generation is slow
+   - `model` - ensure the specified Claude model is available
+
+5. **Enable debug logging for LLM calls.**
+   Set logging to DEBUG level to see API request/response details:
+   ```python
+   import logging
+   logging.basicConfig(level=logging.DEBUG)
+   ```
 
 ## Common fixes
 
-- **Fix malformed outlines.** If `build_outline()` returns text without clear section headers, adjust the `doc_type` or `audience` parameters to get more structured output.
+- **Install AI dependencies.** Run `pip install 'attune-author[ai]'` if you get `AnthropicCallError` about missing packages.
 
-- **Increase token limits.** Set `max_tokens` higher in your `DocGenConfig` if content gets cut off mid-sentence. Start with 2048 for short docs, 4096 for longer ones.
+- **Increase token limits.** If content gets cut off, raise the relevant limit in `DocGenConfig`:
+  ```python
+  config = DocGenConfig(
+      max_outline_tokens=1500,
+      max_write_tokens=12000,
+      max_review_tokens=10000
+  )
+  ```
 
-- **Handle LLM client errors.** Wrap `generate_docs()` calls in try-catch blocks to handle API timeouts, rate limits, or authentication failures from the LLM service.
+- **Adjust chunking for rate limits.** If you hit API rate limits, reduce `sections_per_chunk`:
+  ```python
+  config = DocGenConfig(sections_per_chunk=2)
+  ```
 
-- **Validate file paths.** Use `pathlib.Path(target).exists()` to confirm source files exist before calling `generate_docs()`. Non-existent files cause immediate failures.
+- **Focus on specific sections.** Use `section_focus` to generate only the sections you need:
+  ```python
+  config = DocGenConfig(section_focus=["Parameters", "Examples"])
+  ```
 
-- **Reset client state.** If using a persistent LLM client, create a fresh client instance between pipeline runs to avoid connection issues.
+- **Verify source file exists.** Check that the target file path is valid and readable before calling `generate_docs()`.
 
 ## Source files
 

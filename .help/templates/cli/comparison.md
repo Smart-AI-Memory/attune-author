@@ -2,51 +2,49 @@
 type: comparison
 feature: cli
 depth: comparison
-generated_at: 2026-04-11T04:58:00.898222+00:00
-source_hash: a51e03870f89add843bf351e1f8f4a23c174c46122a5a2780eca70d10e873bce
+generated_at: 2026-04-14T14:10:09.981441+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
-# CLI vs programmatic interface
+# CLI vs programmatic API
 
 ## Context
 
-The attune-author CLI provides a command-line interface with subcommands for bootstrap, generate, status, and maintain operations. You can either use these commands from your terminal or call the underlying functions directly in your Python code.
+The `attune-author` package provides two ways to access its functionality: through the command-line interface or by importing and calling functions directly in your Python code.
 
-## CLI vs programmatic access
+## Feature comparison
 
-| Aspect | CLI commands | Direct function calls |
-|--------|-------------|----------------------|
-| **Setup** | Zero imports, works from any directory | Requires Python imports and module setup |
-| **Error handling** | Returns exit codes, prints user-friendly messages | Raises exceptions you must catch |
-| **Integration** | Easy to call from shell scripts and CI/CD | Natural fit for Python applications |
-| **Debugging** | Limited to CLI output and exit codes | Full access to Python debugging tools |
-| **Batch operations** | Requires shell scripting for multiple targets | Can loop and process results in memory |
+| Aspect | CLI | Programmatic API |
+|--------|-----|------------------|
+| **Access method** | Terminal commands | Python imports |
+| **Target users** | Content authors, build scripts | Developers, automation |
+| **Error handling** | Exit codes, terminal output | Exceptions you can catch |
+| **Integration** | Shell scripts, CI/CD pipelines | Python applications |
+| **Learning curve** | Minimal - standard command patterns | Requires Python knowledge |
+| **Flexibility** | Fixed subcommands only | Full control over function calls |
 
-## Use the CLI when
+## Use CLI when...
 
-- You're working interactively in a terminal
-- You need to integrate with shell scripts or CI/CD pipelines
-- You want the tool to handle error formatting and exit codes
-- You're performing one-off operations like bootstrapping a new project
+- You're authoring documentation and want the fastest path to common tasks
+- You're writing shell scripts or configuring CI/CD pipelines
+- You prefer terminal workflows over Python programming
+- You need the bootstrap, generate, status, or maintain subcommands exactly as designed
+- You want consistent behavior across different environments
 
-The main entry point is `main()` in `src/attune_author/cli.py`, which provides the standard command-line interface with proper argument parsing and error handling.
+The CLI entry point (`main()` in `src/attune_author/cli.py`) handles argument parsing, error reporting, and exit codes automatically.
 
-## Use programmatic access when
+## Use the programmatic API when...
 
-- You're building a Python application that needs to embed attune-author functionality
-- You need fine-grained control over error handling and recovery
-- You want to process results in memory rather than parsing CLI output
-- You're writing tests that need to verify specific function behavior
+- You're building a larger Python application that needs documentation generation
+- You need custom error handling or want to catch specific exceptions
+- You want to compose attune-author functions with other Python libraries
+- You need behavior that the CLI subcommands don't expose
+- You're writing tests that need fine-grained control over inputs and outputs
 
-## Limitations
+## Recommendation
 
-The CLI interface:
-- Cannot expose every parameter that underlying functions accept
-- Adds overhead for simple operations that don't need argument parsing
-- Requires subprocess calls if you're already running Python code
-
-For exploratory work or one-time scripts, consider using the underlying functions directly rather than wrapping CLI calls in Python.
+**Start with the CLI** unless you're already writing Python code. The command-line interface covers the most common documentation authoring workflows and requires no programming knowledge. Switch to the programmatic API only when you hit specific limitations or need to integrate attune-author into a larger Python application.
 
 ## Source files
 

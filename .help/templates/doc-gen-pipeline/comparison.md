@@ -2,49 +2,64 @@
 type: comparison
 feature: doc-gen-pipeline
 depth: comparison
-generated_at: 2026-04-11T05:01:53.227689+00:00
-source_hash: dcd99211b2080853c45dbe17f061733f0b7ff80387279d574d2bd011d8114aa2
+generated_at: 2026-04-14T14:14:52.197689+00:00
+source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
-# Doc Gen Pipeline vs single-stage generation
+# Doc Gen Pipeline vs single-pass generation
 
 ## Context
 
-The doc-gen-pipeline breaks documentation generation into three deliberate stages: outline, write, and review. This contrasts with single-pass generation that produces final docs in one LLM call.
+The doc gen pipeline uses a three-stage process (outline → write → review) to generate documentation, while most LLM tools generate content in a single pass. This structured approach trades speed for quality by giving the model explicit planning and revision steps.
 
 ## Feature comparison
 
-| Aspect | Doc Gen Pipeline | Single-stage generation |
-|--------|------------------|-------------------------|
-| **Quality** | Higher quality through iterative refinement | Variable, depends on prompt engineering |
-| **Control** | Granular control over each stage | Limited to initial prompt configuration |
-| **Debugging** | Can inspect outline and draft before final output | Black box - only see final result |
-| **Cost** | 3x LLM calls per document | 1x LLM call per document |
-| **Speed** | Slower due to sequential stages | Faster single-pass execution |
-| **Consistency** | Structured outline ensures consistent coverage | Output structure varies by LLM interpretation |
-| **Customization** | Can focus on specific sections via `section_focus` | Must regenerate entire document for changes |
+| Aspect | Doc Gen Pipeline | Single-pass generation |
+|--------|------------------|------------------------|
+| **Quality** | Higher consistency via structured stages | Variable, depends on prompt quality |
+| **Speed** | ~3x slower due to multiple API calls | Fast, one API call |
+| **Token usage** | Higher total consumption across stages | Lower, single request |
+| **Configurability** | Fine-grained control per stage (outline: 1k, write: 8k, review: 8k tokens) | Limited to single prompt configuration |
+| **Error recovery** | Can retry individual stages | Must restart entire generation |
+| **Output structure** | Predictable via outline-driven writing | Less predictable structure |
+| **Section focus** | Can target specific sections via `section_focus` | Must emphasize in single prompt |
 
-## Use doc-gen-pipeline when
+## Use the doc gen pipeline when
 
-- **Quality matters more than speed** - You need polished documentation for public-facing or critical internal use
-- **You need consistent structure** - Documentation should follow predictable patterns across multiple source files
-- **You want to review intermediate outputs** - Ability to inspect the outline before committing to full generation is valuable
-- **You're generating long-form content** - Complex documentation benefits from the planning stage that `build_outline()` provides
-- **You need section-level control** - The `section_focus` parameter lets you regenerate specific parts without rewriting everything
+- **Documentation quality matters more than speed** — The three-stage process produces more structured, comprehensive output
+- **You're generating long-form content** — The outline stage prevents the model from losing track of structure in complex documents
+- **You need consistent formatting** — The pipeline enforces a planning phase that standardizes output structure
+- **You're automating documentation workflows** — The structured result object (`DocGenResult`) integrates cleanly with build systems
 
-## Use single-stage generation when
+## Use single-pass generation when
 
-- **Speed is critical** - You need quick documentation for internal development or prototyping
-- **Cost is a primary concern** - Your use case can't justify 3x the LLM API costs
-- **Content is simple** - Short reference docs or basic API documentation don't need multi-stage refinement
-- **You have excellent prompts already** - Your single-stage prompts consistently produce high-quality output
+- **You need quick drafts** — Simple content that doesn't justify the pipeline overhead
+- **Token costs are a primary concern** — Single requests use fewer tokens than multi-stage processing
+- **You're generating short content** — Brief API docs or simple explanations don't benefit from the outline phase
+- **You need real-time interaction** — The pipeline's multiple API calls create noticeable latency
+
+## Configuration advantages
+
+The pipeline's `DocGenConfig` gives you granular control:
+
+```python
+config = DocGenConfig(
+    doc_type='tutorial',           # vs 'api-reference'
+    audience='beginners',          # vs 'developers'
+    max_outline_tokens=1500,       # Longer planning phase
+    sections_per_chunk=2,          # Smaller write batches
+    section_focus=['examples']     # Emphasize specific content
+)
+```
+
+Single-pass tools typically offer only prompt-level customization.
 
 ## Recommendation
 
-Choose doc-gen-pipeline for production documentation workflows where quality and consistency justify the additional time and cost. The three-stage approach produces noticeably better results for complex documentation, and the intermediate outputs make debugging much easier when generation goes wrong.
+**Choose the doc gen pipeline for production documentation workflows** where quality and consistency outweigh speed concerns. The structured approach justifies its overhead for anything longer than a function docstring or simple README section.
 
-For quick internal docs or when experimenting with documentation approaches, single-stage generation is often sufficient and much faster to iterate on.
+Use single-pass generation for quick drafts, prototyping, or when integrating documentation into fast development loops where the three-stage process would interrupt flow.
 
 ## Source files
 

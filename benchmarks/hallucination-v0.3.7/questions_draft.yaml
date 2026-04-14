@@ -1,0 +1,308 @@
+# Draft question bank for attune-help hallucination benchmark.
+#
+# 40 factual questions about attune-author's internal API, each
+# with a ground-truth answer verifiable by reading the source
+# (cited file:line). Patrick culls to 25 by setting `include: true`.
+#
+# Scoring rubric (applied at judge stage, not here):
+#   correct       — arg names right, return type right, no invented args;
+#                   type annotations optional
+#   partial       — one arg name wrong, extra arg invented, return type
+#                   wrong but core call is valid
+#   hallucinated  — function/module doesn't exist, arg list fabricated,
+#                   wrong module, invented API
+
+version: 1
+questions:
+
+  # -- Existence / location (6) ---------------------------------------
+
+  - id: 1
+    category: location
+    question: "In which Python module of attune-author does the `validate_file_path` function live?"
+    answer: "src/attune_author/mcp/path_validation.py"
+    source: "src/attune_author/mcp/path_validation.py:49"
+    include: true
+
+  - id: 2
+    category: location
+    question: "Which attune-author module defines the `is_safe_feature_name` function?"
+    answer: "src/attune_author/manifest.py"
+    source: "src/attune_author/manifest.py:27"
+    include: true
+
+  - id: 3
+    category: location
+    question: "Which attune-author module contains the `compute_source_hash` function used for staleness detection?"
+    answer: "src/attune_author/staleness.py"
+    source: "src/attune_author/staleness.py:105"
+    include: true
+
+  - id: 4
+    category: location
+    question: "Which attune-author module defines the `scan_project` function that discovers features?"
+    answer: "src/attune_author/bootstrap.py"
+    source: "src/attune_author/bootstrap.py:87"
+    include: true
+
+  - id: 5
+    category: location
+    question: "Which module in attune-author contains the `AttuneAuthorHandlers` class that backs MCP tool calls?"
+    answer: "src/attune_author/mcp/handlers.py"
+    source: "src/attune_author/mcp/handlers.py:32"
+    include: true
+
+  - id: 6
+    category: location
+    question: "Which attune-author module defines the `build_source_summary` function?"
+    answer: "src/attune_author/polish.py"
+    source: "src/attune_author/polish.py:241"
+    include: true
+
+  # -- Signatures — positional + keyword args (12) --------------------
+
+  - id: 7
+    category: signature
+    question: "What are the parameters of `attune_author.manifest.load_manifest`, and what does it return?"
+    answer: "Takes one parameter: help_dir (str | Path). Returns FeatureManifest."
+    source: "src/attune_author/manifest.py:85"
+    include: true
+
+  - id: 8
+    category: signature
+    question: "What are the parameters of `attune_author.manifest.save_manifest`?"
+    answer: "Two parameters: manifest (FeatureManifest), help_dir (str | Path). Returns Path."
+    source: "src/attune_author/manifest.py:144"
+    include: true
+
+  - id: 9
+    category: signature
+    question: "What are all the parameters of `attune_author.generator.generate_feature_templates`?"
+    answer: "feature (Feature), help_dir (str | Path), project_root (str | Path), depths (list[str] | None = None), overwrite (bool = False). Returns GenerationResult."
+    source: "src/attune_author/generator.py:135"
+    include: true
+
+  - id: 10
+    category: signature
+    question: "What are the parameters of `attune_author.staleness.compute_source_hash`, and what does it return?"
+    answer: "feature (Feature), project_root (str | Path). Returns a tuple of (hex digest str, list of matched file path strings)."
+    source: "src/attune_author/staleness.py:105"
+    include: true
+
+  - id: 11
+    category: signature
+    question: "What are all parameters of `attune_author.polish.polish_template`?"
+    answer: "content (str), feature_name (str), source_summary (str), template_type (str = 'generic'), strict (bool | None = None). Returns str."
+    source: "src/attune_author/polish.py:84"
+    include: true
+
+  - id: 12
+    category: signature
+    question: "What are the parameters of `attune_author.mcp.path_validation.validate_file_path`, and what does it return?"
+    answer: "path (str), allowed_dir (str | None = None). Returns pathlib.Path."
+    source: "src/attune_author/mcp/path_validation.py:49"
+    include: true
+
+  - id: 13
+    category: signature
+    question: "What parameters does `attune_author.maintenance.run_maintenance` accept?"
+    answer: "help_dir, project_root, features (optional list of feature names), dry_run (bool, default False). Returns MaintenanceResult."
+    source: "src/attune_author/maintenance.py:49"
+    include: true
+
+  - id: 14
+    category: signature
+    question: "What does `attune_author.bootstrap.scan_project` take, and what does it return?"
+    answer: "Takes project_root (str | Path). Returns list[ProposedFeature]."
+    source: "src/attune_author/bootstrap.py:87"
+    include: true
+
+  - id: 15
+    category: signature
+    question: "What parameters does the MCP `author_lookup` tool accept?"
+    answer: "query (required str), depth (enum: concept|task|reference, default 'concept'), help_dir (str, default '.help')."
+    source: "src/attune_author/mcp/tool_schemas.py:157"
+    include: true
+
+  - id: 16
+    category: signature
+    question: "What parameters does the MCP `author_generate` tool accept?"
+    answer: "feature (required str), help_dir (str, default '.help'), project_root (str, default '.'), overwrite (bool, default False)."
+    source: "src/attune_author/mcp/tool_schemas.py:60"
+    include: true
+
+  - id: 17
+    category: signature
+    question: "What is the constructor signature of `AttuneAuthorHandlers`?"
+    answer: "__init__(self, workspace_root: str) -> None"
+    source: "src/attune_author/mcp/handlers.py:39"
+    include: true
+
+  - id: 18
+    category: signature
+    question: "What is the signature of the `author_lookup` method on `AttuneAuthorHandlers`?"
+    answer: "async def author_lookup(self, args: dict[str, Any]) -> dict[str, Any]"
+    source: "src/attune_author/mcp/handlers.py:305"
+    include: true
+
+  # -- Defaults (6) ---------------------------------------------------
+
+  - id: 19
+    category: default
+    question: "What is the default value of the `depth` parameter in the MCP `author_lookup` tool?"
+    answer: "concept"
+    source: "src/attune_author/mcp/tool_schemas.py:174"
+    include: true
+
+  - id: 20
+    category: default
+    question: "What is the default value of the `help_dir` argument across the MCP tools?"
+    answer: ".help"
+    source: "src/attune_author/mcp/tool_schemas.py:50"
+    include: true
+
+  - id: 21
+    category: default
+    question: "What is the default value of `overwrite` in `generate_feature_templates`?"
+    answer: "False"
+    source: "src/attune_author/generator.py:140"
+    include: true
+
+  - id: 22
+    category: default
+    question: "What is the default value of the `doc_type` argument in the MCP `author_docs` tool?"
+    answer: "api-reference"
+    source: "src/attune_author/mcp/tool_schemas.py:142"
+    include: true
+
+  - id: 23
+    category: default
+    question: "What is the default value of `template_type` in `polish_template`?"
+    answer: "generic"
+    source: "src/attune_author/polish.py:88"
+    include: true
+
+  - id: 24
+    category: default
+    question: "What is the default `audience` in the MCP `author_docs` tool?"
+    answer: "developers"
+    source: "src/attune_author/mcp/tool_schemas.py:147"
+    include: true
+
+  # -- Enums / constants / allowed values (6) -------------------------
+
+  - id: 25
+    category: enum
+    question: "What are the allowed string values for the `depth` parameter in the `author_lookup` MCP tool?"
+    answer: "concept, task, reference"
+    source: "src/attune_author/mcp/tool_schemas.py:172"
+    include: true
+
+  - id: 26
+    category: enum
+    question: "Name at least three additional template kinds (beyond concept/task/reference) that `generate_feature_templates` supports when passed an explicit `depths` list."
+    answer: "Any three of: error, warning, troubleshooting, faq, quickstart, tip, note, comparison."
+    source: "src/attune_author/generator.py:166-169"
+    include: true
+
+  - id: 27
+    category: enum
+    question: "What are the tokens that make a feature name unsafe, per the `_UNSAFE_NAME_TOKENS` constant in manifest.py?"
+    answer: "'/', '\\\\', '..', '\\x00' (forward slash, backslash, parent-dir token, null byte)"
+    source: "src/attune_author/manifest.py:24"
+    include: true
+
+  - id: 28
+    category: enum
+    question: "Which directory names are excluded by the staleness scan when computing source hashes?"
+    answer: "__pycache__, .mypy_cache, .pytest_cache, .ruff_cache, node_modules, .git"
+    source: "src/attune_author/staleness.py:90-97"
+    include: true
+
+  - id: 29
+    category: enum
+    question: "Which environment variable controls whether the polish pass runs in strict mode?"
+    answer: "ATTUNE_AUTHOR_STRICT_POLISH"
+    source: "src/attune_author/polish.py (STRICT_ENV_VAR)"
+    include: true
+
+  - id: 30
+    category: enum
+    question: "What strings, when set as the value of `ATTUNE_AUTHOR_STRICT_POLISH`, turn OFF strict mode?"
+    answer: "0, false, no, off (case-insensitive; the _FALSY frozenset)"
+    source: "src/attune_author/polish.py:55-58"
+    include: true
+
+  # -- Behavior / return values (5) -----------------------------------
+
+  - id: 31
+    category: behavior
+    question: "What does `is_safe_feature_name('../etc')` return, and why?"
+    answer: "False. The name contains the '..' token, which is in _UNSAFE_NAME_TOKENS."
+    source: "src/attune_author/manifest.py:27-46"
+    include: true
+
+  - id: 32
+    category: behavior
+    question: "What does `is_safe_feature_name(42)` return?"
+    answer: "False. Non-string inputs are rejected by the isinstance check."
+    source: "src/attune_author/manifest.py:44"
+    include: true
+
+  - id: 33
+    category: behavior
+    question: "What exception does `validate_file_path` raise when passed a path containing a null byte?"
+    answer: "ValueError (with the message 'path contains null bytes')."
+    source: "src/attune_author/mcp/path_validation.py:71-72"
+    include: true
+
+  - id: 34
+    category: behavior
+    question: "Given a PolishError raised in strict mode, what is its base class?"
+    answer: "RuntimeError."
+    source: "src/attune_author/polish.py:76"
+    include: true
+
+  - id: 35
+    category: behavior
+    question: "If `generate_feature_templates` is called and the feature name fails `is_safe_feature_name`, what exception is raised?"
+    answer: "ValueError with a message including 'Invalid feature name:'."
+    source: "src/attune_author/generator.py:179-180"
+    include: true
+
+  # -- Dataclass fields (5) -------------------------------------------
+
+  - id: 36
+    category: dataclass
+    question: "What fields does the `Feature` dataclass have?"
+    answer: "name (str), description (str), files (list[str], default empty), tags (list[str], default empty)."
+    source: "src/attune_author/manifest.py:49-63"
+    include: true
+
+  - id: 37
+    category: dataclass
+    question: "What fields does `GeneratedTemplate` have?"
+    answer: "feature (str), depth (str), path (Path), source_hash (str)."
+    source: "src/attune_author/generator.py:102-115"
+    include: true
+
+  - id: 38
+    category: dataclass
+    question: "What fields does the `FeatureManifest` dataclass have?"
+    answer: "version (int), features (dict[str, Feature]), path (Path | None, default None)."
+    source: "src/attune_author/manifest.py:66-78"
+    include: true
+
+  - id: 39
+    category: dataclass
+    question: "What properties does the `StalenessReport` class expose (beyond its `entries` field)?"
+    answer: "stale_count (int), current_count (int), stale_features (list[str])."
+    source: "src/attune_author/staleness.py:74-87"
+    include: true
+
+  - id: 40
+    category: dataclass
+    question: "What fields does `FeatureStaleness` have?"
+    answer: "feature (str), is_stale (bool), current_hash (str), stored_hash (str | None), matched_files (list[str], default empty)."
+    source: "src/attune_author/staleness.py:45-61"
+    include: true

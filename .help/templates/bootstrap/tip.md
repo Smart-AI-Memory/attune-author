@@ -2,23 +2,21 @@
 type: tip
 feature: bootstrap
 depth: tip
-generated_at: 2026-04-11T04:52:48.819121+00:00
-source_hash: ba3e45edbaf44fba671f221a61e39cae7381b0b1c8ce9a02129f76b20bc6f331
+generated_at: 2026-04-14T14:04:47.063761+00:00
+source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
 
-# Tip: Run scan_project first to understand your codebase structure
+# Start with scan_project() for automated feature discovery
 
-## The recommendation
+## Recommendation
 
-Start feature discovery by calling `scan_project()` on your project root, then review the `ProposedFeature` objects before converting them to a manifest.
+Use `scan_project()` to generate your initial feature manifest instead of writing one from scratch.
 
-## Why this helps
+## Why
 
-Scanning reveals what the bootstrap module thinks your project structure contains, which often differs from what you expect — catching mismatches early saves debugging time later.
+The scanner recognizes common patterns like entry points (`main.py`, `app.py`) and configuration files, saving you from manually cataloging obvious features and reducing the chance of missing something important.
 
-## The tradeoff
+## Tradeoff
 
-Manual review of proposals adds an extra step, but automatic conversion with `proposals_to_manifest()` can generate manifests that don't match your project's actual organization.
-
-**Tags:** `setup`, `scanning`, `manifest`
+Auto-generated proposals have generic descriptions and may suggest irrelevant features for unusual project structures—you'll need to review and refine the `ProposedFeature` objects before converting them to your final manifest with `proposals_to_manifest()`.

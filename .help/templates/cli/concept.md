@@ -2,23 +2,28 @@
 type: concept
 feature: cli
 depth: concept
-generated_at: 2026-04-12T04:53:33.991615+00:00
-source_hash: b40b5cd02e5e4ea8d4a6bf7a3a528cdf03aee2a0e01db1dbdc1a9be426d9af1f
+generated_at: 2026-04-14T14:09:00.172991+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
 # CLI
 
-The CLI is the command-line interface that provides the primary entry point for attune-author operations.
+The CLI module serves as the command-line entry point for attune-author, providing a unified interface for documentation authoring tasks in the attune ecosystem.
 
-## Entry point architecture
+## Entry point structure
 
-The `main()` function serves as the single entry point for all command-line interactions with attune-author. When you run the attune-author command, this function processes the command-line arguments and routes them to the appropriate subcommands for bootstrap, generate, status, and maintain operations.
+The module implements a single `main()` function that processes command-line arguments and coordinates the execution of various documentation operations. When you run attune-author from the command line, this function handles argument parsing and delegates to the appropriate subcommand handlers.
 
-## Interface structure
+The welcome header identifies the tool as "attune-author — documentation authoring for the attune ecosystem", establishing the CLI's role in the broader attune toolchain.
 
-| Function | Purpose | Location |
-|----------|---------|----------|
-| `main()` | Processes command-line arguments and executes the requested operation | `src/attune_author/cli.py` |
+## Command interface
 
-The function accepts an optional `argv` parameter, allowing it to process either system command-line arguments or custom argument lists for testing and programmatic use.
+The CLI supports multiple subcommands that cover the core documentation workflow:
+
+- **bootstrap** — Initialize new documentation projects
+- **generate** — Create documentation from source code
+- **status** — Check the current state of documentation
+- **maintain** — Perform ongoing maintenance tasks
+
+Each subcommand encapsulates a specific aspect of the documentation authoring process, allowing you to perform targeted operations without running the entire toolchain.

@@ -2,8 +2,8 @@
 type: warning
 feature: bootstrap
 depth: warning
-generated_at: 2026-04-11T04:52:06.195677+00:00
-source_hash: ba3e45edbaf44fba671f221a61e39cae7381b0b1c8ce9a02129f76b20bc6f331
+generated_at: 2026-04-14T14:03:54.908392+00:00
+source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
 
@@ -11,28 +11,35 @@ status: generated
 
 ## What to watch for
 
-The bootstrap feature scans your project directory to propose an initial feature manifest. While convenient for getting started, this automated scanning can misinterpret your project structure and create unexpected configurations.
+The bootstrap module scans your project directory to automatically propose features for your manifest. While this saves setup time, the scanning process makes assumptions about your project structure that can lead to incorrect or incomplete feature detection.
 
 ## Risk areas
 
-**Project structure misinterpretation**
-`scan_project()` makes assumptions about your directory layout that may not match your project's conventions. It can mistake test directories for feature modules, overlook custom package structures, or incorrectly categorize files based on naming patterns.
+### Directory traversal limits
 
-**Incomplete feature detection**
-The scanner only recognizes common Python patterns. If your project uses unconventional organization, custom build systems, or mixed-language components, `scan_project()` may miss important features or create incomplete proposals.
+`scan_project()` skips common directories like `.git`, `__pycache__`, and `node_modules` using the hardcoded `_SKIP_DIRS` set. If your project stores important code in unconventionally named directories (like a `vendor` folder with custom modules), the scanner will ignore them completely.
 
-**Manifest generation overwrites**
-`proposals_to_manifest()` converts scan results into a concrete manifest structure. If you run this on an existing project with manual configuration, it may overwrite carefully crafted settings with generic defaults.
+### Entry point detection assumptions
+
+The scanner looks for specific filenames (`main.py`, `app.py`, `cli.py`, etc.) defined in `_ENTRY_POINT_NAMES` to identify application entry points. Projects with non-standard entry point names or multiple entry points per feature may be mischaracterized or have features missed entirely.
+
+### Configuration file pattern matching
+
+`_CONFIG_PATTERNS` only recognizes files containing 'config', 'settings', or 'conf' in their names. Projects using different naming conventions (like `env.py`, `constants.py`, or `.toml` files) won't be properly categorized as configuration features.
+
+### Confidence scoring opacity
+
+`ProposedFeature` objects include a `confidence` field that defaults to 'medium', but the scanning logic that sets this value isn't exposed. Low-confidence proposals might indicate genuine uncertainty about a feature's purpose, requiring manual review before acceptance.
 
 ## How to avoid problems
 
-1. **Review proposals before committing.** Always inspect the `ProposedFeature` objects from `scan_project()` before passing them to `proposals_to_manifest()`. Verify that detected features match your intended project structure.
+1. **Verify scan results manually.** Always review the output of `scan_project()` before converting proposals to a manifest. Missing or misclassified features are easier to catch at this stage than after deployment.
 
-2. **Start with a clean slate.** Bootstrap works best on new projects or when you want to completely rebuild your feature configuration. For existing projects with custom setups, consider manual configuration instead.
+2. **Customize for your project structure.** If your project uses non-standard directory names or entry points, consider extending the hardcoded sets or implementing custom scanning logic rather than relying on the defaults.
 
-3. **Test the generated manifest.** After running `proposals_to_manifest()`, validate the resulting `FeatureManifest` against your project's actual behavior before saving it to disk.
+3. **Check confidence levels.** Pay special attention to proposals with low confidence scores or empty `reason` fields. These often indicate edge cases where the scanner couldn't determine a feature's purpose reliably.
 
-4. **Use selective acceptance.** You don't have to accept all proposals. Filter the list from `scan_project()` to include only the features you want before generating the final manifest.
+4. **Test with representative projects.** Before using bootstrap on production codebases, test it against projects with similar structures to yours. Different languages, frameworks, or organizational patterns may not scan as expected.
 
 ## Source files
 

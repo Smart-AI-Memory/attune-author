@@ -2,8 +2,8 @@
 type: troubleshooting
 feature: polish
 depth: troubleshooting
-generated_at: 2026-04-11T04:48:53.370835+00:00
-source_hash: 024a299e9a8252b83e070c5a5297e1292dd243e8eddc631dcf298bae31fb8dc0
+generated_at: 2026-04-14T14:00:16.531656+00:00
+source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
 status: generated
 ---
 
@@ -11,50 +11,40 @@ status: generated
 
 ## Before you start
 
-The polish feature rewrites auto-generated help templates using an LLM to improve quality and readability. It uses template-specific system prompts and source code summaries to guide the rewrite process.
+The polish feature improves generated template quality using LLM-powered rewrites. It applies template-specific system prompts and includes source summaries to keep content accurate and grounded.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| PolishError exception | Error message for specifics: API failures, strict mode violations, or prompt construction issues |
-| Template content unchanged after polish | LLM response parsing in `polish_template()` — check if the response contains valid markdown |
-| Wrong template style applied | Template type detection — verify the correct system prompt is selected by `get_system_prompt()` |
-| Missing source information in output | Source summary construction in `build_source_summary()` — confirm all required metadata is included |
+| `PolishError` exception | The error message for the specific failure reason and template type |
+| Templates unchanged after polish | The `strict` parameter setting and `ATTUNE_AUTHOR_STRICT_POLISH` environment variable |
+| Polish produces incorrect content | The source summary passed to `build_source_summary()` for completeness |
+| LLM API failures | Network connectivity and Anthropic API credentials |
 
 ## Step-by-step diagnosis
 
 1. **Reproduce with minimal input.**
-   Create a simple test case with just the failing template content and feature name. Call `polish_template()` directly with `strict=True` to surface any hidden errors.
+   Create a simple test case using `polish_template()` with just the required parameters: `content`, `feature_name`, and `source_summary`. Use a basic template to isolate the polish logic from template complexity.
 
-2. **Check the LLM API connection.**
-   Verify your API credentials and network access. Run a basic LLM call outside the polish module to confirm the service is reachable.
+2. **Check the polish mode.**
+   Verify whether strict mode is enabled by checking the `ATTUNE_AUTHOR_STRICT_POLISH` environment variable. In strict mode, polish failures raise `PolishError`. In non-strict mode, the original content is returned silently.
 
 3. **Examine the system prompt.**
-   Call `get_system_prompt()` with your template type and inspect the returned prompt. Ensure it matches the expected format for your template category.
+   Call `get_system_prompt()` with your template type to see the exact instructions sent to the LLM. Template-specific prompts may have different requirements or restrictions.
 
 4. **Validate the source summary.**
-   Use `build_source_summary()` to generate the source context separately. Check that all functions, classes, and module information are correctly captured.
-
-5. **Enable strict mode.**
-   Set `strict=True` when calling `polish_template()`. This surfaces PolishError exceptions that are normally caught and logged.
+   Use `build_source_summary()` to generate the source information passed to the LLM. Incomplete or inaccurate summaries can lead to hallucinated content in the polished output.
 
 ## Common fixes
 
-- **Set API credentials.** Export `ANTHROPIC_API_KEY` in your environment:
-  ```bash
-  export ANTHROPIC_API_KEY=your_key_here
-  ```
+- **Set strict mode for debugging.** Export `ATTUNE_AUTHOR_STRICT_POLISH=1` to force `PolishError` exceptions instead of silent fallbacks, making failures visible during development.
 
-- **Add missing template type.** If you get an unknown template type error, add the new type to `get_system_prompt()`:
-  ```python
-  elif template_type == "your_new_type":
-      return "Your system prompt here..."
-  ```
+- **Verify Anthropic API setup.** Ensure your API key is configured correctly. The polish feature uses Anthropic's Claude for the rewrite pass.
 
-- **Fix source summary data.** Ensure your source analysis provides complete function signatures and class information to `build_source_summary()`.
+- **Update the source summary.** If polish removes or changes important details, expand the source summary by including more function signatures, class signatures, or module constants in the `build_source_summary()` call.
 
-- **Handle network timeouts.** Add retry logic or increase timeout values if the LLM API is unreliable in your environment.
+- **Check template type mapping.** Verify that your template type has a corresponding system prompt. Unknown types fall back to generic prompts that may not match your content structure.
 
 ## Source files
 

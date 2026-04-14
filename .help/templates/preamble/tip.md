@@ -2,27 +2,27 @@
 type: tip
 feature: preamble
 depth: tip
-generated_at: 2026-04-11T04:56:28.344357+00:00
-source_hash: 3e02ceee37af71750f50dd40ecd95359ea5c4aaf1a1a7e50691cfb6250d133b0
+generated_at: 2026-04-14T14:08:34.820756+00:00
+source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
 
-# Cache preamble lookups to avoid redundant filesystem reads
+# Use `get_preamble()` to set context for workflow skills
 
-## Context
+## The recommendation
 
-The preamble module fetches context-sensitive one-liners for workflow skills, but each call to `get_preamble()` and `get_related_preambles()` reads from disk.
+Call `get_preamble(feature_name)` to retrieve a one-liner that sets context before executing workflow skills. This contextual header helps orient users about what the feature does and why they might need it.
 
-## Recommendation
+## Why this works
 
-Store the results of preamble lookups in a simple dictionary keyed by feature name. Since preambles rarely change during a session, this eliminates repeated file system access for the same feature.
+Preambles bridge the gap between abstract feature names and concrete user intent, making workflows feel more conversational and goal-oriented rather than robotic.
 
-Cache misses are cheap (one file read), but cache hits save noticeable time when you're repeatedly querying the same features or their related items.
+## The tradeoff
 
-**Tradeoff**: You'll need to clear the cache manually if preamble content changes during development, but production workflows typically query each feature only once.
+You'll need to maintain preamble content as features evolve — stale context is worse than no context.
 
-## Source files
+## Related functions
 
-- `src/attune_author/preamble.py`
+- `get_related_preambles()` — Find preambles for similar features when you want to suggest alternatives
 
 **Tags:** `context`, `rendering`, `workflow`

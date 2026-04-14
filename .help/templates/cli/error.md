@@ -2,36 +2,38 @@
 type: error
 feature: cli
 depth: error
-generated_at: 2026-04-11T04:57:08.896876+00:00
-source_hash: a51e03870f89add843bf351e1f8f4a23c174c46122a5a2780eca70d10e873bce
+generated_at: 2026-04-14T14:09:19.461049+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
 # CLI errors
 
-Command-line interface failures that occur when running attune-author commands or parsing arguments.
+CLI errors occur when the attune-author command-line interface fails to parse arguments, execute subcommands, or handle exit conditions properly.
 
 ## Common error signatures
 
-- `SystemExit` — Command failed or invalid arguments provided
-- `argparse.ArgumentError` — Invalid command-line arguments or missing required parameters
-- Exit codes 1-2 — Standard CLI error returns from the main entry point
+Since the CLI module contains only the main entry point function, specific exception types depend on the subcommands and argument parsing implementation:
+
+- **Argument parsing failures** — Invalid command syntax or unrecognized options
+- **Subcommand execution failures** — Errors from bootstrap, generate, status, or maintain operations
+- **Exit code handling** — Non-zero return values indicating command failure
 
 ## Where errors originate
 
-CLI errors originate from the main entry point that handles command parsing and execution:
+CLI errors originate from the main entry point:
 
-- `main()` in `src/attune_author/cli.py` — Processes command-line arguments and dispatches to subcommands (bootstrap, generate, status, maintain)
+- `main()` in `src/attune_author/cli.py` — Processes command-line arguments and delegates to subcommands
 
 ## How to diagnose
 
-1. **Check the exit code.** The `main()` function returns specific exit codes that indicate the type of failure. A non-zero exit code means the command encountered an error.
+1. **Run the failing command with verbose output.** Add `-v` or `--verbose` flags if available to see detailed operation logs.
 
-2. **Examine the command arguments.** Most CLI errors stem from invalid arguments, missing required parameters, or incorrect subcommand usage. Verify the command syntax against the help output.
+2. **Check the exit code.** The `main()` function returns an integer — zero indicates success, non-zero values indicate specific failure modes.
 
-3. **Run with help flags.** Use `--help` or `-h` to see available commands and required arguments. Each subcommand (bootstrap, generate, status, maintain) has its own argument requirements.
+3. **Verify command syntax.** Ensure you're using valid subcommands (bootstrap, generate, status, maintain) and that all required arguments are provided.
 
-4. **Check file permissions and paths.** Since attune-author operates on files and directories, verify that specified paths exist and are accessible with appropriate read/write permissions.
+4. **Test with minimal arguments.** Start with the simplest valid command form and add complexity incrementally to isolate where parsing or execution fails.
 
 ## Source files
 

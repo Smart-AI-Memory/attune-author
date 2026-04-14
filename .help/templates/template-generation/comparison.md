@@ -2,56 +2,64 @@
 type: comparison
 feature: template-generation
 depth: comparison
-generated_at: 2026-04-11T04:47:47.861318+00:00
-source_hash: c984ed6eeee4ee72f8b218ec3aebe243eb03ae557e252ba48d52da016704935e
+generated_at: 2026-04-14T13:59:05.608264+00:00
+source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
 
-# Template Generation vs Manual Documentation
+# Template generation vs manual help authoring
 
 ## Context
 
-Template generation automatically creates markdown help files by analyzing your source code's AST and feature definitions. This approach competes with writing documentation manually or using simpler code-to-docs tools.
+You need to create help documentation for your codebase. You can either generate templates automatically from source code inspection or write documentation manually from scratch.
 
 ## Feature comparison
 
-| Aspect | Template Generation | Manual Documentation | Generic Doc Generators |
-|--------|-------------------|---------------------|----------------------|
-| **Accuracy** | Synced to actual code via AST | Prone to drift | Basic reflection only |
-| **Customization** | Jinja2 templates + feature metadata | Full control | Limited templates |
-| **Maintenance** | Regenerate when code changes | Manual updates required | Regenerate but shallow |
-| **Structure** | Enforced consistency across features | Varies by author | Basic structure only |
-| **Setup cost** | Feature definitions + template setup | None | Minimal |
-| **Content depth** | Code + curated feature context | Unlimited | Function signatures only |
+| Aspect | Template generation | Manual authoring |
+|--------|-------------------|------------------|
+| **Speed** | Fast bulk creation of structured templates | Slower, write each page individually |
+| **Consistency** | Enforced template structure across all docs | Varies by author, requires style guides |
+| **Accuracy** | Auto-synced with source code via AST inspection | Manual updates required when code changes |
+| **Customization** | Limited to template variables and depth types | Full control over content and structure |
+| **Maintenance** | Regenerate when code changes | Manual review and updates needed |
+| **Learning curve** | Requires understanding feature definitions | Standard markdown writing skills |
 
-## Use template generation when
+## Template generation capabilities
+
+Template generation creates structured help files by analyzing your source code's abstract syntax tree (AST). It produces three depth types:
+
+- **concept**: High-level explanations
+- **task**: Step-by-step procedures
+- **reference**: Detailed API documentation
+
+And four problem-solving templates:
+
+- **error**: Error message explanations
+- **warning**: Warning resolution guides
+- **troubleshooting**: Diagnostic procedures
+- **faq**: Common questions
+
+The `generate_feature_templates()` function handles the entire process, creating multiple template files for each feature based on your source code structure.
+
+## Use template generation when...
 
 - You have multiple features that need consistent documentation structure
-- Your code changes frequently and you want docs that stay current
-- You want to enforce documentation standards across a team
-- You need both API reference and conceptual content from the same source
+- Your codebase changes frequently and you want docs to stay in sync
+- You prefer structured, template-driven documentation over free-form writing
+- You want to bootstrap documentation quickly and polish the generated content later
+- Your team values consistency over creative formatting
 
-The `generate_feature_templates()` function is designed for projects where documentation quality and consistency matter more than setup speed.
+## Use manual authoring when...
 
-## Use manual documentation when
-
-- Your project has fewer than 5 features or modules
-- You need extensive narrative content that doesn't map to code structure
-- Your documentation requirements are highly specialized
-- You prefer full editorial control over automated consistency
-
-## Use generic doc generators when
-
-- You only need API reference documentation
-- Your codebase is stable and rarely changes
-- You want zero configuration overhead
-- Simple docstring extraction meets your needs
+- You need complete control over documentation structure and style
+- Your content includes extensive conceptual explanations not reflected in source code
+- You're documenting workflows that span multiple codebases
+- You prefer writing documentation as part of your design process
+- Your documentation needs custom formatting that doesn't fit standard templates
 
 ## Recommendation
 
-Choose template generation if you're building a multi-feature project where documentation quality directly impacts user success. The upfront cost of defining features and templates pays off when you need to maintain dozens of help files that stay accurate as your code evolves.
-
-For smaller projects or one-off documentation needs, manual writing is usually faster and simpler.
+Start with template generation to establish consistent structure and coverage, then manually enhance the generated content. The auto-generated templates provide scaffolding that ensures you don't miss important topics while giving you a foundation to build more detailed explanations.
 
 ## Source files
 

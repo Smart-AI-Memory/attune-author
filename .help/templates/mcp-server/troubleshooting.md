@@ -2,8 +2,8 @@
 type: troubleshooting
 feature: mcp-server
 depth: troubleshooting
-generated_at: 2026-04-11T04:59:07.810610+00:00
-source_hash: d99e670e0306a6da8972a9bf7c1b94a808c3f1fb3c17fad5dee28bdc1183bac4
+generated_at: 2026-04-14T14:11:43.915265+00:00
+source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
@@ -11,62 +11,68 @@ status: generated
 
 ## Before you start
 
-The MCP server exposes attune-author's capabilities to Claude Code as callable tools through the Model Context Protocol. When troubleshooting, remember that failures can occur at three layers: MCP protocol handling, tool invocation, or the underlying attune-author operations.
+The MCP server exposes attune-author's six tools (init, status, generate, maintain, docs, lookup) to Claude Code through the Model Context Protocol. Issues typically involve tool registration, workspace paths, or API key configuration.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| Server fails to start | `AttuneAuthorMCPServer.__init__()` workspace_root validation and `main()` entry point |
-| Tool not found errors | Output of `get_tools()` and the `tools` property registration |
-| Tool execution fails | `AttuneAuthorHandlers` method corresponding to the failing tool name |
-| Path-related security errors | `validate_file_path()` rejection of the input path |
-| Silent tool failures | Return values from `call_tool()` and individual handler methods |
+| Server won't start | Run `python -m attune_author.mcp.server` and check for import errors or missing dependencies |
+| Tool not found errors | Verify the tool name exists in `get_tools()` output: `author_init`, `author_status`, `author_generate`, `author_maintain`, `author_docs`, `author_lookup` |
+| Path validation failures | Check if the path contains null bytes, points outside the workspace, or hits system directories in `_DANGEROUS_PREFIXES` |
+| "ANTHROPIC_API_KEY required" errors | Confirm the environment variable is set when using `author_docs` or LLM polish features |
+| Tool returns empty/null results | Check workspace_root initialization and whether `.help/` directory structure exists |
 
 ## Step-by-step diagnosis
 
-1. **Test the server in isolation.**
-   Create a minimal MCP server instance to confirm basic functionality:
+1. **Test the server directly.**
+   Create a minimal test to isolate the MCP server from Claude Code:
    ```python
    from attune_author.mcp.server import create_server
    server = create_server()
-   tools = server.tools()
-   print(f"Registered tools: {list(tools.keys())}")
+   result = server.call_tool('author_status', {'help_dir': '.help'})
    ```
 
 2. **Check tool registration.**
-   Verify all six expected tools are available:
+   Verify all six tools are properly registered:
    ```python
-   expected_tools = ["author_init", "author_status", "author_generate",
-                     "author_maintain", "author_docs", "author_lookup"]
-   registered = list(server.tools().keys())
-   missing = set(expected_tools) - set(registered)
+   from attune_author.mcp.tool_schemas import get_tools
+   tools = get_tools()
+   print(list(tools.keys()))  # Should show all 6 author_* tools
    ```
 
-3. **Inspect workspace configuration.**
-   The server requires a valid workspace root. Check if `workspace_root` is properly set:
-   - In `AttuneAuthorMCPServer.__init__()`, verify the path exists
-   - In `AttuneAuthorHandlers.__init__()`, confirm workspace initialization succeeded
+3. **Validate workspace setup.**
+   Many tools require a properly initialized workspace:
+   - Check if `.help/` directory exists
+   - Verify `features.yaml` is present and readable
+   - Confirm project_root points to the correct directory
 
-4. **Test individual tool handlers.**
-   Call failing tools directly through the handler layer:
+4. **Test path validation separately.**
+   Path issues often cause silent failures:
    ```python
-   from attune_author.mcp.handlers import AttuneAuthorHandlers
-   handlers = AttuneAuthorHandlers("/path/to/workspace")
-   result = await handlers.author_status({})  # or whichever tool fails
+   from attune_author.mcp.path_validation import validate_file_path
+   validate_file_path('/etc/passwd')  # Should raise ValueError
+   validate_file_path('src/main.py')  # Should succeed
    ```
 
 ## Common fixes
 
-- **Workspace path issues.** Ensure the workspace_root parameter points to a valid directory with appropriate permissions. The server may fail silently if it cannot access the workspace.
+- **Initialize the workspace first.** Run the `author_init` tool to create the `.help/` directory structure before using other tools.
 
-- **Missing tool arguments.** Each tool handler expects specific argument structures. Check the tool schema definitions in `get_tools()` and ensure your calls match the expected parameter names and types.
+- **Set ANTHROPIC_API_KEY.** The `author_docs` tool and LLM polish features require this environment variable:
+  ```bash
+  export ANTHROPIC_API_KEY=your_key_here
+  ```
 
-- **Path validation failures.** If you see security-related path errors, verify that `validate_file_path()` accepts your target paths. File operations are restricted to the allowed directory scope.
+- **Fix workspace_root configuration.** If tools can't find your project files, explicitly set the workspace root:
+  ```python
+  from attune_author.mcp.server import AttuneAuthorMCPServer
+  server = AttuneAuthorMCPServer(workspace_root='/path/to/your/project')
+  ```
 
-- **Handler initialization errors.** The `AttuneAuthorHandlers` class requires a valid workspace during initialization. If tools fail consistently, check that the handlers were properly instantiated with a working workspace_root.
+- **Check file permissions.** The server needs read access to source files and write access to the `.help/` directory.
 
-- **MCP protocol version mismatch.** Ensure your MCP client (like Claude Code) uses a compatible protocol version with the server implementation.
+- **Update the MCP client.** If Claude Code shows connection errors, restart it or check for MCP protocol version mismatches.
 
 ## Source files
 

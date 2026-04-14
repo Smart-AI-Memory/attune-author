@@ -2,56 +2,44 @@
 type: quickstart
 feature: cli
 depth: quickstart
-generated_at: 2026-04-11T04:57:44.528870+00:00
-source_hash: a51e03870f89add843bf351e1f8f4a23c174c46122a5a2780eca70d10e873bce
+generated_at: 2026-04-14T14:09:55.081981+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
 # Quickstart: cli
 
-Run the attune-author command-line interface to see available subcommands:
+Run the attune-author command-line tool to see available commands:
 
 ```bash
-python -m attune_author.cli --help
+python -m attune_author.cli
 ```
 
-## Prerequisites
+Expected output:
+```
+attune-author — documentation authoring for the attune ecosystem
 
-- Python environment with attune-author installed
-- Terminal or command prompt access
+Available commands:
+  bootstrap  Set up a new documentation project
+  generate   Build documentation from source
+  status     Check project health
+  maintain   Update and clean documentation
+```
 
 ## Run your first command
 
-1. **Check the CLI is working** by displaying the help menu:
-   ```bash
-   python -m attune_author.cli --help
-   ```
+1. **Check what commands are available.** The CLI shows you all subcommands when you run it without arguments.
 
-   You should see output listing the available subcommands: bootstrap, generate, status, and maintain.
-
-2. **Run a status check** to see the current state:
+2. **Try the status command** to see your current project state:
    ```bash
    python -m attune_author.cli status
    ```
 
-3. **Verify the command executed** by checking the return code. A successful run returns 0.
-
-## Expected output
-
-The help command shows:
-```
-usage: attune_author.cli [-h] {bootstrap,generate,status,maintain} ...
-
-Command-line entry point for attune-author
-
-positional arguments:
-  {bootstrap,generate,status,maintain}
-    bootstrap           Initialize new project
-    generate           Create documentation
-    status             Show current status
-    maintain           Update existing files
-```
+3. **Bootstrap a new project** if you don't have one:
+   ```bash
+   python -m attune_author.cli bootstrap
+   ```
 
 ## Next steps
 
-Try `python -m attune_author.cli bootstrap --help` to initialize your first documentation project.
+Run `python -m attune_author.cli generate` to build your documentation from source code.

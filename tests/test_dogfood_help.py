@@ -76,9 +76,7 @@ class TestTemplateTreeStructure:
 
     def test_every_feature_has_a_template_dir(self, feature_names: list[str]) -> None:
         for name in feature_names:
-            assert (
-                TEMPLATES_DIR / name
-            ).is_dir(), f"missing template dir for feature {name!r}"
+            assert (TEMPLATES_DIR / name).is_dir(), f"missing template dir for feature {name!r}"
 
     def test_no_orphan_template_dirs(self, feature_names: list[str]) -> None:
         """Every directory under templates/ corresponds to a
@@ -86,9 +84,7 @@ class TestTemplateTreeStructure:
         leftovers from removed features.
         """
         on_disk = {
-            p.name
-            for p in TEMPLATES_DIR.iterdir()
-            if p.is_dir() and not p.name.startswith("_")
+            p.name for p in TEMPLATES_DIR.iterdir() if p.is_dir() and not p.name.startswith("_")
         }
         expected = set(feature_names)
         assert on_disk == expected, (
@@ -105,9 +101,7 @@ class TestTemplateTreeStructure:
             feature_dir = TEMPLATES_DIR / name
             for kind in template_kinds:
                 template_path = feature_dir / f"{kind}.md"
-                assert (
-                    template_path.is_file()
-                ), f"missing {kind}.md for feature {name!r}"
+                assert template_path.is_file(), f"missing {kind}.md for feature {name!r}"
 
     def test_total_template_count(
         self,
@@ -117,9 +111,7 @@ class TestTemplateTreeStructure:
         """Total templates on disk equals features × kinds."""
         all_md = list(TEMPLATES_DIR.rglob("*.md"))
         expected = len(feature_names) * len(template_kinds)
-        assert (
-            len(all_md) == expected
-        ), f"expected {expected} templates, found {len(all_md)}"
+        assert len(all_md) == expected, f"expected {expected} templates, found {len(all_md)}"
 
 
 class TestTemplateFrontmatter:
@@ -291,6 +283,7 @@ class TestNoHallucinatedSymbols:
             "unlink",
             "glob",
             "rglob",
+            "relative_to",
             # ast, json, yaml, os.environ
             "parse",
             "dump",
@@ -299,8 +292,13 @@ class TestNoHallucinatedSymbols:
             "load",
             "safe_load",
             "getenv",
+            "walk",
+            # stdlib logging / asyncio
+            "debug",
+            "run",
             # pytest convention
             "main",
+            "raises",
         }
     )
 
@@ -369,9 +367,7 @@ class TestNoHallucinatedSymbols:
         """
         import re
 
-        pattern = re.compile(
-            r"`([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\(\)`"
-        )
+        pattern = re.compile(r"`([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\(\)`")
         hallucinated: list[tuple[str, str, str]] = []
 
         for md in TEMPLATES_DIR.rglob("*.md"):

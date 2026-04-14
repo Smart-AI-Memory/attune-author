@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attune-author"
-version = "0.3.7"
+version = "0.3.8"
 description = "Documentation authoring and maintenance for the attune ecosystem — generate, maintain, and validate help content with AI assistance."
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"

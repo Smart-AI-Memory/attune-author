@@ -2,8 +2,8 @@
 type: faq
 feature: cli
 depth: faq
-generated_at: 2026-04-11T04:57:39.304855+00:00
-source_hash: a51e03870f89add843bf351e1f8f4a23c174c46122a5a2780eca70d10e873bce
+generated_at: 2026-04-14T14:09:50.501132+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
@@ -15,18 +15,20 @@ The command-line interface for attune-author. It provides subcommands for bootst
 
 ## When should I use the CLI?
 
-Use the CLI when you need to run attune-author from the command line or integrate it into scripts and automation workflows.
+Use the CLI when you need to run attune-author commands from the terminal. This is the primary way to interact with attune-author's documentation authoring tools.
 
-## How do I run attune-author from the command line?
+## How do I run attune-author commands?
 
-Call the `main()` function in `src/attune_author/cli.py`, which serves as the CLI entry point. This function processes command-line arguments and executes the appropriate subcommand.
+Call the `main()` function in `src/attune_author/cli.py`, which serves as the CLI entry point. This function handles command-line arguments and routes them to the appropriate subcommands.
 
 ## How do I debug CLI issues?
 
-First, run the CLI-related tests with `pytest -k "cli" -v`. If the tests pass but you're still experiencing problems, add a `logger.debug` statement at the suspected failure point and re-run with logging enabled to see detailed execution information.
+Run the related tests first: `pytest -k "cli" -v`. If they pass but your code still fails, add a `logger.debug` statement at the suspected failure point and re-run with logging enabled.
 
-## Where is the CLI code located?
+For common failure modes, see the troubleshooting page for this feature.
 
-The CLI implementation is in `src/attune_author/cli.py`.
+## Where are the source files?
+
+- `src/attune_author/cli.py`
 
 **Tags:** `cli`, `commands`, `entrypoint`

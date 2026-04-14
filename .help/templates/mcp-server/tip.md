@@ -2,26 +2,13 @@
 type: tip
 feature: mcp-server
 depth: tip
-generated_at: 2026-04-11T04:59:42.800998+00:00
-source_hash: d99e670e0306a6da8972a9bf7c1b94a808c3f1fb3c17fad5dee28bdc1183bac4
+generated_at: 2026-04-14T14:12:18.765549+00:00
+source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
-# Tip: working effectively with mcp server
+# Use `create_server()` for MCP server instances
 
-## Use create_server() for fresh instances
+Call `create_server()` instead of instantiating `AttuneAuthorMCPServer` directly when you need a fresh server instance. The factory function handles workspace root detection and ensures proper initialization, while the constructor requires you to manage these details yourself.
 
-Call `create_server()` instead of instantiating `AttuneAuthorMCPServer` directly when you need a new server instance. This factory function handles workspace detection and server configuration automatically, saving you from managing constructor arguments.
-
-## Validate file paths early with validate_file_path()
-
-Always run user-provided file paths through `validate_file_path()` before processing them in your MCP tool handlers. This function prevents directory traversal attacks and ensures paths stay within allowed boundaries—security issues that are easy to miss but expensive to fix later.
-
-## Source files
-
-- `src/attune_author/mcp/server.py`
-- `src/attune_author/mcp/handlers.py`
-- `src/attune_author/mcp/tool_schemas.py`
-- `src/attune_author/mcp/path_validation.py`
-
-**Tags:** `mcp`, `integration`, `claude-code`
+This approach reduces setup errors and keeps your code compatible with future server configuration changes.

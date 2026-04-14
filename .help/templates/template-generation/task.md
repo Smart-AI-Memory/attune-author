@@ -2,54 +2,58 @@
 type: task
 feature: template-generation
 depth: task
-generated_at: 2026-04-12T04:18:08.689196+00:00
-source_hash: fac9c2bf60f422bb00b839a6c2ae022747745371b4a85621dd89daba9515f706
+generated_at: 2026-04-14T13:57:44.082676+00:00
+source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
 
-# Generate help templates from source code
+# Work with template generation
 
-Use template generation when you need to create markdown help files automatically from feature definitions and source code analysis.
+Use template generation when you need to create markdown help templates automatically from feature definitions and source code analysis.
 
 ## Prerequisites
 
 - Access to the project source code
-- Python development environment with pytest installed
+- Familiarity with `src/attune_author/generator.py`
 
 ## Generate templates for a feature
 
-1. **Import the generation function:**
+1. **Import the generation function**
    ```python
    from attune_author.generator import generate_feature_templates
    ```
 
-2. **Define your feature and paths:**
+2. **Call the function with your feature**
    ```python
+   from pathlib import Path
+
    result = generate_feature_templates(
        feature=your_feature,
        help_dir="docs/help",
        project_root=".",
-       depths=["overview", "task", "reference"],
-       overwrite=True
+       depths=["concept", "task", "reference"],  # Optional
+       overwrite=False  # Set True to replace existing files
    )
    ```
 
-3. **Check the generation results:**
-   The function returns a `GenerationResult` containing:
-   - List of successfully generated templates
-   - Any errors encountered during generation
-   - File paths for each created template
+3. **Check the generation result**
+   ```python
+   print(f"Generated {len(result.templates)} templates for {result.feature}")
+   for template in result.templates:
+       print(f"  {template.depth}: {template.path}")
+   ```
 
-## Verify template generation
+## Verify successful generation
 
-Run the test suite to confirm your templates generate correctly:
+- Check that `result.templates` contains the expected template types
+- Confirm the generated files exist at the specified paths
+- Verify each template has a valid `source_hash` that matches the current codebase
 
-```bash
-pytest -k "template-generation"
-```
+## Key components
 
-**Success criteria:** All tests pass and you can find the generated markdown files in your specified help directory. Each template should have proper YAML frontmatter and structured content based on your source code.
+The generation process creates:
+- **Core templates**: concept, task, and reference documentation
+- **Problem templates**: error, warning, troubleshooting, and FAQ guides
+- **Guidance templates**: quickstart, tip, note, and comparison content
 
-## Key files
-
-- `src/attune_author/generator.py` — Core template generation logic
+Each generated template includes metadata about the source feature and creation timestamp.

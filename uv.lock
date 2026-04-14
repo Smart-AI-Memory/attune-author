@@ -55,7 +55,7 @@ wheels = [
 
 [[package]]
 name = "attune-author"
-version = "0.3.7"
+version = "0.3.8"
 source = { editable = "." }
 dependencies = [
     { name = "attune-help" },

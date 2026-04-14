@@ -2,8 +2,8 @@
 type: note
 feature: doc-gen-pipeline
 depth: note
-generated_at: 2026-04-11T05:01:44.707092+00:00
-source_hash: dcd99211b2080853c45dbe17f061733f0b7ff80387279d574d2bd011d8114aa2
+generated_at: 2026-04-14T14:14:42.151122+00:00
+source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
@@ -11,32 +11,24 @@ status: generated
 
 ## Context
 
-The doc-gen-pipeline implements a three-stage approach to documentation generation: outline, write, and review. This multi-stage process produces higher-quality documentation by breaking the generation task into focused steps rather than attempting to generate complete documentation in a single LLM call.
+The doc gen pipeline implements a three-stage approach to documentation generation: outline, write, and review. This multi-stage design produces higher-quality help output by breaking LLM work into focused, planned steps rather than generating documentation in a single pass.
 
-## Pipeline stages
+## Pipeline structure
 
-The pipeline separates documentation generation into three distinct stages:
+The pipeline centers around two main data classes:
 
-1. **Outline** (`build_outline()`) — Creates a structured outline based on source content and target document type
-2. **Write** (`write_content()`) — Generates documentation content following the outline structure
-3. **Review** (`review_content()`) — Reviews and polishes the draft documentation for clarity and accuracy
+- `DocGenResult` — Captures the output of each generation stage, including the final content, intermediate outline and draft, completed stages list, and source file path
+- `DocGenConfig` — Controls pipeline behavior through settings like document type (defaults to "api-reference"), target audience ("developers"), AI model selection, and token limits for each stage
 
-The `generate_docs()` function orchestrates all three stages automatically, while individual stage functions allow for custom workflows.
+The generation process flows through three functions that correspond to the pipeline stages:
 
-## API structure
+1. `build_outline()` — Creates a structured documentation plan from source content
+2. `write_content()` — Generates draft documentation following the outline, with optional section focus
+3. `review_content()` — Polishes the draft for clarity and completeness
 
-The pipeline exposes both configuration classes and stage functions:
+You can run the full pipeline through `generate_docs()`, which orchestrates all stages and returns a `DocGenResult`, or call individual stage functions for more granular control.
 
-**Configuration classes:**
-- `DocGenConfig` — Pipeline configuration including model settings and output preferences
-- `DocGenResult` — Structured result containing generated documentation and metadata
-
-**Stage functions:**
-- `generate_docs()` — Main entry point that runs the complete pipeline
-- `build_outline()`, `write_content()`, `review_content()` — Individual stage functions
-- `parse_outline_sections()` — Utility for extracting section structure from outlines
-
-All stage functions accept common parameters for LLM client configuration, content targeting (document type, audience), and generation limits.
+The pipeline requires the Anthropic AI dependency. If you encounter an `AnthropicCallError`, install it with `pip install 'attune-author[ai]'`.
 
 ## Source files
 

@@ -2,8 +2,8 @@
 type: troubleshooting
 feature: cli
 depth: troubleshooting
-generated_at: 2026-04-11T04:57:28.314992+00:00
-source_hash: a51e03870f89add843bf351e1f8f4a23c174c46122a5a2780eca70d10e873bce
+generated_at: 2026-04-14T14:09:38.200628+00:00
+source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
@@ -11,51 +11,40 @@ status: generated
 
 ## Before you start
 
-The CLI entry point provides command-line access to attune-author with subcommands for bootstrap, generate, status, and maintain.
+The attune-author CLI provides command-line access to documentation authoring tools. When issues occur, they typically manifest as the tool failing to start, crashing during execution, or producing unexpected output.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| Unexpected exception | Python's traceback for the exact file and line where the error occurs |
-| Silent failure / wrong result | Return values from `main()` and any early exit conditions |
-| Intermittent behavior | Environment variables, global state, or cached data between runs |
-| Slow execution | I/O operations, loops, and calls to external processes or subsystems |
+| Command not found or import errors | Verify `attune-author` is installed and in your PATH |
+| Crashes with traceback | Review the Python traceback for the exact failure location in `main()` |
+| Wrong command behavior | Confirm you're using the correct subcommand syntax |
+| Silent exit with no output | Check the return code from `main()` — non-zero indicates failure |
 
 ## Step-by-step diagnosis
 
-1. **Reproduce the failure in isolation.**
-   Create a minimal test case with only the required arguments. Run the CLI command directly to confirm the issue occurs outside any wrapper scripts or IDE integrations.
+1. **Test basic installation.**
+   Run `attune-author --help` to confirm the CLI loads correctly. If this fails, the issue is with installation or environment setup, not command logic.
 
-2. **Enable verbose logging.**
-   Set logging to `DEBUG` level and re-run the command. Check both stdout and stderr for error messages or unexpected behavior patterns.
+2. **Isolate the failing command.**
+   Strip your command down to the minimum arguments that reproduce the problem. Test each subcommand individually to narrow the scope.
 
-3. **Inspect the main entry point.**
-   Examine the `main()` function in `src/attune_author/cli.py`. Look for:
-   - Argument parsing errors
-   - Missing subcommand handlers
-   - Exception handling that might swallow errors
+3. **Check the entry point.**
+   The `main()` function in `src/attune_author/cli.py` handles all command parsing and delegation. Add print statements or use a debugger to trace execution through this function.
 
-4. **Check related tests.**
-   Run `pytest -k "cli" -v` to see which CLI tests pass or fail. Use passing test fixtures as a reference for correct usage patterns.
+4. **Review argument parsing.**
+   Most CLI failures stem from unexpected argument combinations or malformed inputs. Verify your command syntax matches what the parser expects.
 
 ## Common fixes
 
-- **Fix argument parsing errors.** Verify that command-line arguments match expected formats. Use `--help` to confirm available options and required parameters.
+- **Reinstall the package.** If `attune-author` command is not found, reinstall with `pip install -e .` from the project root to ensure the entry point is registered.
 
-- **Clear environment state.** Remove any cached files, temporary directories, or environment variables that might interfere:
-  ```bash
-  unset ATTUNE_*
-  rm -rf ~/.cache/attune-author/
-  ```
+- **Check Python version compatibility.** The CLI requires compatible Python version. Verify with `python --version` that you meet the minimum requirements.
 
-- **Update dependencies.** Check for version conflicts that affect CLI behavior:
-  ```bash
-  pip show click argparse
-  pip install --upgrade attune-author
-  ```
+- **Clear your terminal cache.** Some shells cache command locations. Run `hash -r` (bash/zsh) or restart your terminal if the command was recently installed.
 
-- **Validate subcommand availability.** Ensure the specific subcommand (bootstrap, generate, status, maintain) is properly registered and accessible.
+- **Validate file permissions.** If the CLI fails when accessing files, check that you have read/write permissions for the target directories.
 
 ## Source files
 

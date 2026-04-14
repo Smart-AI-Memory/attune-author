@@ -2,8 +2,8 @@
 type: reference
 feature: mcp-server
 depth: reference
-generated_at: 2026-04-12T04:52:43.304733+00:00
-source_hash: ede5ab36c4a3cf2b73e64330e50a7c9cd90cbe45b9b8d5be3909ee9d4c036883
+generated_at: 2026-04-14T14:10:47.364042+00:00
+source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
@@ -11,47 +11,120 @@ status: generated
 
 ## Classes
 
-| Class | Description |
-|-------|-------------|
-| `AttuneAuthorMCPServer` | MCP server that exposes attune-author functionality through the Model Context Protocol |
-| `AttuneAuthorHandlers` | Async handlers for the 6 attune-author MCP tools |
+### AttuneAuthorMCPServer
 
-### AttuneAuthorMCPServer methods
+MCP server for attune-author.
 
-| Method | Parameters | Description |
-|--------|------------|-------------|
-| `__init__` | `workspace_root: str \| None = None` | Initialize the MCP server with optional workspace root directory |
-| `tools` | None | Return dictionary of available MCP tool definitions |
-| `call_tool` | `tool_name: str, arguments: dict[str, Any]` | Execute a named tool with provided arguments |
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `__init__` | `workspace_root: str \| None = None` | `None` | Initialize MCP server |
+| `call_tool` | `tool_name: str, arguments: dict[str, Any]` | `dict[str, Any]` | Execute MCP tool by name |
 
-### AttuneAuthorHandlers methods
+#### Properties
 
-| Method | Parameters | Description |
-|--------|------------|-------------|
-| `__init__` | `workspace_root: str` | Initialize handlers with workspace root directory |
-| `author_init` | `args: dict[str, Any]` | Initialize a new documentation workspace |
-| `author_status` | `args: dict[str, Any]` | Get current workspace status and configuration |
-| `author_generate` | `args: dict[str, Any]` | Generate documentation from source code |
-| `author_maintain` | `args: dict[str, Any]` | Update and maintain existing documentation |
-| `author_docs` | `args: dict[str, Any]` | Access and manipulate documentation files |
-| `author_lookup` | `args: dict[str, Any]` | Search and retrieve documentation content |
+| Property | Type | Description |
+|----------|------|-------------|
+| `tools` | `dict[str, dict[str, Any]]` | Tool schema registry |
+
+### AttuneAuthorHandlers
+
+Async handlers for the 6 attune-author MCP tools.
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `__init__` | `workspace_root: str` | `None` | Initialize handlers |
+| `author_init` | `args: dict[str, Any]` | `dict[str, Any]` | Bootstrap .help/ directory |
+| `author_status` | `args: dict[str, Any]` | `dict[str, Any]` | Report stale templates |
+| `author_generate` | `args: dict[str, Any]` | `dict[str, Any]` | Generate feature templates |
+| `author_maintain` | `args: dict[str, Any]` | `dict[str, Any]` | Regenerate stale templates |
+| `author_docs` | `args: dict[str, Any]` | `dict[str, Any]` | Generate documentation |
+| `author_lookup` | `args: dict[str, Any]` | `dict[str, Any]` | Look up help topics |
 
 ## Functions
 
-| Function | Parameters | Return Type | Description |
-|----------|------------|-------------|-------------|
-| `create_server` | None | `AttuneAuthorMCPServer` | Create and return a fresh AttuneAuthorMCPServer instance |
-| `main` | None | `None` | Entry point for the attune-author MCP server |
-| `get_tools` | None | `dict[str, dict[str, Any]]` | Return all attune-author MCP tool schema definitions |
-| `validate_file_path` | `path: str, allowed_dir: str \| None = None` | `Path` | Validate and sanitize user-provided file paths |
+| Function | Parameters | Returns | Description | Raises |
+|----------|------------|---------|-------------|--------|
+| `create_server` | none | `AttuneAuthorMCPServer` | Create and return a fresh AttuneAuthorMCPServer | |
+| `main` | none | `None` | Entry point for the attune-author MCP server | |
+| `get_tools` | none | `dict[str, dict[str, Any]]` | Return all attune-author MCP tool definitions | |
+| `validate_file_path` | `path: str, allowed_dir: str \| None = None` | `Path` | Validate a user-controlled file path | `ValueError` |
 
-## Source files
+### validate_file_path exceptions
 
-- `src/attune_author/mcp/server.py` — MCP server implementation
-- `src/attune_author/mcp/handlers.py` — Tool request handlers
-- `src/attune_author/mcp/tool_schemas.py` — Tool schema definitions
-- `src/attune_author/mcp/path_validation.py` — Path validation utilities
+| Exception | Message |
+|-----------|---------|
+| `ValueError` | `'path must be a non-empty string'` |
+| `ValueError` | `'path contains null bytes'` |
+| `ValueError` | `'Path is outside the project: {...} is a system directory'` |
+| `ValueError` | `'Invalid path: {...}'` |
+| `ValueError` | `"Path '{...}' is outside allowed directory '{...}'"` |
 
-## Tags
+## Tool definitions
 
-`mcp`, `integration`, `claude-code`
+### author_init
+
+Bootstrap a .help/ directory in the project. Scans for features and creates features.yaml with discovered modules. Use when setting up a help system for the first time.
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `project_root` | `string` | `'.'` | No | Project root directory (default: cwd) |
+
+### author_status
+
+Report which feature templates are stale by comparing source file hashes against template frontmatter. Returns markdown with stale and current feature lists.
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `help_dir` | `string` | `'.help'` | No | Path to .help/ directory |
+| `project_root` | `string` | `'.'` | No | Project root directory |
+
+### author_generate
+
+Generate concept, task, and reference templates for a single feature. Uses Jinja2 meta templates and optional LLM polish if ANTHROPIC_API_KEY is set.
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `feature` | `string` | none | Yes | Feature name from features.yaml |
+| `help_dir` | `string` | `'.help'` | No | Path to .help/ directory |
+| `project_root` | `string` | `'.'` | No | Project root directory |
+| `overwrite` | `boolean` | `False` | No | Overwrite manual templates |
+
+### author_maintain
+
+Detect and regenerate all stale feature templates in one pass. Useful after large refactors or before a release. Use dry_run=true to preview without writing files.
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `help_dir` | `string` | `'.help'` | No | Path to .help/ directory |
+| `project_root` | `string` | `'.'` | No | Project root directory |
+| `features` | `array` of `string` | none | No | Optional subset of feature names |
+| `dry_run` | `boolean` | `False` | No | Report stale features without regenerating |
+
+### author_docs
+
+Generate documentation from a source file using the 3-stage pipeline (outline -> write -> review). Requires ANTHROPIC_API_KEY. Use for API references, guides, or README sections.
+
+| Parameter | Type | Default | Required | Allowed values | Description |
+|-----------|------|---------|----------|----------------|-------------|
+| `target` | `string` | none | Yes | | Source file path or raw content |
+| `doc_type` | `string` | `'api-reference'` | No | | Documentation type (api-reference, guide, readme) |
+| `audience` | `string` | `'developers'` | No | | Target audience |
+| `output_path` | `string` | none | No | | Optional path to write the result |
+
+### author_lookup
+
+Look up help for a topic by name or tag. Resolves the query against features.yaml and returns the concept, task, or reference template content.
+
+| Parameter | Type | Default | Required | Allowed values | Description |
+|-----------|------|---------|----------|----------------|-------------|
+| `query` | `string` | none | Yes | | Topic to look up (feature name, tag, or substring) |
+| `depth` | `string` | `'concept'` | No | `concept`, `task`, `reference` | Template depth |
+| `help_dir` | `string` | `'.help'` | No | | Path to .help/ directory |
+
+## Constants
+
+### Dangerous prefixes
+
+| Constant | Values |
+|----------|--------|
+| `_DANGEROUS_PREFIXES` | `/etc`, `/sys`, `/proc`, `/dev`, `/boot`, `/root`, `/usr/sbin`, `/usr/bin`, `/sbin`, `/bin`, `/private/etc`, `/private/sys`, `/private/proc`, `/private/dev`, `/private/boot`, `/private/root` |

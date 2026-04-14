@@ -2,32 +2,32 @@
 type: concept
 feature: staleness-and-maintenance
 depth: concept
-generated_at: 2026-04-12T04:19:20.863520+00:00
-source_hash: 3fd0b912ad7c1588f2e6823e44da199dbb18303be141e9b9e8a7f5053f9157d2
+generated_at: 2026-04-14T14:05:15.488389+00:00
+source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
 # Staleness And Maintenance
 
+Staleness and maintenance automatically detects when generated help templates are out of sync with their source code and regenerates outdated documentation.
+
 ## How it works
 
-Staleness and maintenance tracks when help templates become outdated and automatically regenerates them to stay in sync with source code changes.
+The system tracks changes by computing SHA-256 hashes of each feature's source files and comparing them against stored values. When source code changes, the corresponding help templates become stale and need regeneration.
 
-The system works by computing SHA-256 hashes of each feature's source files and comparing them against stored hashes in the help templates. When `compute_source_hash()` detects a mismatch, the template is marked stale. The `check_staleness()` function scans all features and produces a `StalenessReport` showing how many templates are current versus stale.
+The staleness detection process examines specific file patterns for each feature while excluding common build artifacts like `__pycache__`, `.mypy_cache`, and `.git` directories. It returns a detailed report showing which features are current and which need updates.
 
-For automated updates, `run_maintenance()` combines staleness detection with regeneration. It can operate on all features or a subset, with optional dry-run mode for testing. The `run_hook()` function provides a post-commit hook that only regenerates templates when their source files changed in the most recent commit, using `get_changed_files()` to minimize unnecessary work.
+For maintenance operations, you can run checks manually or automatically via commit hooks. The `run_hook` function provides a post-commit entry point that only regenerates templates when relevant files have changed in the most recent commit.
 
 ## Core data structures
 
-**`FeatureStaleness`** — Tracks whether a single feature's help template is current or stale relative to its source files.
+**`FeatureStaleness`** captures the staleness status for a single feature, including the current source hash, previously stored hash, and list of files that contributed to the hash calculation.
 
-**`StalenessReport`** — Aggregates staleness across all checked features, providing counts through `stale_count()` and `current_count()` methods, plus a `stale_features()` list for identifying which ones need updates.
+**`StalenessReport`** aggregates staleness information across all features, providing counts of stale versus current features and listing which specific features need updates.
 
-**`MaintenanceResult`** — Records the outcome of a maintenance run, including how many templates were found stale (`stale_count()`) and how many were actually regenerated (`regenerated_count()`).
+**`MaintenanceResult`** records the outcome of a maintenance run, tracking which features were regenerated successfully, which were skipped due to manual status, and which failed during regeneration.
 
 ## Integration points
-
-Other parts of the codebase interact with staleness and maintenance through these interfaces:
 
 | Interface | Purpose | File |
 |-----------|---------|------|
