@@ -179,10 +179,8 @@ class AttuneAuthorHandlers:
         if not feature:
             return {
                 "success": False,
-                "error": (
-                    f"Feature '{feature_name}' not in manifest. "
-                    f"Available: {sorted(manifest.features)}"
-                ),
+                "error": f"Feature '{feature_name}' not in manifest.",
+                "available": sorted(manifest.features),
             }
 
         try:
@@ -225,7 +223,7 @@ class AttuneAuthorHandlers:
                 dry_run=dry_run,
             )
         except (FileNotFoundError, ValueError) as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": f"Cannot load manifest: {e}"}
 
         return {
             "success": True,

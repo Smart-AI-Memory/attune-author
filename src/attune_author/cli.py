@@ -36,6 +36,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="attune-author",
         description="Documentation authoring and maintenance for the attune ecosystem.",
+        epilog=(
+            "Examples:\n"
+            "  attune-author init                  Scan project and propose features\n"
+            "  attune-author status                Show which templates are stale\n"
+            "  attune-author generate auth         Generate templates for 'auth' feature\n"
+            "  attune-author regenerate --dry-run  List stale features without regenerating\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--version",
@@ -51,52 +59,115 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command", help="Available commands")
 
-    p_init = sub.add_parser("init", help="Initialize .help/ in the current project")
+    p_init = sub.add_parser(
+        "init",
+        help="Initialize .help/ in the current project",
+        description=(
+            "Scan the project and propose a features.yaml manifest listing "
+            "each subsystem's source files. Safe to re-run: exits cleanly if "
+            "a manifest already exists."
+        ),
+    )
     p_init.add_argument(
         "--project-root",
         default=".",
-        help="Project root directory (default: current directory).",
+        help="Project root directory (default: %(default)s).",
     )
 
-    p_status = sub.add_parser("status", help="Show staleness report")
-    p_status.add_argument("--help-dir", default=".help", help="Path to .help/ directory.")
-    p_status.add_argument("--project-root", default=".", help="Project root directory.")
+    p_status = sub.add_parser(
+        "status",
+        help="Show staleness report",
+        description=(
+            "Report which features have help templates that are out of sync "
+            "with their source files, based on content hashes stored in "
+            "template frontmatter."
+        ),
+    )
+    p_status.add_argument(
+        "--help-dir",
+        default=".help",
+        help="Path to .help/ directory (default: %(default)s).",
+    )
+    p_status.add_argument(
+        "--project-root",
+        default=".",
+        help="Project root directory (default: %(default)s).",
+    )
 
-    p_gen = sub.add_parser("generate", help="Generate templates for a feature")
+    p_gen = sub.add_parser(
+        "generate",
+        help="Generate templates for a feature",
+        description=(
+            "Render help templates (concept, task, reference, quickstart, "
+            "etc.) for a single feature from its source files. Skips files "
+            "marked 'status: manual' in frontmatter unless --overwrite is given."
+        ),
+    )
     # Positional is optional so we can print a contextual error
     # (with the list of available features) instead of argparse's
     # terse "the following arguments are required" message.
     p_gen.add_argument("feature", nargs="?", help="Feature name to generate.")
-    p_gen.add_argument("--help-dir", default=".help", help="Path to .help/ directory.")
-    p_gen.add_argument("--project-root", default=".", help="Project root directory.")
+    p_gen.add_argument(
+        "--help-dir",
+        default=".help",
+        help="Path to .help/ directory (default: %(default)s).",
+    )
+    p_gen.add_argument(
+        "--project-root",
+        default=".",
+        help="Project root directory (default: %(default)s).",
+    )
     p_gen.add_argument(
         "--overwrite",
         action="store_true",
-        help="Overwrite manual templates.",
+        help="Overwrite templates marked 'status: manual' in their frontmatter.",
     )
 
-    p_regen = sub.add_parser("regenerate", help="Regenerate all stale templates")
-    p_regen.add_argument("--help-dir", default=".help", help="Path to .help/ directory.")
-    p_regen.add_argument("--project-root", default=".", help="Project root directory.")
+    p_regen = sub.add_parser(
+        "regenerate",
+        help="Regenerate all stale templates",
+        description=(
+            "Detect stale features (by source hash mismatch) and regenerate "
+            "their templates. Use --dry-run to preview without writing."
+        ),
+    )
+    p_regen.add_argument(
+        "--help-dir",
+        default=".help",
+        help="Path to .help/ directory (default: %(default)s).",
+    )
+    p_regen.add_argument(
+        "--project-root",
+        default=".",
+        help="Project root directory (default: %(default)s).",
+    )
     p_regen.add_argument(
         "--dry-run",
         action="store_true",
         help="Report stale features without regenerating.",
     )
 
-    p_docs = sub.add_parser("docs", help="Generate docs from source (requires [ai])")
+    p_docs = sub.add_parser(
+        "docs",
+        help="Generate docs from source (requires [ai])",
+        description=(
+            "Generate documentation from a source file or module using the "
+            "three-stage LLM pipeline (outline, write, review). Requires the "
+            "[ai] extra and ANTHROPIC_API_KEY in the environment."
+        ),
+    )
     # Optional so the handler can print a contextual usage hint.
     p_docs.add_argument("target", nargs="?", help="Source file or module to document.")
-    p_docs.add_argument("--output", "-o", help="Output file path.")
+    p_docs.add_argument("--output", "-o", help="Output file path (default: stdout).")
     p_docs.add_argument(
         "--doc-type",
         default="api-reference",
-        help="Documentation type (default: api-reference).",
+        help="Documentation type (default: %(default)s).",
     )
     p_docs.add_argument(
         "--audience",
         default="developers",
-        help="Target audience (default: developers).",
+        help="Target audience (default: %(default)s).",
     )
 
     return parser
@@ -203,6 +274,14 @@ def _cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_missing_manifest_hint(help_dir: Path) -> None:
+    """Print a friendly hint when features.yaml is missing."""
+    print(
+        f"No manifest at {help_dir / 'features.yaml'}. Run `attune-author init` first.",
+        file=sys.stderr,
+    )
+
+
 def _cmd_status(args: argparse.Namespace) -> int:
     """Handle the status command."""
     from attune_author.maintenance import format_status_report
@@ -212,7 +291,12 @@ def _cmd_status(args: argparse.Namespace) -> int:
     root = validate_file_path(args.project_root)
     help_dir = validate_file_path(args.help_dir)
 
-    manifest = load_manifest(help_dir)
+    try:
+        manifest = load_manifest(help_dir)
+    except FileNotFoundError:
+        _print_missing_manifest_hint(help_dir)
+        return 1
+
     report = check_staleness(manifest, help_dir, root)
     print(format_status_report(report, help_dir))
 
@@ -234,10 +318,7 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     try:
         manifest = load_manifest(help_dir)
     except FileNotFoundError:
-        print(
-            f"No manifest at {help_dir / 'features.yaml'}. " "Run `attune-author init` first.",
-            file=sys.stderr,
-        )
+        _print_missing_manifest_hint(help_dir)
         return 1
 
     feature = manifest.features.get(args.feature)
@@ -274,11 +355,15 @@ def _cmd_regenerate(args: argparse.Namespace) -> int:
     root = validate_file_path(args.project_root)
     help_dir = validate_file_path(args.help_dir)
 
-    result = run_maintenance(
-        help_dir=help_dir,
-        project_root=root,
-        dry_run=args.dry_run,
-    )
+    try:
+        result = run_maintenance(
+            help_dir=help_dir,
+            project_root=root,
+            dry_run=args.dry_run,
+        )
+    except FileNotFoundError:
+        _print_missing_manifest_hint(help_dir)
+        return 1
 
     if args.dry_run:
         print(f"Stale features: {result.stale_count}")

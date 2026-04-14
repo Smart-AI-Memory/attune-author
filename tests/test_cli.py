@@ -265,3 +265,35 @@ class TestCLI:
         assert result == 0
         captured = capsys.readouterr()
         assert "Stale features:" in captured.out
+
+    def test_status_missing_manifest_hints_init(self, tmp_path: Path, capsys) -> None:
+        """status without a manifest should point users at `init`."""
+        result = main(
+            [
+                "status",
+                "--help-dir",
+                str(tmp_path / ".help"),
+                "--project-root",
+                str(tmp_path),
+            ]
+        )
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Run `attune-author init`" in captured.err
+
+    def test_regenerate_missing_manifest_hints_init(self, tmp_path: Path, capsys) -> None:
+        """regenerate without a manifest should point users at `init`."""
+        result = main(
+            [
+                "regenerate",
+                "--help-dir",
+                str(tmp_path / ".help"),
+                "--project-root",
+                str(tmp_path),
+            ]
+        )
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Run `attune-author init`" in captured.err

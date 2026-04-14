@@ -77,7 +77,7 @@ def validate_file_path(
     if path.startswith("/"):
         match = _is_dangerous(path)
         if match:
-            raise ValueError(f"Cannot access system directory: {match}")
+            raise ValueError(f"Path is outside the project: {match} is a system directory")
 
     try:
         resolved = Path(path).resolve()
@@ -88,7 +88,7 @@ def validate_file_path(
     # any symlinks pointing into system dirs.
     match = _is_dangerous(str(resolved))
     if match:
-        raise ValueError(f"Cannot access system directory: {match}")
+        raise ValueError(f"Path is outside the project: {match} is a system directory")
 
     # Workspace containment check
     if allowed_dir:

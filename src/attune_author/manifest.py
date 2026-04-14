@@ -103,7 +103,9 @@ def load_manifest(help_dir: str | Path) -> FeatureManifest:
 
     raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise ValueError(f"Invalid manifest: expected mapping, got {type(raw).__name__}")
+        raise ValueError(
+            f"Invalid manifest at {manifest_path}: expected mapping, got {type(raw).__name__}"
+        )
 
     version = raw.get("version", 1)
     if version != _MANIFEST_VERSION:
@@ -115,14 +117,16 @@ def load_manifest(help_dir: str | Path) -> FeatureManifest:
 
     raw_features = raw.get("features", {})
     if not isinstance(raw_features, dict):
-        raise ValueError("'features' must be a mapping")
+        raise ValueError(f"Invalid manifest at {manifest_path}: 'features' must be a mapping")
 
     features: dict[str, Feature] = {}
     for name, spec in raw_features.items():
         if not is_safe_feature_name(name):
             raise ValueError(f"Invalid feature name: {name!r}")
         if not isinstance(spec, dict):
-            raise ValueError(f"Feature '{name}' must be a mapping")
+            raise ValueError(
+                f"Invalid manifest at {manifest_path}: feature '{name}' must be a mapping"
+            )
         features[name] = Feature(
             name=name,
             description=spec.get("description", ""),
