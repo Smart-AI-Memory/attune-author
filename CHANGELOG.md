@@ -8,6 +8,78 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2026-04-14
+
+### Added (0.3.7)
+
+- **Source-grounded accuracy for reference templates** — the generator
+  now extracts the `raises` list, `Literal[...]` allowed values, and
+  dataclass field name/type/default tuples via AST and surfaces them
+  to the polish prompt. The reference-template prompt treats them as
+  required output (Parameters columns keep defaults, Raises columns
+  name each exception, dataclass Fields tables replace prose). Closes
+  the four hallucination gaps the v0.3.6 benchmark surfaced.
+- **Consistent `init` hint across `status`, `regenerate`, and
+  `generate`** — running any of these in a project without a manifest
+  now prints the same "No manifest at .../.help/features.yaml. Run
+  `attune-author init` first." message. Previously only `generate`
+  guided the user; `status` and `regenerate` dead-ended with a
+  terse "Error: No features.yaml in ...".
+- **Manifest validation errors include the file path** — malformed
+  `features.yaml` now reports `Invalid manifest at /path/to/.help/features.yaml:
+  expected mapping, got str` instead of omitting the path, so users
+  know which file to fix.
+- **CLI subcommand descriptions and examples** — every subcommand now
+  renders a description line when the user runs `--help`, flag help
+  text includes `(default: ...)` via `%(default)s`, `--overwrite`
+  explains what a manual template is, and the top-level parser has an
+  epilog with four usage examples.
+- **Git post-commit hook (`.githooks/post-commit`)** — after each
+  commit the hook runs `run_hook()`, which diffs the last commit,
+  matches touched files against feature globs, and regenerates only
+  the affected templates. Activate with `git config core.hooksPath
+  .githooks` or `make setup`.
+- **`Makefile` for dev setup** — `make setup` configures git hooks
+  and installs dev deps. `make status`, `make regenerate`, `make test`,
+  `make lint` are convenience targets.
+
+### Changed (0.3.7)
+
+- **`author_generate` MCP tool returns a structured `available`
+  field** — when the requested feature is not in the manifest, the
+  error response now includes a separate `available: [...]` key
+  instead of embedding the list inside the error string, matching
+  the existing `author_lookup` pattern.
+- **`author_maintain` wraps manifest errors with `Cannot load
+  manifest:` prefix** — previously surfaced the raw exception text;
+  now consistent with `author_status`, `author_generate`, and
+  `author_lookup`.
+- **Path-traversal error message reworded** — `Cannot access system
+  directory: /etc` is now `Path is outside the project: /etc is a
+  system directory`, which reads as a containment violation instead
+  of a leaked internal error.
+
+### Fixed (0.3.7)
+
+- **`_extract_raises` now returns exceptions in source order** —
+  the docstring promised source order but the implementation used
+  `ast.walk` (BFS), so nested `raise` statements inside `if`/`try`
+  blocks surfaced after later top-level raises. Switched to a
+  pre-order DFS via `ast.iter_child_nodes`.
+- **`__version__` no longer stale** — `src/attune_author/__init__.py`
+  had been pinned at 0.3.3 across the 0.3.4/0.3.5/0.3.6 bumps, so
+  `attune-author --version` reported the wrong number. Now synced
+  with `pyproject.toml`.
+
+### Tests (0.3.7)
+
+- **`tests/test_source_extractors.py`** — 25 new unit tests covering
+  the four AST extractors (`_extract_raises`, `_extract_literal_values`,
+  `_extract_param_literals`, `_is_dataclass`, `_extract_dataclass_fields`).
+- **Two new CLI tests** — `test_status_missing_manifest_hints_init`
+  and `test_regenerate_missing_manifest_hints_init` lock in the
+  unified init-hint behavior.
+
 ## [0.3.3] - 2026-04-11
 
 ### Added (0.3.3)

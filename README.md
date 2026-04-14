@@ -60,6 +60,54 @@ for feature in report.stale:
 - **API reference** -- Generate docs from Python source
   (requires `[ai]`)
 - **CLI** -- `attune-author` command for all operations
+- **MCP server** -- Expose every CLI capability to Claude
+  Code as callable tools (`author_status`,
+  `author_generate`, `author_maintain`, `author_lookup`,
+  `author_docs`, `author_init`)
+
+## MCP Integration
+
+To make `attune-author` available to Claude Code as tools,
+add this to `.mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "attune-author": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "attune_author.mcp.server"]
+    }
+  }
+}
+```
+
+Then ask Claude things like "are my help templates up to
+date?" or "regenerate the stale ones" — it will call the
+corresponding MCP tools directly.
+
+## Automation
+
+Ship an always-fresh help tree by wiring up the post-commit
+hook:
+
+```bash
+git config core.hooksPath .githooks   # one-time setup
+# or: make setup   (also installs dev deps)
+```
+
+After each commit the hook diffs what changed, matches the
+files against your manifest, and regenerates only the
+affected templates.
+
+## Development
+
+```bash
+make setup        # Install dev deps + configure git hooks
+make test         # Run the full test suite
+make lint         # ruff check
+make status       # Check template staleness
+make regenerate   # Regenerate stale templates
+```
 
 ## Ecosystem
 
