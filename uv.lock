@@ -55,7 +55,7 @@ wheels = [
 
 [[package]]
 name = "attune-author"
-version = "0.3.3"
+version = "0.3.6"
 source = { editable = "." }
 dependencies = [
     { name = "attune-help" },
@@ -91,7 +91,7 @@ requires-dist = [
     { name = "anthropic", marker = "extra == 'ai'", specifier = ">=0.40.0" },
     { name = "anthropic", marker = "extra == 'dev'", specifier = ">=0.40.0" },
     { name = "anthropic", marker = "extra == 'plugin'", specifier = ">=0.40.0" },
-    { name = "attune-help", specifier = ">=0.3.0" },
+    { name = "attune-help", specifier = ">=0.5.1" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.0" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
