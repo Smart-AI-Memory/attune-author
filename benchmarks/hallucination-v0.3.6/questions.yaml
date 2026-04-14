@@ -1,0 +1,196 @@
+# Final question set for attune-help hallucination benchmark.
+# 25 questions culled from questions_draft.yaml with balanced
+# category coverage: 4 location / 8 signature / 4 default /
+# 4 enum / 3 behavior / 2 dataclass.
+#
+# Original IDs preserved for traceability back to the draft.
+
+version: 1
+questions:
+
+  # -- Location (4) ---------------------------------------------------
+
+  - id: 1
+    category: location
+    feature: mcp-server
+    question: "In which Python module of attune-author does the `validate_file_path` function live?"
+    answer: "src/attune_author/mcp/path_validation.py"
+    source: "src/attune_author/mcp/path_validation.py:49"
+
+  - id: 2
+    category: location
+    feature: manifest
+    question: "Which attune-author module defines the `is_safe_feature_name` function?"
+    answer: "src/attune_author/manifest.py"
+    source: "src/attune_author/manifest.py:27"
+
+  - id: 3
+    category: location
+    feature: staleness-and-maintenance
+    question: "Which attune-author module contains the `compute_source_hash` function used for staleness detection?"
+    answer: "src/attune_author/staleness.py"
+    source: "src/attune_author/staleness.py:105"
+
+  - id: 5
+    category: location
+    feature: mcp-server
+    question: "Which module in attune-author contains the `AttuneAuthorHandlers` class that backs MCP tool calls?"
+    answer: "src/attune_author/mcp/handlers.py"
+    source: "src/attune_author/mcp/handlers.py:32"
+
+  # -- Signatures (8) -------------------------------------------------
+
+  - id: 7
+    category: signature
+    feature: manifest
+    question: "What are the parameters of `attune_author.manifest.load_manifest`, and what does it return?"
+    answer: "Takes one parameter: help_dir (str | Path). Returns FeatureManifest."
+    source: "src/attune_author/manifest.py:85"
+
+  - id: 9
+    category: signature
+    feature: template-generation
+    question: "What are all the parameters of `attune_author.generator.generate_feature_templates`?"
+    answer: "feature (Feature), help_dir (str | Path), project_root (str | Path), depths (list[str] | None = None), overwrite (bool = False). Returns GenerationResult."
+    source: "src/attune_author/generator.py:135"
+
+  - id: 10
+    category: signature
+    feature: staleness-and-maintenance
+    question: "What are the parameters of `attune_author.staleness.compute_source_hash`, and what does it return?"
+    answer: "feature (Feature), project_root (str | Path). Returns a tuple of (hex digest str, list of matched file path strings)."
+    source: "src/attune_author/staleness.py:105"
+
+  - id: 11
+    category: signature
+    feature: polish
+    question: "What are all parameters of `attune_author.polish.polish_template`?"
+    answer: "content (str), feature_name (str), source_summary (str), template_type (str = 'generic'), strict (bool | None = None). Returns str."
+    source: "src/attune_author/polish.py:84"
+
+  - id: 12
+    category: signature
+    feature: mcp-server
+    question: "What are the parameters of `attune_author.mcp.path_validation.validate_file_path`, and what does it return?"
+    answer: "path (str), allowed_dir (str | None = None). Returns pathlib.Path."
+    source: "src/attune_author/mcp/path_validation.py:49"
+
+  - id: 15
+    category: signature
+    feature: mcp-server
+    question: "What parameters does the MCP `author_lookup` tool accept?"
+    answer: "query (required str), depth (enum: concept|task|reference, default 'concept'), help_dir (str, default '.help')."
+    source: "src/attune_author/mcp/tool_schemas.py:157"
+
+  - id: 16
+    category: signature
+    feature: mcp-server
+    question: "What parameters does the MCP `author_generate` tool accept?"
+    answer: "feature (required str), help_dir (str, default '.help'), project_root (str, default '.'), overwrite (bool, default False)."
+    source: "src/attune_author/mcp/tool_schemas.py:60"
+
+  - id: 17
+    category: signature
+    feature: mcp-server
+    question: "What is the constructor signature of `AttuneAuthorHandlers`?"
+    answer: "__init__(self, workspace_root: str) -> None"
+    source: "src/attune_author/mcp/handlers.py:39"
+
+  # -- Defaults (4) ---------------------------------------------------
+
+  - id: 19
+    category: default
+    feature: mcp-server
+    question: "What is the default value of the `depth` parameter in the MCP `author_lookup` tool?"
+    answer: "concept"
+    source: "src/attune_author/mcp/tool_schemas.py:174"
+
+  - id: 20
+    category: default
+    feature: mcp-server
+    question: "What is the default value of the `help_dir` argument across the MCP tools?"
+    answer: ".help"
+    source: "src/attune_author/mcp/tool_schemas.py:50"
+
+  - id: 21
+    category: default
+    feature: template-generation
+    question: "What is the default value of `overwrite` in `generate_feature_templates`?"
+    answer: "False"
+    source: "src/attune_author/generator.py:140"
+
+  - id: 23
+    category: default
+    feature: polish
+    question: "What is the default value of `template_type` in `polish_template`?"
+    answer: "generic"
+    source: "src/attune_author/polish.py:88"
+
+  # -- Enums / constants (4) ------------------------------------------
+
+  - id: 25
+    category: enum
+    feature: mcp-server
+    question: "What are the allowed string values for the `depth` parameter in the `author_lookup` MCP tool?"
+    answer: "concept, task, reference"
+    source: "src/attune_author/mcp/tool_schemas.py:172"
+
+  - id: 26
+    category: enum
+    feature: template-generation
+    question: "Name at least three additional template kinds (beyond concept/task/reference) that `generate_feature_templates` supports when passed an explicit `depths` list."
+    answer: "Any three of: error, warning, troubleshooting, faq, quickstart, tip, note, comparison."
+    source: "src/attune_author/generator.py:166-169"
+
+  - id: 27
+    category: enum
+    feature: manifest
+    question: "What are the tokens that make a feature name unsafe, per the `_UNSAFE_NAME_TOKENS` constant in manifest.py?"
+    answer: "'/', '\\\\', '..', '\\x00' (forward slash, backslash, parent-dir token, null byte)"
+    source: "src/attune_author/manifest.py:24"
+
+  - id: 30
+    category: enum
+    feature: polish
+    question: "What strings, when set as the value of `ATTUNE_AUTHOR_STRICT_POLISH`, turn OFF strict mode?"
+    answer: "0, false, no, off (case-insensitive; the _FALSY frozenset)"
+    source: "src/attune_author/polish.py:55-58"
+
+  # -- Behavior (3) ---------------------------------------------------
+
+  - id: 31
+    category: behavior
+    feature: manifest
+    question: "What does `is_safe_feature_name('../etc')` return, and why?"
+    answer: "False. The name contains the '..' token, which is in _UNSAFE_NAME_TOKENS."
+    source: "src/attune_author/manifest.py:27-46"
+
+  - id: 33
+    category: behavior
+    feature: mcp-server
+    question: "What exception does `validate_file_path` raise when passed a path containing a null byte?"
+    answer: "ValueError (with the message 'path contains null bytes')."
+    source: "src/attune_author/mcp/path_validation.py:71-72"
+
+  - id: 35
+    category: behavior
+    feature: template-generation
+    question: "If `generate_feature_templates` is called and the feature name fails `is_safe_feature_name`, what exception is raised?"
+    answer: "ValueError with a message including 'Invalid feature name:'."
+    source: "src/attune_author/generator.py:179-180"
+
+  # -- Dataclass fields (2) -------------------------------------------
+
+  - id: 37
+    category: dataclass
+    feature: template-generation
+    question: "What fields does `GeneratedTemplate` have?"
+    answer: "feature (str), depth (str), path (Path), source_hash (str)."
+    source: "src/attune_author/generator.py:102-115"
+
+  - id: 39
+    category: dataclass
+    feature: staleness-and-maintenance
+    question: "What properties does the `StalenessReport` class expose (beyond its `entries` field)?"
+    answer: "stale_count (int), current_count (int), stale_features (list[str])."
+    source: "src/attune_author/staleness.py:74-87"
