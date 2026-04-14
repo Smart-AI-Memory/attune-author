@@ -2,28 +2,28 @@
 type: concept
 feature: polish
 depth: concept
-generated_at: 2026-04-14T13:59:21.756891+00:00
-source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
+generated_at: 2026-04-14T16:04:11.762604+00:00
+source_hash: 39a4215a31cf6bfa17f5b898ad071827d406cbe4dc8d2744f17fe7fd680d6891
 status: generated
 ---
 
 # Polish
 
-Polish is an LLM-powered refinement system that transforms auto-generated help templates into polished documentation following Google's style guide.
-
 ## How it works
 
-The polish feature takes raw generated templates and improves them through a structured LLM pass. It uses template-specific system prompts that include rules for different documentation types (concept, reference, tutorial) and common anti-patterns to avoid.
+The polish feature improves auto-generated help templates by passing them through an LLM with template-specific editing instructions.
 
-The system builds a source summary from your codebase's public classes, functions, and module docstrings, then sends both the draft template and this context to an LLM for rewriting. This ensures the polished output stays accurate to your actual code while improving readability and structure.
+When you call `polish_template()`, the system builds a source summary from your codebase information and combines it with a template-type-specific system prompt. For example, concept templates get instructions to lead with clear definitions and use concrete examples, while troubleshooting templates get guidance on structuring diagnostic steps.
+
+The LLM receives both the original template and a summary of the actual source code (classes, functions, docstrings) to ensure accuracy. In strict mode, the function raises `PolishError` if the polish pass fails, giving you control over whether to fall back to unpolished content.
 
 ## Core components
 
-- **`polish_template()`** — The main entry point that coordinates the LLM rewrite process
-- **`build_source_summary()`** — Extracts key information from your codebase to ground the LLM's output
-- **`get_system_prompt()`** — Selects template-specific writing rules and style guidelines
-- **`PolishError`** — Signals when the polish pass fails in strict mode
+- **`polish_template()`** — Main entry point that orchestrates the LLM polish pass for a given template and feature
+- **`get_system_prompt()`** — Retrieves editing instructions tailored to specific template types (concept, troubleshooting, etc.)
+- **`build_source_summary()`** — Creates concise summaries of your source code to ground the LLM's editing decisions
+- **`PolishError`** — Exception raised when polish fails in strict mode
 
-## Error handling
+## Configuration
 
-The polish feature can operate in strict mode (controlled by the `ATTUNE_AUTHOR_STRICT_POLISH` environment variable). When enabled, LLM failures raise `PolishError` exceptions rather than falling back gracefully. This helps catch quality issues during development while allowing more resilient behavior in production.
+You can control polish behavior through the `ATTUNE_AUTHOR_STRICT_POLISH` environment variable. When enabled, polish failures raise exceptions instead of silently continuing with unpolished templates.

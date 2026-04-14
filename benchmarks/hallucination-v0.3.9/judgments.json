@@ -1,0 +1,902 @@
+{
+  "q1|sonnet|baseline": {
+    "qid": 1,
+    "category": "location",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the module as src/attune_author/mcp/path_validation.py, which matches the ground truth exactly."
+  },
+  "q1|sonnet|treated": {
+    "qid": 1,
+    "category": "location",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the module as src/attune_author/mcp/path_validation.py, which matches the ground truth exactly."
+  },
+  "q1|opus|baseline": {
+    "qid": 1,
+    "category": "location",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant's answer exactly matches the ground truth: src/attune_author/mcp/path_validation.py."
+  },
+  "q1|opus|treated": {
+    "qid": 1,
+    "category": "location",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identified the module as src/attune_author/mcp/path_validation.py, which matches the ground truth exactly."
+  },
+  "q2|sonnet|baseline": {
+    "qid": 2,
+    "category": "location",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "hallucinated",
+    "reasoning": "The assistant claims the function is defined in `src/attune_author/mcp/path_validation.py`, but the ground truth states it is defined in `src/attune_author/manifest.py`. This is a completely wrong module path, not just a minor error."
+  },
+  "q2|sonnet|treated": {
+    "qid": 2,
+    "category": "location",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies that `is_safe_feature_name` is defined in `src/attune_author/manifest.py`, which matches the ground truth exactly."
+  },
+  "q2|opus|baseline": {
+    "qid": 2,
+    "category": "location",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "hallucinated",
+    "reasoning": "The assistant claims the function is defined in `src/attune_author/mcp/path_validation.py`, but the ground truth states it is defined in `src/attune_author/manifest.py`. This is a completely wrong module path, constituting a fabricated answer."
+  },
+  "q2|opus|treated": {
+    "qid": 2,
+    "category": "location",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies that `is_safe_feature_name` is defined in the `attune_author.manifest` module, specifically in `src/attune_author/manifest.py`, which matches the ground truth exactly."
+  },
+  "q3|sonnet|baseline": {
+    "qid": 3,
+    "category": "location",
+    "feature": "staleness-and-maintenance",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies that compute_source_hash is in src/attune_author/staleness.py, matching the ground truth exactly."
+  },
+  "q3|sonnet|treated": {
+    "qid": 3,
+    "category": "location",
+    "feature": "staleness-and-maintenance",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies that `compute_source_hash` is in `src/attune_author/staleness.py`, which matches the ground truth exactly."
+  },
+  "q3|opus|baseline": {
+    "qid": 3,
+    "category": "location",
+    "feature": "staleness-and-maintenance",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies that compute_source_hash is in src/attune_author/staleness.py, matching the ground truth exactly."
+  },
+  "q3|opus|treated": {
+    "qid": 3,
+    "category": "location",
+    "feature": "staleness-and-maintenance",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the module as src/attune_author/staleness.py, which matches the ground truth exactly."
+  },
+  "q5|sonnet|baseline": {
+    "qid": 5,
+    "category": "location",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identified the module as src/attune_author/mcp/handlers.py, which matches the ground truth exactly."
+  },
+  "q5|sonnet|treated": {
+    "qid": 5,
+    "category": "location",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the module as src/attune_author/mcp/handlers.py, which matches the ground truth exactly."
+  },
+  "q5|opus|baseline": {
+    "qid": 5,
+    "category": "location",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant's answer exactly matches the ground truth: src/attune_author/mcp/handlers.py."
+  },
+  "q5|opus|treated": {
+    "qid": 5,
+    "category": "location",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant's answer exactly matches the ground truth: src/attune_author/mcp/handlers.py."
+  },
+  "q7|sonnet|baseline": {
+    "qid": 7,
+    "category": "signature",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly identifies that load_manifest takes a path parameter and returns some kind of manifest object, but explicitly states it cannot verify the exact parameter names, types, or return type. It does not fabricate incorrect information. Since it acknowledges uncertainty rather than inventing specifics, this counts as partial."
+  },
+  "q7|sonnet|treated": {
+    "qid": 7,
+    "category": "signature",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the parameter `help_dir` with type `str | Path` and the return type `FeatureManifest`. The additional detail about exceptions is extra but not incorrect."
+  },
+  "q7|opus|baseline": {
+    "qid": 7,
+    "category": "signature",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly acknowledges it cannot verify the exact signature from the available context and does not fabricate incorrect details. However, it fails to provide the specific parameter name (help_dir: str | Path) and return type (FeatureManifest) that the ground truth specifies. Since it doesn't invent wrong information but also doesn't answer the question correctly, this is partial."
+  },
+  "q7|opus|treated": {
+    "qid": 7,
+    "category": "signature",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the single parameter `help_dir` with type `str | Path` and the return type `FeatureManifest`, matching the ground truth exactly."
+  },
+  "q9|sonnet|baseline": {
+    "qid": 9,
+    "category": "signature",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states it cannot verify the parameters from the context provided and does not invent any specific wrong answer. It suggests ways to find the answer. This is an honest 'I don't know' response without fabrication, which qualifies as partial."
+  },
+  "q9|sonnet|treated": {
+    "qid": 9,
+    "category": "signature",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "All parameter names, types, defaults, and return type match the ground truth exactly."
+  },
+  "q9|opus|baseline": {
+    "qid": 9,
+    "category": "signature",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly acknowledges it cannot verify the parameters from the available context and declines to guess, rather than fabricating an answer. This is better than hallucinating but doesn't provide the correct information."
+  },
+  "q9|opus|treated": {
+    "qid": 9,
+    "category": "signature",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "All parameter names, types, defaults, and the return type match the ground truth exactly."
+  },
+  "q10|sonnet|baseline": {
+    "qid": 10,
+    "category": "signature",
+    "feature": "staleness-and-maintenance",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not provide the specific parameters or return type, but it also did not fabricate any incorrect information. It correctly acknowledged that it could not verify the details from its available context. This is a case of 'I cannot verify this' without inventing a wrong answer, which counts as partial."
+  },
+  "q10|sonnet|treated": {
+    "qid": 10,
+    "category": "signature",
+    "feature": "staleness-and-maintenance",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies both parameters (feature: Feature, project_root: str | Path) and the return type (tuple[str, list[str]]), which matches the ground truth of a tuple of (hex digest str, list of matched file path strings). The additional detail about SHA-256 and FeatureStaleness is extra but not contradictory."
+  },
+  "q10|opus|baseline": {
+    "qid": 10,
+    "category": "signature",
+    "feature": "staleness-and-maintenance",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant acknowledges it cannot verify the function signature from the context and does not invent any specific wrong answer. It correctly identifies the module location and general purpose but does not provide the actual parameter names or return type. Since it doesn't fabricate information but also doesn't answer the question, this is partial."
+  },
+  "q10|opus|treated": {
+    "qid": 10,
+    "category": "signature",
+    "feature": "staleness-and-maintenance",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies both parameters (feature: Feature, project_root: str | Path) and the return type (tuple of hash string and list of matched source file strings). The additional detail about SHA-256 is plausible extra detail and doesn't contradict the ground truth."
+  },
+  "q11|sonnet|baseline": {
+    "qid": 11,
+    "category": "signature",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not provide the specific parameters but also did not fabricate any incorrect information. It acknowledged it couldn't verify the answer from the available context, which counts as partial rather than hallucinated."
+  },
+  "q11|sonnet|treated": {
+    "qid": 11,
+    "category": "signature",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly lists all five parameters with their types and default values matching the ground truth exactly: content (str), feature_name (str), source_summary (str), template_type (str = 'generic'), strict (bool | None = None). The return type is not mentioned but the question only asked about parameters."
+  },
+  "q11|opus|baseline": {
+    "qid": 11,
+    "category": "signature",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states that it cannot verify the parameters from the context it has, rather than inventing a specific wrong answer. This is a 'cannot verify' response without fabrication, which counts as partial."
+  },
+  "q11|opus|treated": {
+    "qid": 11,
+    "category": "signature",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "All parameter names, types, defaults, and return type match the ground truth exactly. The mention of PolishError is extra detail but not incorrect."
+  },
+  "q12|sonnet|baseline": {
+    "qid": 12,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly acknowledges that it cannot verify the information from the context and does not invent any specific wrong answer. This counts as partial rather than hallucinated."
+  },
+  "q12|sonnet|treated": {
+    "qid": 12,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The parameters (path: str, allowed_dir: str | None = None) and return type (Path / pathlib.Path) exactly match the ground truth. The additional detail about raised exceptions is correct supplementary information and does not contradict anything."
+  },
+  "q12|opus|baseline": {
+    "qid": 12,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states that it cannot verify the information from the context and does not invent any specific wrong answer. This counts as partial per the scoring guidelines."
+  },
+  "q12|opus|treated": {
+    "qid": 12,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The parameters (path: str, allowed_dir: str | None = None) and return type (pathlib.Path) exactly match the ground truth. Additional detail about raised exceptions is extra but not incorrect."
+  },
+  "q15|sonnet|baseline": {
+    "qid": 15,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant does not provide the specific parameter names (query, depth, help_dir) or their types/defaults. It acknowledges it cannot verify the details and makes reasonable guesses about the general nature of the parameters, but doesn't give concrete correct information. It doesn't fabricate wrong specifics either, so it's not hallucinated, but it falls short of being correct."
+  },
+  "q15|sonnet|treated": {
+    "qid": 15,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies all three parameters (query, depth, help_dir) with their correct types, allowed values, defaults, and required status, matching the ground truth exactly."
+  },
+  "q15|opus|baseline": {
+    "qid": 15,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant does not provide the actual parameters of the `author_lookup` tool, but it also does not fabricate or invent any incorrect information. It honestly states it cannot verify the exact parameters from the context available. This is a case of 'I cannot verify this' without inventing a wrong answer, which counts as partial."
+  },
+  "q15|opus|treated": {
+    "qid": 15,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant's answer matches the ground truth exactly: query (required str), depth (enum concept/task/reference, default 'concept'), help_dir (str, default '.help'). All parameter names, types, defaults, and constraints are correct with no invented information."
+  },
+  "q16|sonnet|baseline": {
+    "qid": 16,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not provide the specific parameters but honestly stated it could not verify them from the context, without inventing any incorrect information. This qualifies as partial rather than hallucinated."
+  },
+  "q16|sonnet|treated": {
+    "qid": 16,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The answer lists exactly the four parameters (feature, help_dir, project_root, overwrite) with correct types, defaults, and required status, matching the ground truth perfectly."
+  },
+  "q16|opus|baseline": {
+    "qid": 16,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly identifies that author_generate accepts a feature name and likely a project path, which aligns with the ground truth parameters (feature, project_root). However, the assistant explicitly states it cannot verify the exact parameters and doesn't mention help_dir or overwrite. It doesn't fabricate incorrect information, but it also doesn't provide the complete answer. This is a case of acknowledging uncertainty without inventing wrong details."
+  },
+  "q16|opus|treated": {
+    "qid": 16,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The answer lists exactly the four parameters (feature, help_dir, project_root, overwrite) with correct types, defaults, and required status, matching the ground truth perfectly."
+  },
+  "q17|sonnet|baseline": {
+    "qid": 17,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states it cannot verify the constructor signature from the available context, rather than inventing a wrong answer. This is a cautious, non-fabricated response."
+  },
+  "q17|sonnet|treated": {
+    "qid": 17,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the constructor signature of AttuneAuthorHandlers as __init__(self, workspace_root: str) -> None, matching the ground truth exactly."
+  },
+  "q17|opus|baseline": {
+    "qid": 17,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly identifies the likely location of the class but explicitly states it cannot verify the constructor signature without seeing the source code. It does not invent any incorrect information. This counts as a 'cannot verify' response, which per the instructions is partial rather than hallucinated."
+  },
+  "q17|opus|treated": {
+    "qid": 17,
+    "category": "signature",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant's answer exactly matches the ground truth: __init__(self, workspace_root: str) -> None, with the correct argument name and type."
+  },
+  "q19|sonnet|baseline": {
+    "qid": 19,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states it cannot verify the answer from the provided context, rather than inventing a specific wrong answer. The ground truth is that the default value is 'concept'. Since the assistant didn't fabricate an answer but also didn't provide the correct one, this is partial."
+  },
+  "q19|sonnet|treated": {
+    "qid": 19,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that the default value of the `depth` parameter is `'concept'`, which matches the ground truth."
+  },
+  "q19|opus|baseline": {
+    "qid": 19,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states that it cannot verify the answer from the available context and does not invent a specific wrong answer. This is better than hallucinating but does not provide the correct answer ('concept'), so it qualifies as partial."
+  },
+  "q19|opus|treated": {
+    "qid": 19,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that the default value of the `depth` parameter is `'concept'`, which matches the ground truth."
+  },
+  "q20|sonnet|baseline": {
+    "qid": 20,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies `.help` (or `.help/`) as the default value for the `help_dir` argument, which matches the ground truth of `.help`. While the assistant hedges about not being able to verify from the exact source file, the answer provided is correct."
+  },
+  "q20|sonnet|treated": {
+    "qid": 20,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the default value of `help_dir` as `.help`, which matches the ground truth. The additional detail about which tools use this argument is extra information that doesn't contradict anything."
+  },
+  "q20|opus|baseline": {
+    "qid": 20,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The ground truth states the default value of `help_dir` is `.help`. The assistant correctly identifies the default value as `\".help\"`, which matches the ground truth."
+  },
+  "q20|opus|treated": {
+    "qid": 20,
+    "category": "default",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the default value of `help_dir` as `.help`, which matches the ground truth. The additional detail about which MCP tools accept it is extra information that doesn't contradict anything."
+  },
+  "q21|sonnet|baseline": {
+    "qid": 21,
+    "category": "default",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not provide the correct answer (False), but it also did not fabricate an incorrect answer. It acknowledged that it could not verify the information from the context provided, which counts as partial rather than hallucinated."
+  },
+  "q21|sonnet|treated": {
+    "qid": 21,
+    "category": "default",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that the default value of `overwrite` in `generate_feature_templates` is `False`, which matches the ground truth."
+  },
+  "q21|opus|baseline": {
+    "qid": 21,
+    "category": "default",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that the default value of `overwrite` is `False`, matching the ground truth."
+  },
+  "q21|opus|treated": {
+    "qid": 21,
+    "category": "default",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that the default value of `overwrite` in `generate_feature_templates` is `False`, which matches the ground truth."
+  },
+  "q23|sonnet|baseline": {
+    "qid": 23,
+    "category": "default",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states it cannot verify the answer from the available context rather than inventing a wrong answer. This counts as partial per the scoring guidelines."
+  },
+  "q23|sonnet|treated": {
+    "qid": 23,
+    "category": "default",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that the default value of `template_type` in `polish_template` is `'generic'`, which matches the ground truth."
+  },
+  "q23|opus|baseline": {
+    "qid": 23,
+    "category": "default",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states that it cannot verify the answer from the context provided, rather than inventing a specific wrong answer. This counts as partial per the scoring guidelines."
+  },
+  "q23|opus|treated": {
+    "qid": 23,
+    "category": "default",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that the default value of `template_type` in `polish_template` is `'generic'`, which matches the ground truth."
+  },
+  "q25|sonnet|baseline": {
+    "qid": 25,
+    "category": "enum",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant explicitly states it cannot verify the allowed string values from the context provided and does not invent any specific wrong answer. It correctly directs the user to the relevant file. Since it doesn't provide the actual answer (concept, task, reference) but also doesn't fabricate one, this counts as partial."
+  },
+  "q25|sonnet|treated": {
+    "qid": 25,
+    "category": "enum",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies all three allowed string values for the `depth` parameter: 'concept', 'task', and 'reference'. This matches the ground truth exactly. The additional detail about the default value being 'concept' is extra information that doesn't contradict anything."
+  },
+  "q25|opus|baseline": {
+    "qid": 25,
+    "category": "enum",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the three allowed string values for the `depth` parameter as `concept`, `task`, and `reference`, matching the ground truth exactly."
+  },
+  "q25|opus|treated": {
+    "qid": 25,
+    "category": "enum",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies all three allowed string values for the `depth` parameter: 'concept', 'task', and 'reference'. This matches the ground truth exactly. The additional detail about the default being 'concept' is extra information that doesn't contradict anything."
+  },
+  "q26|sonnet|baseline": {
+    "qid": 26,
+    "category": "enum",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly names all eight additional template kinds (error, warning, troubleshooting, faq, quickstart, tip, note, comparison) that match the ground truth. The answer is accurate and well-organized."
+  },
+  "q26|sonnet|treated": {
+    "qid": 26,
+    "category": "enum",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly names all eight additional template kinds (error, warning, troubleshooting, faq, quickstart, tip, note, comparison), which matches the ground truth exactly. The answer names more than the required three and all are correct."
+  },
+  "q26|opus|baseline": {
+    "qid": 26,
+    "category": "enum",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant lists all eight additional template kinds (error, warning, troubleshooting, faq, quickstart, tip, note, comparison), which matches the ground truth exactly. The question asked for at least three, and all named kinds are correct."
+  },
+  "q26|opus|treated": {
+    "qid": 26,
+    "category": "enum",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly names all eight additional template kinds (error, warning, troubleshooting, faq, quickstart, tip, note, comparison), which matches the ground truth exactly. The categorization into 'problem-shaped' and 'guidance-shaped' is extra detail that doesn't contradict anything. The answer is fully correct."
+  },
+  "q27|sonnet|baseline": {
+    "qid": 27,
+    "category": "enum",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not provide the specific answer but also did not fabricate or invent incorrect information. It acknowledged it couldn't verify the answer from the available context, which counts as partial rather than hallucinated."
+  },
+  "q27|sonnet|treated": {
+    "qid": 27,
+    "category": "enum",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly lists all four tokens: '/', '\\', '..', and '\\x00' (forward slash, backslash, parent-dir token, null byte), matching the ground truth exactly."
+  },
+  "q27|opus|baseline": {
+    "qid": 27,
+    "category": "enum",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states it cannot verify the answer from the context provided, rather than inventing a specific wrong answer. This counts as partial per the scoring guidelines."
+  },
+  "q27|opus|treated": {
+    "qid": 27,
+    "category": "enum",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly lists all four unsafe name tokens: '/', '\\\\', '..', and '\\x00', matching the ground truth exactly."
+  },
+  "q30|sonnet|baseline": {
+    "qid": 30,
+    "category": "enum",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not provide the specific answer (0, false, no, off) but also did not fabricate an incorrect answer. They acknowledged they couldn't verify the information from their context, which counts as partial rather than hallucinated."
+  },
+  "q30|opus|baseline": {
+    "qid": 30,
+    "category": "enum",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not provide the specific answer but also did not fabricate one. They acknowledged they couldn't verify the information from the context they had available, which counts as partial rather than hallucinated."
+  },
+  "q30|opus|treated": {
+    "qid": 30,
+    "category": "enum",
+    "feature": "polish",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies the four strings ('0', 'false', 'no', 'off') that turn off strict mode, matching the ground truth exactly. The assistant also correctly references the _FALSY frozenset."
+  },
+  "q31|sonnet|baseline": {
+    "qid": 31,
+    "category": "behavior",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that `is_safe_feature_name('../etc')` returns `False` and correctly identifies that the `..` component is the reason (path traversal prevention). The ground truth says it returns False because `..` is in `_UNSAFE_NAME_TOKENS`, and the assistant's explanation aligns with this. The assistant acknowledges uncertainty about exact implementation details but gets the core answer right."
+  },
+  "q31|sonnet|treated": {
+    "qid": 31,
+    "category": "behavior",
+    "feature": "manifest",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that is_safe_feature_name('../etc') returns False because '..' is in _UNSAFE_NAME_TOKENS. The assistant also provides additional correct detail about the contents of _UNSAFE_NAME_TOKENS, which aligns with the ground truth."
+  },
+  "q31|opus|baseline": {
+    "qid": 31,
+    "category": "behavior",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that `is_safe_feature_name('../etc')` returns `False` and correctly identifies that the reason is the presence of `..` in the name, which is a path-traversal component that the function rejects. This matches the ground truth that the name contains the '..' token which is in _UNSAFE_NAME_TOKENS."
+  },
+  "q31|opus|treated": {
+    "qid": 31,
+    "category": "behavior",
+    "feature": "manifest",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that `is_safe_feature_name('../etc')` returns `False` and correctly identifies that the name contains the '..' token which is in `_UNSAFE_NAME_TOKENS`. The assistant also correctly mentions that '/' is another unsafe token present, which is additional correct detail. The core answer matches the ground truth."
+  },
+  "q33|sonnet|baseline": {
+    "qid": 33,
+    "category": "behavior",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not provide the correct answer (ValueError with message 'path contains null bytes'), but it also did not fabricate or hallucinate an incorrect answer. It honestly stated it could not verify the information from the available context. This counts as partial per the scoring guidelines."
+  },
+  "q33|sonnet|treated": {
+    "qid": 33,
+    "category": "behavior",
+    "feature": "mcp-server",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies that validate_file_path raises a ValueError with the message 'path contains null bytes' when passed a path containing a null byte, which matches the ground truth exactly."
+  },
+  "q33|opus|baseline": {
+    "qid": 33,
+    "category": "behavior",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly identifies the exception type as ValueError, but the message is wrong. The ground truth says the message is 'path contains null bytes', while the assistant claims it is 'Null bytes in path'. The core claim (ValueError) is correct, but the detail about the message is inaccurate."
+  },
+  "q33|opus|treated": {
+    "qid": 33,
+    "category": "behavior",
+    "feature": "mcp-server",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that validate_file_path raises a ValueError with the message 'path contains null bytes', which exactly matches the ground truth."
+  },
+  "q35|sonnet|baseline": {
+    "qid": 35,
+    "category": "behavior",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant correctly states it cannot verify the answer from the context it has, rather than inventing a wrong answer. This is better than hallucinating but does not provide the correct answer (ValueError with 'Invalid feature name:')."
+  },
+  "q35|sonnet|treated": {
+    "qid": 35,
+    "category": "behavior",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that a ValueError is raised with a message including 'Invalid feature name:', which matches the ground truth exactly."
+  },
+  "q35|opus|baseline": {
+    "qid": 35,
+    "category": "behavior",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies that a ValueError is raised when the feature name fails is_safe_feature_name validation. This matches the ground truth."
+  },
+  "q35|opus|treated": {
+    "qid": 35,
+    "category": "behavior",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly states that a ValueError is raised with a message including 'Invalid feature name:', which matches the ground truth exactly."
+  },
+  "q37|sonnet|baseline": {
+    "qid": 37,
+    "category": "dataclass",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant acknowledges it cannot verify the answer from the context and does not invent any specific wrong fields or APIs. It correctly identifies the likely location of GeneratedTemplate. Since it doesn't fabricate information but also doesn't provide the correct answer, this is partial."
+  },
+  "q37|sonnet|treated": {
+    "qid": 37,
+    "category": "dataclass",
+    "feature": "template-generation",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies all four fields of GeneratedTemplate: feature (str), depth (str), path (Path), and source_hash (str). These match the ground truth exactly."
+  },
+  "q37|opus|baseline": {
+    "qid": 37,
+    "category": "dataclass",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "partial",
+    "reasoning": "The assistant did not invent any incorrect information. It acknowledged that it could not verify the fields of GeneratedTemplate from the available context and asked for more information. This is a 'cannot verify' response without fabricating a specific wrong answer, which counts as partial."
+  },
+  "q37|opus|treated": {
+    "qid": 37,
+    "category": "dataclass",
+    "feature": "template-generation",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies all four fields of GeneratedTemplate: feature (str), depth (str), path (Path), and source_hash (str). No fields are missing, no extra fields are invented, and the types match the ground truth."
+  },
+  "q39|sonnet|baseline": {
+    "qid": 39,
+    "category": "dataclass",
+    "feature": "staleness-and-maintenance",
+    "model": "sonnet",
+    "condition": "baseline",
+    "verdict": "hallucinated",
+    "reasoning": "The ground truth states that StalenessReport exposes stale_count (int), current_count (int), and stale_features (list[str]) as properties beyond entries. The assistant's answer mentions 'stale' as a property (which is not one of the correct properties) and fails to identify any of the actual properties. While the assistant hedges by saying it cannot verify, it does claim 'stale' is a property, which contradicts the ground truth. The answer doesn't correctly identify any of the three actual properties (stale_count, current_count, stale_features)."
+  },
+  "q39|sonnet|treated": {
+    "qid": 39,
+    "category": "dataclass",
+    "feature": "staleness-and-maintenance",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies all three properties: stale_count (int), current_count (int), and stale_features (list[str]). No invented or incorrect information."
+  },
+  "q39|opus|baseline": {
+    "qid": 39,
+    "category": "dataclass",
+    "feature": "staleness-and-maintenance",
+    "model": "opus",
+    "condition": "baseline",
+    "verdict": "hallucinated",
+    "reasoning": "The ground truth states that StalenessReport exposes stale_count (int), current_count (int), and stale_features (list[str]) as properties beyond entries. The assistant's answer mentions a 'stale' property that yields stale features with .name and .reason attributes, which does not match the ground truth. The assistant did not identify any of the three correct properties (stale_count, current_count, stale_features). While the assistant hedged by saying they couldn't verify, they did provide a specific wrong answer about a 'stale' property that contradicts the ground truth."
+  },
+  "q39|opus|treated": {
+    "qid": 39,
+    "category": "dataclass",
+    "feature": "staleness-and-maintenance",
+    "model": "opus",
+    "condition": "treated",
+    "verdict": "correct",
+    "reasoning": "The assistant correctly identifies all three properties: stale_count (int), current_count (int), and stale_features (list[str]). These match the ground truth exactly with correct names and types."
+  },
+  "q30|sonnet|treated": {
+    "qid": 30,
+    "category": "enum",
+    "feature": "polish",
+    "model": "sonnet",
+    "condition": "treated",
+    "verdict": "error",
+    "reasoning": "No JSON in response: These are case-insensitive, meaning `'False'`, `'FALSE'`, `'NO'`, `'Off'`, etc. would also turn off strict mode."
+  }
+}

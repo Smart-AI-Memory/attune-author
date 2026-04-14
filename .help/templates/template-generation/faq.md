@@ -2,7 +2,7 @@
 type: faq
 feature: template-generation
 depth: faq
-generated_at: 2026-04-14T13:58:35.456509+00:00
+generated_at: 2026-04-14T16:03:24.956355+00:00
 source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
@@ -11,37 +11,42 @@ status: generated
 
 ## What is template generation?
 
-Template generation creates markdown help files from your source code and feature definitions. It inspects your code's AST (Abstract Syntax Tree) to automatically generate documentation templates.
+Template generation creates markdown help files automatically by analyzing your source code and feature definitions.
 
 ## When should I use template generation?
 
-Use template generation when you want to automatically create help documentation from your codebase. It's particularly useful for maintaining up-to-date documentation as your code evolves.
+Use template generation when you want to create documentation automatically instead of writing help files manually. It's especially useful for maintaining consistent documentation that stays in sync with your code.
 
-## How do I generate templates for a feature?
+## What's the main entry point?
 
-Call `generate_feature_templates()` with your feature definition, help directory, and project root. This function returns a `GenerationResult` containing all the generated templates.
+Use `generate_feature_templates()` to create help templates for a specific feature. This function analyzes your source code and generates the appropriate markdown files based on what it finds.
 
 ## What types of templates can be generated?
 
-The system generates several template types:
-- Core templates: concept, task, reference
-- Problem templates: error, warning, troubleshooting, faq
-- Guidance templates: quickstart, tip, note, comparison
+The system can generate several template types:
 
-## Can I control which templates are created?
+- **Core templates**: concept, task, and reference pages
+- **Problem-solving templates**: error, warning, troubleshooting, and FAQ pages
+- **Guidance templates**: quickstart, tip, note, and comparison pages
 
-Yes, use the `depths` parameter in `generate_feature_templates()` to specify which template types you want. If you don't specify depths, all applicable templates are generated.
+## What information do I get back after generation?
 
-## What happens if a template file already exists?
-
-By default, existing files are not overwritten. Set `overwrite=True` to replace existing templates.
+You get a `GenerationResult` that tells you:
+- Which feature was processed
+- What templates were created (each with its own path and metadata)
+- Which source files were analyzed
+- A hash of the source content for change detection
 
 ## How do I debug generation issues?
 
-Run `pytest -k "template-generation" -v` to test the generation system. If tests pass but you're still having issues, add logging statements and check for common problems like invalid feature names or missing source files.
+Run the related tests first: `pytest -k "template-generation" -v`. If tests pass but your code fails, add `logger.debug` statements at suspected failure points and re-run with logging enabled.
 
-## Where is the generation code located?
+## Can I regenerate existing templates?
 
-The template generation code is in `src/attune_author/generator.py`.
+By default, existing templates won't be overwritten. Set `overwrite=True` in `generate_feature_templates()` if you want to replace existing files.
+
+## Where are the source files?
+
+- `src/attune_author/generator.py`
 
 **Tags:** `generation`, `jinja2`, `ast`, `meta-templates`

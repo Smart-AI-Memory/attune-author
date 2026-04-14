@@ -2,8 +2,8 @@
 type: note
 feature: polish
 depth: note
-generated_at: 2026-04-14T14:00:56.978485+00:00
-source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
+generated_at: 2026-04-14T16:05:50.676708+00:00
+source_hash: 39a4215a31cf6bfa17f5b898ad071827d406cbe4dc8d2744f17fe7fd680d6891
 status: generated
 ---
 
@@ -11,24 +11,23 @@ status: generated
 
 ## Context
 
-The polish feature improves generated documentation templates through an LLM-powered rewriting pass. It uses template-specific system prompts and source code summaries to ensure accuracy while enhancing readability.
+The polish feature improves generated template quality through an LLM rewrite pass. It uses template-specific system prompts and source code summaries to ensure the polished output remains factually accurate while improving readability and following Google's developer documentation style guide.
 
-## How it works
+## Content
 
-The polish process operates in two phases:
+The polish feature centers on the `polish_template()` function, which takes a generated template and returns an improved version. The function uses Claude via Anthropic's API to rewrite content while preserving structural elements like YAML frontmatter and h1 titles.
 
-1. **Source summarization** — `build_source_summary()` extracts key information from the codebase (classes, functions, constants) into a concise format for the LLM prompt
-2. **Template rewriting** — `polish_template()` sends the generated template and source summary to an LLM with template-type-specific instructions
+Supporting functions include:
+- `build_source_summary()` — Creates concise summaries of source code for inclusion in polish prompts
+- `get_system_prompt()` — Returns template-type-specific prompts (concept, task, reference, or note)
 
-The system prompts vary by template type (concept, task, reference, note) and include anti-patterns to avoid formulaic language that commonly appears in auto-generated content.
+The `PolishError` exception is raised when polishing fails in strict mode. Strict mode is controlled by the `ATTUNE_AUTHOR_STRICT_POLISH` environment variable and determines whether polish failures should halt execution or be silently ignored.
 
-## Error handling
-
-In strict mode (controlled by the `ATTUNE_AUTHOR_STRICT_POLISH` environment variable), polish failures raise `PolishError` rather than falling back to the unpolished template. This ensures quality gates in CI/CD pipelines.
+The system prompts in `polish_prompts.py` include base rules that apply to all template types plus specific guidance for each template kind. For example, note templates should be factual rather than instructional, while task templates should use imperative voice and focus on user goals.
 
 ## Source files
 
-- `src/attune_author/polish.py` — Core polish logic and source summarization
-- `src/attune_author/polish_prompts.py` — Template-specific system prompts
+- `src/attune_author/polish.py`
+- `src/attune_author/polish_prompts.py`
 
 **Tags:** `polish`, `llm`, `anthropic`, `quality`

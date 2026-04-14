@@ -2,7 +2,7 @@
 type: warning
 feature: cli
 depth: warning
-generated_at: 2026-04-14T14:09:28.061010+00:00
+generated_at: 2026-04-14T16:14:24.154382+00:00
 source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
@@ -11,36 +11,31 @@ status: generated
 
 ## What to watch for
 
-The CLI module provides the command-line interface for attune-author. While straightforward, there are specific areas where unexpected behavior can occur.
+The CLI module serves as the command-line entry point for attune-author, handling argument parsing and dispatching to subcommands like bootstrap, generate, status, and maintain.
 
 ## Risk areas
 
-**Exit code handling in `main()`**
-The `main()` function returns an integer exit code, but the mapping between internal errors and exit codes may not be obvious. Different failure modes (invalid arguments, missing files, processing errors) should return distinct codes for proper shell integration.
+**Exit code handling in production scripts**
+The `main()` function returns integer exit codes, but these can be lost if you call it from Python code that doesn't check the return value. Scripts that wrap the CLI may appear to succeed even when the underlying command fails.
 
-**Argument parsing edge cases**
-Command-line argument parsing can fail silently or produce unexpected results with malformed input, especially when dealing with file paths containing spaces or special characters.
+**Command-line argument injection**
+If you pass user input directly to `main(argv=...)`, malicious arguments could trigger unintended behavior. This is particularly risky when building wrapper scripts or web interfaces that invoke CLI commands.
 
-**Standard stream handling**
-Output formatting and error messages may behave differently when stdout/stderr are redirected or when running in non-interactive environments.
+**Environment-dependent behavior**
+The CLI may behave differently based on the current working directory, environment variables, or installed dependencies. Commands that work in development may fail in deployment environments with different configurations.
 
 ## How to avoid problems
 
-1. **Test with realistic command lines.** Don't just test the happy path — try malformed arguments, missing files, and edge cases that real users might encounter:
-   ```bash
-   # Test these scenarios
-   attune-author --nonexistent-flag
-   attune-author generate ""
-   attune-author bootstrap /path/with spaces/
-   ```
-
-2. **Verify exit codes explicitly.** When testing CLI functionality, check that the process exits with the expected code:
+1. **Always check exit codes.** When calling `main()` programmatically, capture and handle the return value:
    ```python
-   result = main(['generate', 'missing-file'])
-   assert result != 0  # Should fail gracefully
+   exit_code = main(['generate', '--help'])
+   if exit_code != 0:
+       # Handle the error appropriately
    ```
 
-3. **Test in different environments.** CLI behavior can vary between interactive shells, scripts, and CI environments. Test with redirected output and in non-TTY contexts.
+2. **Validate arguments before passing them.** If you're building wrappers around the CLI, sanitize user input and use argument allowlists rather than passing arbitrary strings to `main()`.
+
+3. **Test in realistic environments.** Run CLI tests in containers or virtual environments that mirror your deployment setup to catch environment-specific issues early.
 
 ## Source files
 

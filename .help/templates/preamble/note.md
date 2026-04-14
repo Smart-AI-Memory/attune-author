@@ -2,7 +2,7 @@
 type: note
 feature: preamble
 depth: note
-generated_at: 2026-04-14T14:08:40.851736+00:00
+generated_at: 2026-04-14T16:13:37.847561+00:00
 source_hash: 4b502067010f8654195a342453668853d3f231f8ca87c84c441ba90da1f2b064
 status: generated
 ---
@@ -11,16 +11,16 @@ status: generated
 
 ## Context
 
-The preamble module provides context-sensitive introductory text for workflow skills. It generates one-line descriptions that reflect the current project state and recent activity, helping users understand what each skill does in their specific situation.
+The preamble module provides context-sensitive one-liner descriptions for workflow skills. These preambles help users understand what a feature does based on current project state and recent activity.
 
-## Implementation
+## Functions
 
-The preamble module exposes two main functions:
+The module exposes two main functions:
 
-- `get_preamble()` — Returns a contextual one-liner description for a specific feature
-- `get_related_preambles()` — Finds up to 3 related features based on shared tags and returns their preambles
+- `get_preamble(feature_name, help_dir)` — Returns a one-liner description for a specific feature
+- `get_related_preambles(feature_name, help_dir, max_results)` — Returns preambles for up to 3 features that share tags with the specified feature
 
-Both functions accept an optional `help_dir` parameter to specify where to look for feature metadata. The related preambles function uses tag overlap to identify conceptually similar features.
+Both functions are designed to be called directly without instantiating a class. The `help_dir` parameter is optional and defaults to the standard help directory location.
 
 ## Source files
 

@@ -2,33 +2,42 @@
 type: note
 feature: staleness-and-maintenance
 depth: note
-generated_at: 2026-04-14T14:06:59.962600+00:00
+generated_at: 2026-04-14T16:11:54.503497+00:00
 source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
 # Note: staleness and maintenance
 
-## What staleness detection does
+## Context
 
-The staleness detection system tracks when feature source code changes make help templates outdated. It computes SHA-256 hashes of each feature's source files and compares them against stored hashes to identify which templates need regeneration.
+The staleness and maintenance system detects when generated help templates are out of date with their source files and automatically regenerates stale ones. This system powers both commit hooks and manual refresh workflows.
 
-## Core data structures
+## How staleness detection works
 
-The system uses three main classes:
+The system tracks template freshness by computing SHA-256 hashes of a feature's source files and comparing them against stored hashes. When source files change, their hash changes, indicating the template needs regeneration.
 
-**`FeatureStaleness`** represents the staleness state for a single feature. It stores the feature name, staleness flag, current source hash, previously stored hash, and list of matched source files.
+Key components:
 
-**`StalenessReport`** aggregates staleness data across all features. It provides counts of stale and current features, plus a list of stale feature names.
+- `FeatureStaleness` — Represents staleness status for a single feature, including the current hash, stored hash, and list of matched source files
+- `StalenessReport` — Aggregates staleness data across all features, with properties for counting stale vs. current features
+- `compute_source_hash()` — Generates SHA-256 hashes from feature source files, excluding common cache directories like `__pycache__` and `.git`
+- `check_staleness()` — Compares current hashes against stored ones to identify stale features
 
-**`MaintenanceResult`** captures the outcome of a maintenance run, including the staleness report, successfully regenerated templates, manually-maintained templates that were skipped, and any failures.
+## Maintenance workflow
 
-## Key functions
+The maintenance system builds on staleness detection to automatically refresh outdated templates:
 
-**Staleness checking:** `compute_source_hash()` generates hashes for a feature's source files, while `check_staleness()` compares current hashes against stored ones to build a staleness report.
+- `MaintenanceResult` — Captures the outcome of a maintenance run, tracking regenerated features, manual-only features that were skipped, and any failures
+- `run_maintenance()` — Orchestrates the full process: check staleness, regenerate stale templates, and report results
+- `run_hook()` — Entry point for post-commit hooks that automatically maintain templates after code changes
+- `get_changed_files()` — Identifies files modified in the most recent commit to optimize maintenance runs
 
-**Maintenance operations:** `run_maintenance()` performs the full cycle of checking staleness and regenerating outdated templates. It supports dry-run mode and can target specific features.
+The system supports both comprehensive maintenance runs and targeted updates based on recent changes.
 
-**Git integration:** `get_changed_files()` identifies files modified in the latest commit, and `run_hook()` serves as the entry point for post-commit hooks that trigger maintenance automatically.
+## Source files
 
-The system excludes common cache and build directories (like `__pycache__` and `.git`) when computing source hashes to focus on meaningful code changes.
+- `src/attune_author/staleness.py` — Staleness detection and hashing
+- `src/attune_author/maintenance.py` — Template regeneration and hook integration
+
+**Tags:** `freshness`, `hashing`, `regeneration`

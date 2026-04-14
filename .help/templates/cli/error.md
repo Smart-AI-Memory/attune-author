@@ -2,38 +2,38 @@
 type: error
 feature: cli
 depth: error
-generated_at: 2026-04-14T14:09:19.461049+00:00
+generated_at: 2026-04-14T16:14:15.559846+00:00
 source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
 # CLI errors
 
-CLI errors occur when the attune-author command-line interface fails to parse arguments, execute subcommands, or handle exit conditions properly.
+Command-line interface failures occur when the attune-author CLI entry point encounters invalid arguments, missing dependencies, or runtime errors during command execution.
 
 ## Common error signatures
 
-Since the CLI module contains only the main entry point function, specific exception types depend on the subcommands and argument parsing implementation:
-
-- **Argument parsing failures** — Invalid command syntax or unrecognized options
-- **Subcommand execution failures** — Errors from bootstrap, generate, status, or maintain operations
-- **Exit code handling** — Non-zero return values indicating command failure
+- `SystemExit` with non-zero exit codes from argument parsing failures
+- `ModuleNotFoundError` when CLI dependencies are not installed
+- `FileNotFoundError` when CLI attempts to access missing configuration or input files
+- `PermissionError` when CLI lacks write access to output directories
+- Return codes from `main()` function indicating command failures
 
 ## Where errors originate
 
-CLI errors originate from the main entry point:
+CLI errors stem from the main entry point:
 
-- `main()` in `src/attune_author/cli.py` — Processes command-line arguments and delegates to subcommands
+- `main()` in `src/attune_author/cli.py` — Processes command-line arguments and orchestrates subcommand execution
 
 ## How to diagnose
 
-1. **Run the failing command with verbose output.** Add `-v` or `--verbose` flags if available to see detailed operation logs.
+1. **Check the exit code.** Non-zero return values from `main()` indicate the type of failure: argument validation, missing files, or subcommand execution errors.
 
-2. **Check the exit code.** The `main()` function returns an integer — zero indicates success, non-zero values indicate specific failure modes.
+2. **Run with `--help` to verify syntax.** Invalid subcommands or missing required arguments trigger immediate failures with usage information.
 
-3. **Verify command syntax.** Ensure you're using valid subcommands (bootstrap, generate, status, maintain) and that all required arguments are provided.
+3. **Verify file permissions and paths.** Many CLI errors occur when the tool cannot read input files or write to the specified output location.
 
-4. **Test with minimal arguments.** Start with the simplest valid command form and add complexity incrementally to isolate where parsing or execution fails.
+4. **Test with minimal arguments.** Strip down to the simplest valid command to isolate whether the issue is with argument parsing or the underlying functionality.
 
 ## Source files
 

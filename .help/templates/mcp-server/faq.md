@@ -2,43 +2,39 @@
 type: faq
 feature: mcp-server
 depth: faq
-generated_at: 2026-04-14T14:12:01.191798+00:00
+generated_at: 2026-04-14T16:17:02.116025+00:00
 source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
 # Mcp Server FAQ
 
-## What is mcp server?
+## What is the MCP server?
 
-An MCP (Model Context Protocol) server that exposes attune-author's six authoring tools to Claude Code and other MCP clients.
+The MCP server exposes attune-author's functionality as callable tools through the Model Context Protocol, allowing Claude Code to interact with your help system.
 
-## When should I use it?
+## When should I use the MCP server?
 
-Use the MCP server when you want to access attune-author's capabilities from Claude Code or another MCP client. It's the bridge that lets external tools call `author_init`, `author_generate`, `author_maintain`, and other commands remotely.
+Use the MCP server when you want Claude Code to help with documentation tasks like bootstrapping help directories, checking template status, generating docs, or looking up help content. It's designed for IDE integration rather than direct command-line use.
 
-## What tools does it expose?
+## How do I start the MCP server?
 
-The server provides six MCP tools:
+Call `main()` or use `create_server()` to get an `AttuneAuthorMCPServer` instance. The server provides six tools: `author_init`, `author_status`, `author_generate`, `author_maintain`, `author_docs`, and `author_lookup`.
 
-- `author_init` — Bootstrap a .help/ directory and scan for features
-- `author_status` — Check which feature templates are stale
-- `author_generate` — Generate templates for a single feature
-- `author_maintain` — Regenerate all stale templates at once
-- `author_docs` — Generate documentation using the 3-stage pipeline
-- `author_lookup` — Look up help content by topic or tag
+## What tools does the server provide?
 
-## How do I start the server?
+The server exposes six attune-author operations:
 
-Call `main()` from `src/attune_author/mcp/server.py`, or use `create_server()` if you need to embed it in another application.
+- **author_init** — Bootstrap a `.help/` directory and scan for features
+- **author_status** — Check which templates are stale
+- **author_generate** — Generate templates for a single feature
+- **author_maintain** — Regenerate all stale templates at once
+- **author_docs** — Generate documentation from source files
+- **author_lookup** — Find help content by topic or tag
 
-## What's the workspace_root parameter for?
+## How do I debug MCP server issues?
 
-The `workspace_root` parameter sets the base directory for all file operations. If you don't provide it, the server uses the current working directory.
-
-## How do I debug it?
-
-Run the tests first: `pytest -k "mcp-server" -v`. If they pass but your code still fails, add a `logger.debug` statement at the suspected failure point and re-run with logging enabled.
+Run `pytest -k "mcp-server" -v` to check the tests first. If tools fail, check that your workspace root is valid and that required files (like `features.yaml`) exist. Add debug logging to the handlers in `AttuneAuthorHandlers` to trace tool execution.
 
 ## Where are the source files?
 

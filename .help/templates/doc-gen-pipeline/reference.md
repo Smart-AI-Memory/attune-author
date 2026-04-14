@@ -2,45 +2,39 @@
 type: reference
 feature: doc-gen-pipeline
 depth: reference
-generated_at: 2026-04-14T14:13:18.604995+00:00
+generated_at: 2026-04-14T16:18:17.690202+00:00
 source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
 # Doc Gen Pipeline reference
 
+Generate documentation through a multi-stage pipeline that creates outlines, writes content, and reviews drafts.
+
 ## Classes
 
 ### DocGenResult
 
-Result of document generation.
-
-**Fields**
-
-| Field | Type | Default |
-|-------|------|---------|
-| `content` | `str` | `''` |
-| `outline` | `str` | `''` |
-| `draft` | `str` | `''` |
-| `stages_completed` | `list[str]` | `field(default_factory=list)` |
-| `source_path` | `str` | `''` |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `content` | `str` | `''` | Final generated documentation content |
+| `outline` | `str` | `''` | Documentation outline from the first stage |
+| `draft` | `str` | `''` | Draft content from the writing stage |
+| `stages_completed` | `list[str]` | `field(default_factory=list)` | Names of completed pipeline stages |
+| `source_path` | `str` | `''` | Path to the source file that was processed |
 
 ### DocGenConfig
 
-Configuration for the document generation pipeline.
-
-**Fields**
-
-| Field | Type | Default |
-|-------|------|---------|
-| `doc_type` | `str` | `'api-reference'` |
-| `audience` | `str` | `'developers'` |
-| `model` | `str` | `'claude-sonnet-4-20250514'` |
-| `max_outline_tokens` | `int` | `1000` |
-| `max_write_tokens` | `int` | `8000` |
-| `max_review_tokens` | `int` | `8000` |
-| `sections_per_chunk` | `int` | `4` |
-| `section_focus` | `list[str]` | `field(default_factory=list)` |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `doc_type` | `str` | `'api-reference'` | Type of documentation to generate |
+| `audience` | `str` | `'developers'` | Target audience for the documentation |
+| `model` | `str` | `'claude-sonnet-4-20250514'` | AI model to use for generation |
+| `max_outline_tokens` | `int` | `1000` | Token limit for outline generation |
+| `max_write_tokens` | `int` | `8000` | Token limit for content writing |
+| `max_review_tokens` | `int` | `8000` | Token limit for content review |
+| `sections_per_chunk` | `int` | `4` | Number of sections to process per chunk |
+| `section_focus` | `list[str]` | `field(default_factory=list)` | Specific sections to emphasize |
 
 ## Functions
 
@@ -52,7 +46,7 @@ Configuration for the document generation pipeline.
 | `review_content` | `client: Anthropic, draft: str, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int` | `str` | Review and polish draft documentation |
 | `parse_outline_sections` | `outline: str` | `list[str]` | Parse top-level section titles from an outline |
 
-**Raises**
+### Raises
 
 | Function | Exception | Message |
 |----------|-----------|---------|

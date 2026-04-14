@@ -2,81 +2,69 @@
 type: task
 feature: mcp-server
 depth: task
-generated_at: 2026-04-14T14:10:34.010137+00:00
+generated_at: 2026-04-14T16:15:33.250705+00:00
 source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
 # Work with mcp server
 
-Use the MCP server when you need to expose attune-author's documentation capabilities as tools that Claude can call through the Model Context Protocol.
+Use the MCP server when you need to expose attune-author's documentation generation capabilities as Model Context Protocol tools for Claude or other AI assistants.
 
 ## Prerequisites
 
 - Access to the project source code
-- Familiarity with the MCP server files in `src/attune_author/mcp/`
+- Familiarity with the MCP server implementation in `src/attune_author/mcp/`
 
 ## Start the server
 
-1. **Create a server instance**:
-   ```python
-   from attune_author.mcp.server import create_server
-   server = create_server()
-   ```
-
-2. **Run the entry point**:
+1. **Run the MCP server entry point:**
    ```bash
    python -m attune_author.mcp.server
    ```
 
-## Add new tools
+2. **Verify the server starts successfully:**
+   The server should initialize without errors and begin listening for tool calls.
 
-1. **Define the tool schema** in `src/attune_author/mcp/tool_schemas.py`:
-   - Add your tool definition to the `get_tools()` function return dictionary
-   - Include a clear description and input schema following the existing pattern
+## Add a new tool
 
-2. **Implement the handler** in `src/attune_author/mcp/handlers.py`:
-   - Add a method to `AttuneAuthorHandlers` class
-   - Follow the async signature: `async def your_tool(self, args: dict[str, Any]) -> dict[str, Any]`
+1. **Define the tool schema in `tool_schemas.py`:**
+   Add your tool definition to the dictionary returned by `get_tools()`, following the existing pattern with description, input_schema, and required fields.
 
-3. **Register the tool** in `src/attune_author/mcp/server.py`:
-   - Update `AttuneAuthorMCPServer.call_tool()` to route your tool name to the handler
+2. **Implement the handler in `handlers.py`:**
+   Add a new async method to the `AttuneAuthorHandlers` class that processes your tool's arguments and returns a result dictionary.
+
+3. **Register the tool in `server.py`:**
+   Ensure the `AttuneAuthorMCPServer.call_tool()` method can route to your new handler.
+
+4. **Test the tool integration:**
+   Run `pytest -k "mcp"` to verify your changes don't break existing functionality.
 
 ## Modify existing tools
 
-1. **Identify the tool** you want to change from the six available tools:
-   - `author_init` - Bootstrap .help/ directory
-   - `author_status` - Check template freshness
-   - `author_generate` - Create templates for one feature
-   - `author_maintain` - Regenerate all stale templates
-   - `author_docs` - Generate documentation from source
-   - `author_lookup` - Find help by topic
+1. **Locate the tool definition:**
+   Find your target tool in the `get_tools()` return value to understand its current schema and parameters.
 
-2. **Update the handler** in `AttuneAuthorHandlers`:
-   - Modify the corresponding method (e.g., `author_init()` for the init tool)
-   - Preserve the async signature and return format
+2. **Update the handler method:**
+   Modify the corresponding method in `AttuneAuthorHandlers` (like `author_generate`, `author_status`, etc.) to implement your changes.
 
-3. **Update the schema** if you change parameters:
-   - Edit the tool definition in `get_tools()`
-   - Ensure required fields are marked correctly
+3. **Validate file paths if needed:**
+   Use `validate_file_path()` for any user-provided file paths to prevent directory traversal attacks.
 
-## Test your changes
+4. **Test the modified behavior:**
+   Verify that your changes work correctly and don't introduce security vulnerabilities.
 
-1. **Run targeted tests**:
-   ```bash
-   pytest -k "mcp" tests/
-   ```
+## Verify success
 
-2. **Verify tool registration**:
-   ```python
-   from attune_author.mcp.tool_schemas import get_tools
-   tools = get_tools()
-   print(list(tools.keys()))  # Should include your tool
-   ```
+The MCP server is working correctly when:
+- It starts without errors when you run the main entry point
+- Tool calls return expected results without exceptions
+- File path validation blocks attempts to access system directories
+- Tests pass with `pytest -k "mcp"`
 
-## Success criteria
+## Key files
 
-- The server starts without errors
-- Your new or modified tools appear in the tool registry
-- Claude can successfully call your tools through the MCP interface
-- All existing tests continue to pass
+- `src/attune_author/mcp/server.py` — Core server and tool dispatcher
+- `src/attune_author/mcp/handlers.py` — Tool implementation logic
+- `src/attune_author/mcp/tool_schemas.py` — Tool definitions and schemas
+- `src/attune_author/mcp/path_validation.py` — Security validation for file paths

@@ -2,28 +2,19 @@
 type: concept
 feature: cli
 depth: concept
-generated_at: 2026-04-14T14:09:00.172991+00:00
+generated_at: 2026-04-14T16:13:57.456552+00:00
 source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
-# CLI
+# Cli
 
-The CLI module serves as the command-line entry point for attune-author, providing a unified interface for documentation authoring tasks in the attune ecosystem.
+## How it works
 
-## Entry point structure
+The CLI module provides the command-line interface for attune-author, serving as the primary entry point for documentation authoring tasks in the attune ecosystem.
 
-The module implements a single `main()` function that processes command-line arguments and coordinates the execution of various documentation operations. When you run attune-author from the command line, this function handles argument parsing and delegates to the appropriate subcommand handlers.
+When you run `attune-author` from the command line, the `main()` function processes your command-line arguments and routes them to the appropriate functionality. The interface displays "attune-author — documentation authoring for the attune ecosystem" as its welcome header, establishing the tool's purpose and scope.
 
-The welcome header identifies the tool as "attune-author — documentation authoring for the attune ecosystem", establishing the CLI's role in the broader attune toolchain.
+## Entry point
 
-## Command interface
-
-The CLI supports multiple subcommands that cover the core documentation workflow:
-
-- **bootstrap** — Initialize new documentation projects
-- **generate** — Create documentation from source code
-- **status** — Check the current state of documentation
-- **maintain** — Perform ongoing maintenance tasks
-
-Each subcommand encapsulates a specific aspect of the documentation authoring process, allowing you to perform targeted operations without running the entire toolchain.
+The `main()` function accepts an optional list of command-line arguments and returns an integer exit code. If you don't provide arguments, it reads them from `sys.argv`. This design allows the CLI to work both as a standalone command-line tool and as a programmatically callable interface for testing or integration purposes.

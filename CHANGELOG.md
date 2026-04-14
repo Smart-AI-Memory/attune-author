@@ -13,6 +13,51 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.3.9] - 2026-04-14
+
+### Changed (0.3.9)
+
+- **Reference polish prompt — prose/table register split**
+  — the reference system prompt now separates voice from
+  facts explicitly. Prose sections (h1 subtitle, overview,
+  description cells) follow Google developer documentation
+  style with concrete-verb guidance; table columns other
+  than `Description` hold Python identifiers, types, and
+  source literals verbatim. Fixes the "stiff, dry" output
+  readers reported without loosening any of the v0.3.8
+  accuracy requirements (raises, literals, dataclass
+  fields, properties, module constants).
+- **`Raises` heading pinned literally** — the polish prompt
+  now requires the exact word "Raises" (not "Exceptions",
+  "Errors", or "Failure modes") for exception subsections
+  and columns. Matches Python docstring convention
+  (Google/NumPy/Sphinx) and restores the grep anchor
+  readers expect.
+- **Identifier column rule tightened** — prose-register
+  license was leaking into the Constants table, causing
+  the model to rewrite `_CORE_DEPTH_NAMES` as "Core depth
+  names." Prompt now enumerates which columns are
+  verbatim and scopes rephrasing to the `Description`
+  column only.
+- **Full corpus regenerated** — all 11 template kinds
+  regenerated for every feature against the new prompt.
+- **Version bump also catches `__init__.py`** from the
+  stale 0.3.7 value left over from the v0.3.8 release.
+
+### Benchmarked (0.3.9)
+
+- v0.3.9 hallucination benchmark committed at
+  `benchmarks/hallucination-v0.3.9/`, run against the
+  final regenerated corpus. Zero hallucinations across
+  100 answers (2 models × 2 conditions × 25 questions).
+  Treated condition: opus 25/25 correct, sonnet 24/25
+  correct + 1 judge-parse error on q30 (judge LLM failed
+  to emit valid JSON on two retries; sonnet's answer was
+  factually correct — listing the exact members of
+  `_FALSY` — and the same question scored correct under
+  v0.3.8's judge run with the same reference content).
+  No factual regressions vs v0.3.8.
+
 ## [0.3.8] - 2026-04-14
 
 ### Added (0.3.8)

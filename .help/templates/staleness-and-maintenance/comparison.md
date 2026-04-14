@@ -2,45 +2,53 @@
 type: comparison
 feature: staleness-and-maintenance
 depth: comparison
-generated_at: 2026-04-14T14:07:09.549916+00:00
+generated_at: 2026-04-14T16:12:05.139161+00:00
 source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
-# Staleness detection vs manual help maintenance
+# Staleness detection vs manual help template management
 
-## Context
+## What each approach offers
 
-When source code changes, generated help templates become outdated. You can either check for staleness and regenerate automatically, or manually update templates as needed.
+| Feature | Staleness detection | Manual management |
+|---------|-------------------|-------------------|
+| **Accuracy** | SHA-256 hash tracking ensures templates match source | Relies on developer memory and discipline |
+| **Speed** | Batch operations check all features in ~100ms | Manual checks scale linearly with feature count |
+| **Integration** | Post-commit hooks catch changes automatically | Requires remembering to run updates |
+| **Selective updates** | Can target specific features or process all stale ones | Full control over what gets regenerated |
+| **Error handling** | Tracks failed regenerations and skipped manual features | No systematic error reporting |
+| **Overhead** | Requires `.help/hashes.yaml` storage file | No additional files |
 
-## Feature comparison
+## Key capabilities comparison
 
-| Aspect | Staleness detection | Manual maintenance |
-|--------|-------------------|-------------------|
-| **Accuracy** | SHA-256 hash ensures exact source-template sync | Relies on developer memory and discipline |
-| **Speed** | Instant detection across all features | Requires scanning each template individually |
-| **Automation** | Integrates with commit hooks for hands-off updates | Every update is a manual decision |
-| **Selective updates** | Can target specific features or run across all | Natural granular control |
-| **Error prevention** | Catches stale content before it misleads users | Stale templates can persist unnoticed |
-| **Setup cost** | Requires initial hook configuration | Works immediately |
+**Staleness detection provides:**
+- `check_staleness()` — Compare stored hashes against current source state
+- `run_maintenance()` — Detect and regenerate stale templates in one operation
+- `run_hook()` — Automatic updates on git commits
+- Detailed reporting through `StalenessReport` and `MaintenanceResult`
 
-## Use staleness detection when...
+**Manual management gives you:**
+- Direct control over regeneration timing
+- No dependency on hash storage
+- Simpler workflow for one-off updates
+- No risk of automatic overwrites
 
-- You have multiple features that change frequently
-- You want to catch outdated help content in CI/CD
-- Your team tends to forget manual documentation updates
-- You need confidence that help templates match current source code
+## Use staleness detection when
 
-The automated approach scales better than manual tracking. A single `run_maintenance()` call can check dozens of features in seconds and regenerate only what's actually stale.
+- You work on a team where multiple people modify source files
+- Your project has more than 5-10 features (manual tracking becomes error-prone)
+- You want automatic updates triggered by git commits
+- You need to verify which templates are current without regenerating them
+- You're building CI pipelines that need to catch stale documentation
 
-## Use manual maintenance when...
+## Use manual management when
 
-- You have a small, stable codebase with infrequent changes
-- You want full editorial control over when templates update
-- You're working on experimental features that aren't ready for automatic documentation
-- You need to coordinate help updates with broader documentation releases
-
-Manual control works well for mature projects where help content changes deliberately rather than reactively.
+- You're prototyping features and templates change frequently
+- Your project has fewer than 5 features
+- You prefer explicit control over when templates regenerate
+- You're working solo and can reliably remember to update templates
+- Storage overhead from hash tracking matters for your use case
 
 ## Source files
 

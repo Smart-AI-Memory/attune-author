@@ -2,7 +2,7 @@
 type: warning
 feature: doc-gen-pipeline
 depth: warning
-generated_at: 2026-04-14T14:13:41.572398+00:00
+generated_at: 2026-04-14T16:18:41.171877+00:00
 source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
@@ -11,35 +11,40 @@ status: generated
 
 ## What to watch for
 
-The doc-gen-pipeline uses a three-stage AI workflow (outline, write, review) that can fail at any stage or produce unexpected output when token limits are exceeded or AI models are unavailable.
+The doc-gen-pipeline orchestrates three-stage LLM-based documentation generation (outline, write, review) for higher-quality help output. Token limits, incomplete stage execution, and missing Anthropic API credentials can disrupt the pipeline and produce partial results.
 
 ## Risk areas
 
-**Token budget exhaustion in multi-stage processing**
+### Token limit overruns in content generation
 
-Each stage (`build_outline`, `write_content`, `review_content`) has separate token limits that default to 1000, 8000, and 8000 respectively. Large source files can exceed these limits, causing truncated outlines that lead to incomplete documentation in subsequent stages.
+The `write_content()` stage defaults to 8,000 tokens, which may be insufficient for complex source files. When the limit is hit mid-generation, you get truncated documentation with incomplete sections or cut-off sentences. The `max_write_tokens` parameter in `DocGenConfig` controls this limit, but there's no automatic fallback when exceeded.
 
-**AI model dependency without graceful degradation**
+### Partial pipeline execution with incomplete results
 
-The pipeline requires an active Anthropic API connection and raises `AnthropicCallError` if the AI service is unavailable. The error message suggests installing the `ai` extra, but network issues, quota limits, or API downtime will also trigger failures with no local fallback.
+If any stage fails, `generate_docs()` returns a `DocGenResult` with only the `stages_completed` field populated up to the failure point. For example, if outline generation succeeds but writing fails, you'll have an outline but empty `content` and `draft` fields. Always check `stages_completed` before using other result fields.
 
-**Section focus filtering in content generation**
+### Missing Anthropic API installation
 
-The `section_focus` parameter in `DocGenConfig` filters which outline sections get detailed content. If you specify sections that don't exist in the generated outline, `write_content` will produce sparse documentation without warning about the mismatch.
+The pipeline requires the optional `ai` extras package. Without it, `generate_docs()` raises `AnthropicCallError` with installation instructions. This happens at runtime, not import time, so tests may pass until you actually call the generation functions.
 
-**Outline parsing assumptions in chunked processing**
+### Section focus filtering creates gaps
 
-The `parse_outline_sections` function expects specific markdown heading formats. If the AI generates outlines in unexpected formats (nested lists, numbered sections, or non-standard heading syntax), the section parser may miss content boundaries, leading to incorrectly chunked writing stages.
+When you specify `section_focus` in `DocGenConfig`, the `write_content()` stage only generates those sections. If your focus list doesn't match the actual outline sections from `build_outline()`, you'll get empty or partial content. Use `parse_outline_sections()` to verify section names before filtering.
 
 ## How to avoid problems
 
-**Monitor token usage across stages.** Check that your source content fits within the configured token limits. For large files, increase `max_outline_tokens`, `max_write_tokens`, and `max_review_tokens` in your `DocGenConfig`, or break content into smaller chunks.
+1. **Set realistic token limits.** Check your source file size and adjust `max_write_tokens` accordingly. Large API references may need 12,000+ tokens for complete coverage.
 
-**Handle AI service failures.** Wrap `generate_docs()` calls in try-except blocks to catch `AnthropicCallError`. Consider implementing retry logic with exponential backoff for transient network issues.
+2. **Check stages_completed before using results.** Always verify that all three stages completed before depending on the final content:
+   ```python
+   result = generate_docs(target, config)
+   if len(result.stages_completed) != 3:
+       # Handle partial generation
+   ```
 
-**Validate section focus against generated outlines.** After calling `build_outline()`, use `parse_outline_sections()` to verify that your `section_focus` list matches actual section titles before proceeding to `write_content()`.
+3. **Install with AI extras for production.** Include `pip install 'attune-author[ai]'` in your deployment to avoid runtime API errors.
 
-**Test with diverse source formats.** The outline parser works best with standard Python modules. Test your pipeline with edge cases like empty files, unusual docstring formats, or heavily nested code structures.
+4. **Test section focus against real outlines.** Run `build_outline()` first to see actual section names, then configure `section_focus` to match.
 
 ## Source files
 

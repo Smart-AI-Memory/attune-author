@@ -2,42 +2,34 @@
 type: concept
 feature: doc-gen-pipeline
 depth: concept
-generated_at: 2026-04-14T14:12:55.930928+00:00
+generated_at: 2026-04-14T16:17:53.986879+00:00
 source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
 # Doc Gen Pipeline
 
-A three-stage documentation generation system that uses large language models to create higher-quality help content through outline planning, content writing, and review phases.
+## How it works
 
-## Pipeline architecture
+The doc gen pipeline transforms source code into polished documentation through three sequential AI-powered stages: outline generation, content writing, and review.
 
-The documentation generation follows a deliberate sequence where each stage builds on the previous one:
+Instead of generating documentation in a single step, this pipeline breaks the process into focused phases. First, `build_outline` creates a structured plan for the documentation. Then `write_content` expands that outline into full prose, optionally focusing on specific sections. Finally, `review_content` polishes the draft for clarity and consistency.
 
-1. **Outline stage** — Creates a structured plan using `build_outline()` to define sections and content hierarchy
-2. **Write stage** — Generates draft content with `write_content()` based on the approved outline structure
-3. **Review stage** — Refines and polishes the draft using `review_content()` for final output quality
+You configure the pipeline through `DocGenConfig`, which lets you specify the target audience (like "developers"), document type (like "api-reference"), and token limits for each stage. The pipeline tracks its progress in `DocGenResult`, recording the content from each stage and which stages completed successfully.
 
-You initiate the entire pipeline through `generate_docs()`, which orchestrates these stages and returns a `DocGenResult` containing the outline, draft, and final content.
+## Core components
 
-## Configuration options
+**`DocGenConfig`** stores your pipeline preferences, including the AI model to use (`claude-sonnet-4-20250514` by default), maximum tokens per stage, and how many outline sections to process in each writing chunk.
 
-`DocGenConfig` controls how the pipeline behaves across all three stages:
+**`DocGenResult`** captures everything the pipeline produces: the final content, intermediate outline and draft versions, completed stages, and the original source file path.
 
-- **Document targeting** — Set `doc_type` (like 'api-reference') and `audience` (like 'developers') to shape content style
-- **Model selection** — Choose the LLM via the `model` field (defaults to 'claude-sonnet-4-20250514')
-- **Token limits** — Control output length separately for each stage with `max_outline_tokens`, `max_write_tokens`, and `max_review_tokens`
-- **Content focus** — Use `section_focus` to emphasize specific topics and `sections_per_chunk` to manage processing batches
+**Stage functions** handle the AI interactions:
+- `build_outline` analyzes source code and creates a documentation structure
+- `write_content` converts outline sections into readable prose
+- `review_content` refines the draft for publication quality
 
-## Output structure
+## Integration points
 
-`DocGenResult` preserves the complete generation history so you can inspect intermediate steps:
+You start the pipeline by calling `generate_docs()` with a source file path and optional configuration. The function coordinates all three stages and returns a complete `DocGenResult`.
 
-- `content` — The final polished documentation
-- `outline` — The structural plan from stage one
-- `draft` — The raw content from stage two before review
-- `stages_completed` — Tracks which pipeline phases finished successfully
-- `source_path` — Records the input file or content location
-
-This incremental approach lets you debug generation issues by examining where the pipeline produced unexpected results.
+The pipeline requires the Anthropic AI library — if it's not installed, you'll get an `AnthropicCallError` with installation instructions for the `attune-author[ai]` extra.

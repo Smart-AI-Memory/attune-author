@@ -2,57 +2,47 @@
 type: quickstart
 feature: mcp-server
 depth: quickstart
-generated_at: 2026-04-14T14:12:10.445206+00:00
+generated_at: 2026-04-14T16:17:12.354310+00:00
 source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
-# Quickstart: MCP server
+# Run the attune-author MCP server
 
-Create an MCP server that exposes attune-author tools to Claude Code:
+Start an MCP server that exposes attune-author's help generation tools to Claude Code.
 
-```python
-from attune_author.mcp.server import create_server
-
-server = create_server()
-print(f"Created server with {len(server.tools)} tools")
+```bash
+python -m attune_author.mcp.server
 ```
 
-## Run the server
+The server starts and listens for MCP requests, printing connection details to stdout.
 
-1. **Start the MCP server** by running the main entry point:
+## Test the server
 
-   ```bash
-   python -m attune_author.mcp.server
+1. **Connect Claude Code to your server** using the connection details from step 1.
+
+2. **Initialize help for a project** by calling the `author_init` tool:
+   ```json
+   {
+     "tool": "author_init",
+     "arguments": {
+       "project_root": "/path/to/your/project"
+     }
+   }
    ```
 
-2. **Verify tools are available** by checking the server object:
+3. **Verify the connection works** by checking that Claude Code can see all six attune-author tools: `author_init`, `author_status`, `author_generate`, `author_maintain`, `author_docs`, and `author_lookup`.
 
-   ```python
-   from attune_author.mcp.server import create_server
+## Expected output
 
-   server = create_server()
-   for name, schema in server.tools.items():
-       print(f"Tool: {name} - {schema['description']}")
-   ```
+When the server starts successfully, you'll see:
+```
+MCP server listening on stdio
+Available tools: author_init, author_status, author_generate, author_maintain, author_docs, author_lookup
+```
 
-   Expected output shows six tools:
-   ```
-   Tool: author_init - Bootstrap a .help/ directory in the project...
-   Tool: author_status - Report which feature templates are stale...
-   Tool: author_generate - Generate concept, task, and reference templates...
-   Tool: author_maintain - Detect and regenerate all stale feature templates...
-   Tool: author_docs - Generate documentation from a source file...
-   Tool: author_lookup - Look up help for a topic by name or tag...
-   ```
-
-3. **Call a tool** to test the integration:
-
-   ```python
-   result = server.call_tool("author_status", {"project_root": "."})
-   print(result)
-   ```
+Claude Code should now list attune-author as an available MCP server with 6 callable tools for help system management.
 
 ## Next steps
 
-Configure your Claude Code client to connect to this MCP server endpoint for automated help system management.
+Call the `author_status` tool to see which features in your project need documentation templates.

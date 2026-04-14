@@ -2,32 +2,32 @@
 type: reference
 feature: staleness-and-maintenance
 depth: reference
-generated_at: 2026-04-14T14:05:36.533470+00:00
+generated_at: 2026-04-14T16:10:33.520693+00:00
 source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
 # Staleness and maintenance reference
 
+Detect when help templates are out of sync with source code and automatically regenerate them.
+
 ## Classes
 
-### FeatureStaleness fields
+### FeatureStaleness
 
-| Field | Type | Default |
-|-------|------|---------|
-| `feature` | `str` | — |
-| `is_stale` | `bool` | — |
-| `current_hash` | `str` | — |
-| `stored_hash` | `str \| None` | — |
-| `matched_files` | `list[str]` | `[]` |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `feature` | `str` |  | Name of the feature being checked |
+| `is_stale` | `bool` |  | Whether the help template is out of sync with source |
+| `current_hash` | `str` |  | SHA-256 hash of current source files |
+| `stored_hash` | `str \| None` |  | Hash stored in the template's frontmatter |
+| `matched_files` | `list[str]` | `field(default_factory=list)` | Source files used to compute the hash |
 
-### StalenessReport fields
+### StalenessReport
 
-| Field | Type | Default |
-|-------|------|---------|
-| `entries` | `list[FeatureStaleness]` | — |
-
-### StalenessReport properties
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `entries` | `list[FeatureStaleness]` |  | Staleness status for each checked feature |
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -35,16 +35,14 @@ status: generated
 | `current_count` | `int` | Count of up-to-date features |
 | `stale_features` | `list[str]` | Names of stale features |
 
-### MaintenanceResult fields
+### MaintenanceResult
 
-| Field | Type | Default |
-|-------|------|---------|
-| `staleness` | `StalenessReport` | — |
-| `regenerated` | `list[GenerationResult]` | `[]` |
-| `skipped_manual` | `list[str]` | `[]` |
-| `failed` | `list[str]` | `[]` |
-
-### MaintenanceResult properties
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `staleness` | `StalenessReport` |  | Staleness report for all checked features |
+| `regenerated` | `list[GenerationResult]` | `field(default_factory=list)` | Successfully regenerated templates |
+| `skipped_manual` | `list[str]` | `field(default_factory=list)` | Features skipped due to manual status |
+| `failed` | `list[str]` | `field(default_factory=list)` | Features that failed to regenerate |
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -64,6 +62,6 @@ status: generated
 
 ## Constants
 
-| Constant | Value |
-|----------|-------|
-| `EXCLUDED_DIRS` | `{'__pycache__', '.mypy_cache', '.pytest_cache', '.ruff_cache', 'node_modules', '.git'}` |
+| Constant | Values | Description |
+|----------|--------|-------------|
+| `_EXCLUDED_DIRS` | `{'__pycache__', '.mypy_cache', '.pytest_cache', '.ruff_cache', 'node_modules', '.git'}` | Directories excluded from source file scanning |

@@ -2,23 +2,29 @@
 type: tip
 feature: doc-gen-pipeline
 depth: tip
-generated_at: 2026-04-14T14:14:36.001633+00:00
+generated_at: 2026-04-14T16:19:31.756172+00:00
 source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
 status: generated
 ---
 
-# Use generate_docs() for most documentation tasks
+# Set section_focus to control what the pipeline emphasizes
 
-Start with the high-level `generate_docs()` function unless you need fine-grained control over individual stages. This function orchestrates the three-stage pipeline (outline → write → review) and handles configuration automatically.
+## Recommendation
 
-The individual stage functions (`build_outline()`, `write_content()`, `review_content()`) are useful when you want to inspect intermediate results or when building custom workflows, but they require you to manage the Anthropic client and pass configuration between stages manually.
+Use the `section_focus` field in `DocGenConfig` to direct the pipeline's attention to specific documentation sections. This three-stage process (outline → write → review) works best when you tell it what matters most for your particular source code.
 
-**Why:** The pipeline's value comes from the multi-stage approach — jumping straight to individual stages usually means you're duplicating orchestration logic that `generate_docs()` already handles.
+```python
+config = DocGenConfig(
+    doc_type='api-reference',
+    section_focus=['error-handling', 'configuration', 'examples']
+)
+generate_docs('my_module.py', config)
+```
 
-## Source files
+## Why this helps
 
-- `src/attune_author/doc_gen/pipeline.py`
-- `src/attune_author/doc_gen/stages.py`
-- `src/attune_author/doc_gen/config.py`
+The LLM has limited tokens across all three stages, so unfocused generation often produces generic content that misses your code's key concepts.
 
-**Tags:** `doc-gen`, `pipeline`, `llm`, `multi-stage`
+## The tradeoff
+
+More focused documentation means less coverage of edge cases and secondary features — you get depth at the expense of breadth.

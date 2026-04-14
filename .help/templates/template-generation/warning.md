@@ -2,7 +2,7 @@
 type: warning
 feature: template-generation
 depth: warning
-generated_at: 2026-04-14T13:58:07.702185+00:00
+generated_at: 2026-04-14T16:02:55.278438+00:00
 source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
@@ -11,27 +11,35 @@ status: generated
 
 ## What to watch for
 
-Template generation creates markdown help files from feature definitions and source code analysis. The process involves file I/O, hash validation, and template depth matching that can fail silently or produce unexpected results.
+Template generation creates markdown help files from feature definitions and source code analysis. The process involves file system operations, hash validation, and template type selection that can fail in non-obvious ways.
 
 ## Risk areas
 
-**Overwriting existing templates without validation.** The `overwrite` parameter in `generate_feature_templates()` defaults to `False`, but when set to `True`, it replaces files without checking if they contain manual edits. You can lose custom content if you overwrite templates that were hand-modified after generation.
+**Hash mismatches between runs**
+The `source_hash` field tracks whether source files have changed between generation runs. If you modify source files but don't regenerate templates, you'll work with stale documentation that doesn't reflect the current codebase.
 
-**Invalid feature names causing runtime errors.** The function raises `ValueError` with the message "Invalid feature name: {...}" when passed malformed feature identifiers. This happens during validation, not at call time, so errors can surface deep in a generation batch.
+**Overwrite protection blocking updates**
+By default, `generate_feature_templates()` sets `overwrite=False` to prevent accidentally destroying manual edits. This means updated source code won't refresh existing templates unless you explicitly enable overwriting or delete the old files first.
 
-**Source hash mismatches indicating stale templates.** Each `GeneratedTemplate` includes a `source_hash` field that tracks the source files used for generation. If the hash doesn't match current source files, the template may contain outdated information, but the system won't automatically regenerate it.
+**Invalid feature names causing silent failures**
+The function raises `ValueError` for invalid feature names, but the validation logic isn't exposed. Features that don't match expected naming patterns will fail generation without clear guidance on what constitutes a valid name.
 
-**Depth filtering excluding expected templates.** When you specify a `depths` parameter, only templates matching those depth names are generated. The valid depths are defined in `_CORE_DEPTH_NAMES` and related constants, but passing an unrecognized depth silently generates no output rather than failing fast.
+**Template depth filtering**
+When you specify custom `depths`, only templates matching those depth names generate. The system recognizes core depths (`concept`, `task`, `reference`) and problem types (`error`, `warning`, `troubleshooting`, `faq`), but won't warn you if your depth list excludes templates you expect.
 
 ## How to avoid problems
 
-**Check for existing files before enabling overwrite.** Before setting `overwrite=True`, verify that target files either don't exist or contain only generated content by checking their frontmatter status field.
+**Check hash consistency before editing**
+Compare the `source_hash` in existing templates against current source files. If they differ, regenerate templates before making manual changes to avoid working with outdated content.
 
-**Validate feature names early.** Test feature name validity with a minimal generation call before running batch operations. The validation logic catches malformed names, but only after setup work is complete.
+**Use overwrite mode deliberately**
+When updating documentation after code changes, explicitly set `overwrite=True` and backup any manual edits first. The default protection prevents data loss but can create staleness if you're not aware of it.
 
-**Compare source hashes after generation.** After generating templates, check that the `source_hash` in the result matches your expectations. A mismatch suggests the generation used different source files than intended.
+**Validate feature names early**
+Test feature name validity with a small generation run before processing large batches. The error message format is 'Invalid feature name: {name}' but doesn't specify what makes names valid.
 
-**Use explicit depth lists.** Instead of relying on defaults, explicitly specify the `depths` parameter with values from the documented constants to ensure you generate exactly the template types you need.
+**Review depth selections**
+When using custom `depths` parameters, cross-reference against the constants `_CORE_DEPTH_NAMES` and problem template sets to ensure you're generating the template types you need.
 
 ## Source files
 

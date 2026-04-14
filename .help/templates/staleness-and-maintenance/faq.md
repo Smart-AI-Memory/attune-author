@@ -2,44 +2,46 @@
 type: faq
 feature: staleness-and-maintenance
 depth: faq
-generated_at: 2026-04-14T14:06:37.158292+00:00
+generated_at: 2026-04-14T16:11:29.761083+00:00
 source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
 # Staleness And Maintenance FAQ
 
-## What is staleness and maintenance?
+## What is staleness detection?
 
-This feature detects when your help templates are out of sync with their source code and automatically regenerates the stale ones.
+Staleness detection identifies when your generated help templates are out of sync with their source code by comparing SHA-256 hashes of the source files.
 
-## When should I use it?
+## When should I check for stale templates?
 
-Use this feature when you need to keep your generated documentation current with code changes. It's essential for automated workflows like commit hooks that ensure documentation stays fresh.
+Check for staleness when you've modified source code and want to know if the help templates need regeneration. You can run checks manually or set up the post-commit hook to check automatically after each commit.
 
 ## How do I check which templates are stale?
 
-Use `check_staleness()` to get a report of which features have outdated templates. It compares SHA-256 hashes of source files against stored values to detect changes.
+Use `check_staleness()` to get a report showing which features have outdated templates. The function compares stored hashes with current source file hashes and returns a `StalenessReport` with the results.
 
-## How do I regenerate stale templates?
+## What's the difference between checking staleness and running maintenance?
 
-Call `run_maintenance()` to check staleness and regenerate any out-of-date templates in one operation. Set `dry_run=True` to see what would be regenerated without making changes.
-
-## What's the difference between staleness checking and maintenance?
-
-Staleness checking (`check_staleness()`) only reports which templates are out of date. Maintenance (`run_maintenance()`) goes further and actually regenerates the stale templates.
-
-## Can I check staleness for specific features only?
-
-Yes, pass a list of feature names to the `features` parameter in both `check_staleness()` and `run_maintenance()`. Without this parameter, all features are checked.
+`check_staleness()` only reports which templates are stale, while `run_maintenance()` both checks for staleness and regenerates the stale templates automatically.
 
 ## How does the post-commit hook work?
 
-The `run_hook()` function automatically runs maintenance after commits, but only if files changed in the latest commit. This prevents unnecessary regeneration when documentation files haven't changed.
+The `run_hook()` function checks if any files changed in the most recent commit affect feature templates. If they do, it runs maintenance to regenerate the affected templates.
+
+## What files does staleness checking examine?
+
+The system examines all source files for a feature while excluding common cache and build directories like `__pycache__`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `node_modules`, and `.git`.
+
+## Can I run maintenance without actually regenerating files?
+
+Yes, use the `dry_run=True` parameter with `run_maintenance()` to see what would be regenerated without making any changes.
 
 ## How do I debug staleness issues?
 
-Run `pytest -k "staleness-and-maintenance" -v` first. If tests pass but you're still having issues, add `logger.debug` statements and enable logging to trace the hash computation and file matching logic.
+Run the related tests first: `pytest -k "staleness-and-maintenance" -v`. If they pass but your code still fails, add a `logger.debug` statement at the suspected failure point and re-run with logging enabled.
+
+For common failure modes, see the troubleshooting page for this feature.
 
 ## Where are the source files?
 

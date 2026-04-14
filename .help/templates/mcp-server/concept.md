@@ -2,37 +2,39 @@
 type: concept
 feature: mcp-server
 depth: concept
-generated_at: 2026-04-14T14:10:22.395227+00:00
+generated_at: 2026-04-14T16:15:21.471572+00:00
 source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
 # MCP Server
 
-## How it works
+## Architecture
 
-The MCP server exposes attune-author's documentation generation capabilities to Claude through the Model Context Protocol, allowing you to bootstrap help systems, generate templates, and maintain documentation directly from your editor.
+The MCP server exposes attune-author's documentation generation capabilities to Claude Code through the Model Context Protocol, transforming attune-author into a set of callable tools that external AI systems can invoke directly.
 
-The server architecture centers on two classes:
+The server operates through two complementary layers:
 
-- **`AttuneAuthorMCPServer`** — Routes tool calls and manages the schema registry for all six MCP tools
-- **`AttuneAuthorHandlers`** — Executes the actual documentation operations like `author_generate` and `author_maintain`
+- **`AttuneAuthorMCPServer`** — Protocol adapter that handles MCP communication, maintains a tool registry, and routes incoming requests to the appropriate handlers
+- **`AttuneAuthorHandlers`** — Business logic layer containing async implementations for each of the six available tools
 
-When Claude calls a tool, the server validates the request against predefined schemas, then delegates to the appropriate handler method. For example, calling `author_init` triggers the bootstrap process that scans your project and creates a `.help/` directory with `features.yaml`.
+When Claude Code needs to bootstrap a help system, check template freshness, or generate documentation, it sends structured requests through the MCP protocol. The server validates inputs using `validate_file_path()` to prevent directory traversal attacks, then delegates to handlers that invoke attune-author's core functionality.
 
 ## Available tools
 
-The server exposes six tools that mirror attune-author's command-line interface:
+The server exposes six distinct capabilities:
 
-- **`author_init`** — Bootstraps a `.help/` directory by scanning for features and creating `features.yaml`
-- **`author_status`** — Reports which templates are stale by comparing source file hashes
-- **`author_generate`** — Creates concept, task, and reference templates for a single feature
-- **`author_maintain`** — Detects and regenerates all stale templates in one pass
-- **`author_docs`** — Generates documentation from source files using the 3-stage LLM pipeline
-- **`author_lookup`** — Retrieves help content by feature name, tag, or substring
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `author_init` | Bootstrap `.help/` directory and scan for features | `project_root` |
+| `author_status` | Report which templates are stale by comparing source hashes | `help_dir`, `project_root` |
+| `author_generate` | Generate concept, task, and reference templates for one feature | `feature`, `overwrite` |
+| `author_maintain` | Batch regenerate all stale templates in one pass | `features`, `dry_run` |
+| `author_docs` | Generate documentation using the 3-stage AI pipeline | `target`, `doc_type`, `audience` |
+| `author_lookup` | Retrieve help content by topic name or tag | `query`, `depth` |
 
-Each tool accepts structured arguments and returns JSON responses, making them suitable for integration with Claude's tool-calling capabilities.
+Each tool accepts structured JSON arguments and returns results in a consistent format, enabling Claude Code to chain operations like checking status, then generating specific templates, then looking up the results.
 
-## Security model
+## Security boundaries
 
-The server includes path validation through `validate_file_path()` to prevent directory traversal attacks. This function blocks access to system directories like `/etc`, `/proc`, and `/usr/bin`, ensuring that MCP tools can only operate on your project files and the designated `.help/` directory.
+The server implements path validation to constrain file access within safe boundaries. The `validate_file_path()` function prevents access to system directories like `/etc`, `/proc`, and `/usr/bin`, while ensuring all operations stay within the designated project workspace.

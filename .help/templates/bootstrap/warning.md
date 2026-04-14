@@ -2,7 +2,7 @@
 type: warning
 feature: bootstrap
 depth: warning
-generated_at: 2026-04-14T14:03:54.908392+00:00
+generated_at: 2026-04-14T16:08:52.281340+00:00
 source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
@@ -11,35 +11,37 @@ status: generated
 
 ## What to watch for
 
-The bootstrap module scans your project directory to automatically propose features for your manifest. While this saves setup time, the scanning process makes assumptions about your project structure that can lead to incorrect or incomplete feature detection.
+The bootstrap scanner makes opinionated decisions about your project structure that can miss important features or misclassify existing code. Since it generates the initial manifest that guides all subsequent help generation, incorrect bootstrapping cascades through your entire documentation system.
 
 ## Risk areas
 
-### Directory traversal limits
+### Incomplete project discovery
 
-`scan_project()` skips common directories like `.git`, `__pycache__`, and `node_modules` using the hardcoded `_SKIP_DIRS` set. If your project stores important code in unconventionally named directories (like a `vendor` folder with custom modules), the scanner will ignore them completely.
+`scan_project()` skips directories in `_SKIP_DIRS` and only recognizes entry points from `_ENTRY_POINT_NAMES`. If your project uses non-standard naming conventions or nested structures, the scanner will miss significant portions of your codebase.
 
-### Entry point detection assumptions
+**Risk:** Critical features remain undocumented because they weren't detected during the initial scan.
 
-The scanner looks for specific filenames (`main.py`, `app.py`, `cli.py`, etc.) defined in `_ENTRY_POINT_NAMES` to identify application entry points. Projects with non-standard entry point names or multiple entry points per feature may be mischaracterized or have features missed entirely.
+### False confidence in feature classification
 
-### Configuration file pattern matching
+The `ProposedFeature.confidence` field defaults to 'medium', but the scanner's heuristics may assign high confidence to incorrect classifications. A file named `config.py` gets tagged as configuration even if it's actually a module that processes configuration files.
 
-`_CONFIG_PATTERNS` only recognizes files containing 'config', 'settings', or 'conf' in their names. Projects using different naming conventions (like `env.py`, `constants.py`, or `.toml` files) won't be properly categorized as configuration features.
+**Risk:** Misclassified features receive inappropriate documentation templates, creating confusing or incorrect help content.
 
-### Confidence scoring opacity
+### Overwriting existing manifests
 
-`ProposedFeature` objects include a `confidence` field that defaults to 'medium', but the scanning logic that sets this value isn't exposed. Low-confidence proposals might indicate genuine uncertainty about a feature's purpose, requiring manual review before acceptance.
+`proposals_to_manifest()` generates a new `FeatureManifest` without checking for existing documentation or manual overrides. Running bootstrap on a project with customized help content will discard your edits.
+
+**Risk:** Manual documentation improvements are lost when re-running the bootstrap process.
 
 ## How to avoid problems
 
-1. **Verify scan results manually.** Always review the output of `scan_project()` before converting proposals to a manifest. Missing or misclassified features are easier to catch at this stage than after deployment.
+1. **Review proposals before accepting.** Always inspect the `ProposedFeature` list from `scan_project()` before calling `proposals_to_manifest()`. Verify that detected features match your project's actual structure.
 
-2. **Customize for your project structure.** If your project uses non-standard directory names or entry points, consider extending the hardcoded sets or implementing custom scanning logic rather than relying on the defaults.
+2. **Customize scanner constants for your project.** If you use non-standard entry point names or directory structures, modify `_ENTRY_POINT_NAMES` and `_SKIP_DIRS` before scanning to improve detection accuracy.
 
-3. **Check confidence levels.** Pay special attention to proposals with low confidence scores or empty `reason` fields. These often indicate edge cases where the scanner couldn't determine a feature's purpose reliably.
+3. **Back up existing manifests.** Before re-running bootstrap on a project with existing documentation, save your current manifest and help files. Bootstrap is designed for initial setup, not incremental updates.
 
-4. **Test with representative projects.** Before using bootstrap on production codebases, test it against projects with similar structures to yours. Different languages, frameworks, or organizational patterns may not scan as expected.
+4. **Validate confidence scores.** Don't trust the default 'medium' confidence rating. Manually review each proposed feature's `reason` field to understand why the scanner classified it that way.
 
 ## Source files
 

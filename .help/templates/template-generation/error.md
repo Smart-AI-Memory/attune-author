@@ -2,34 +2,34 @@
 type: error
 feature: template-generation
 depth: error
-generated_at: 2026-04-14T13:57:57.478670+00:00
+generated_at: 2026-04-14T16:02:45.849618+00:00
 source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
 
 # Template Generation errors
 
-Template generation failures occur when the system cannot create help documentation files from feature definitions and source code analysis.
+Template generation failures occur when creating help documentation templates from source code analysis and feature definitions.
 
 ## Common error signatures
 
-- `ValueError: Invalid feature name: {feature_name}` — The feature name passed to `generate_feature_templates()` doesn't match expected naming patterns or references a non-existent feature
+- `ValueError: Invalid feature name: {name}` — The feature name you provided doesn't match any recognized feature in the project
 
 ## Where errors originate
 
-Template generation errors primarily stem from the `generate_feature_templates()` function in `src/attune_author/generator.py`. This function orchestrates the entire generation process, from feature validation through template file creation.
+Template generation errors stem from the main generation function:
+
+- `generate_feature_templates()` in `src/attune_author/generator.py` — Orchestrates template creation for a feature, validating inputs and coordinating file operations
 
 ## How to diagnose
 
-1. **Verify the feature name.** Check that the feature parameter passed to `generate_feature_templates()` matches an actual feature in your project. Invalid feature names trigger `ValueError` exceptions immediately.
+1. **Verify the feature name.** If you see "Invalid feature name", check that your feature identifier matches one defined in your project's feature registry. Feature names are case-sensitive and must exactly match the registered identifier.
 
-2. **Check file system permissions.** If generation fails during file writing, verify that the help directory path is writable and that no permission restrictions block template file creation.
+2. **Check file permissions.** Template generation writes to the help directory. Ensure you have write access to the target directory and that no files are locked by other processes.
 
-3. **Validate source file integrity.** Generation relies on AST parsing of source files. If source files contain syntax errors or are corrupted, template generation will fail when attempting to extract metadata.
+3. **Validate source file integrity.** The generation process analyzes source files to extract documentation patterns. If source files have syntax errors or are corrupted, generation may fail during AST parsing.
 
-4. **Examine the overwrite setting.** When `overwrite=False` (default), generation skips existing template files. If you expect new templates but don't see them, check whether files already exist at the target paths.
-
-5. **Inspect the depths parameter.** Template generation creates files for specific documentation depths (concept, task, reference) and problem types (error, warning, troubleshooting, faq). Invalid depth names or mismatched template types can cause generation to skip expected outputs.
+4. **Examine the generation result.** The `GenerationResult` object contains diagnostic information including `matched_files` and `source_hash`. Empty `matched_files` indicates the feature finder couldn't locate relevant source files.
 
 ## Source files
 

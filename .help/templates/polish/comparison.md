@@ -2,53 +2,52 @@
 type: comparison
 feature: polish
 depth: comparison
-generated_at: 2026-04-14T14:01:05.582917+00:00
-source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
+generated_at: 2026-04-14T16:05:59.756580+00:00
+source_hash: 39a4215a31cf6bfa17f5b898ad071827d406cbe4dc8d2744f17fe7fd680d6891
 status: generated
 ---
 
-# Comparison: Polish vs alternatives
+# Polish vs manual editing
 
-## Context
+## Overview
 
-The polish feature improves generated template quality through an LLM-powered rewrite pass. It uses template-specific system prompts and source-grounded summaries to transform raw auto-generated documentation into polished, readable content.
+The `polish` feature uses an LLM to automatically improve generated help templates, applying type-specific system prompts and source-grounded summaries. Compare this to manually editing templates or using generic text improvement tools.
 
-## Polish vs manual editing
+## Feature comparison
 
-| Feature | Polish | Manual editing |
-|---------|---------|---------------|
-| Speed | Processes templates in seconds | Requires human time per template |
-| Consistency | Uses standardized prompts for each template type | Varies by editor and their availability |
-| Source accuracy | Validates against provided source summary | Risk of drift from actual implementation |
-| Customization | Limited to prompt engineering | Full editorial control |
-| Error handling | Strict mode with `PolishError` exceptions | Human judgment prevents most errors |
-
-Polish excels at bulk template improvement and maintaining consistency across large documentation sets. Manual editing offers complete control but doesn't scale well.
-
-## Polish vs other documentation tools
-
-Most documentation generators stop at raw template creation. Polish bridges the gap between auto-generation and publication-ready content by applying editorial intelligence at scale.
-
-Unlike static template systems, polish adapts its approach based on template type — comparison pages get different treatment than troubleshooting guides.
+| Aspect | Polish feature | Manual editing | Generic AI tools |
+|--------|---------------|----------------|------------------|
+| **Speed** | Processes templates in seconds | Requires writer time per template | Fast but needs context setup |
+| **Consistency** | Template-type-aware prompts ensure uniform structure | Varies by editor skill/attention | No template structure awareness |
+| **Source accuracy** | Grounded in actual code via `build_source_summary()` | Relies on editor's code knowledge | Risk of hallucinated features |
+| **Scale** | Handles batch processing efficiently | Doesn't scale to many templates | Manual prompt engineering per use |
+| **Customization** | Fixed prompts per template type | Unlimited flexibility | Requires custom prompt development |
+| **Error handling** | Raises `PolishError` in strict mode | No automated validation | No built-in validation |
 
 ## When to use polish
 
-Use polish when you need to:
+Choose the polish feature when:
 
-- **Transform bulk generated content** — Polish processes multiple templates consistently using the same quality standards
-- **Maintain source accuracy** — The `build_source_summary()` function ensures edits stay grounded in actual implementation details
-- **Apply template-specific improvements** — Different template types get specialized system prompts through `get_system_prompt()`
-- **Catch polish failures early** — Strict mode raises `PolishError` exceptions when the LLM pass doesn't meet quality thresholds
+- **You generate multiple templates** — The type-specific prompts (`get_system_prompt()`) handle comparison, reference, and tutorial formats automatically
+- **Source accuracy matters** — The `build_source_summary()` function ensures the LLM works from actual code signatures and docstrings
+- **You want consistent quality** — The same prompts produce uniform output across template batches
+- **You're in a CI/CD pipeline** — Set `strict=True` to fail builds when polish can't improve a template
 
-## When manual editing is better
+## When manual editing works better
 
-Skip polish when you need:
+Prefer manual editing when:
 
-- **Deep structural changes** — Polish improves existing structure but doesn't redesign template organization
-- **Domain-specific expertise** — Complex technical concepts may need human subject matter experts
-- **One-off customizations** — For single templates with unique requirements, direct editing is faster
-- **No LLM access** — Polish requires Anthropic API access; manual editing works offline
+- **You need deep customization** — The polish prompts target general improvements, not domain-specific restructuring
+- **Working with one-off templates** — Manual editing is faster than setting up polish for single uses
+- **Templates need creative restructuring** — Polish improves existing structure but won't completely reimagine organization
 
-## Use polish when...
+## Decision rule
 
-Your documentation workflow involves generating many templates that need consistent editorial improvement, and you want to maintain accuracy while scaling beyond what manual editing can handle. If you're processing fewer than 10 templates or need deep structural changes, manual editing is likely more efficient.
+Use polish by default for generated templates. The `polish_template()` function with source-grounded prompts produces better results than manual editing for most technical documentation. Fall back to manual work only when you need structural changes that go beyond the template type's standard format.
+
+## Source files
+
+- `src/attune_author/polish.py`
+- `src/attune_author/polish_prompts.py`
+
+**Tags:** `polish`, `llm`, `anthropic`, `quality`

@@ -2,7 +2,7 @@
 type: troubleshooting
 feature: cli
 depth: troubleshooting
-generated_at: 2026-04-14T14:09:38.200628+00:00
+generated_at: 2026-04-14T16:14:34.042864+00:00
 source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
@@ -11,40 +11,40 @@ status: generated
 
 ## Before you start
 
-The attune-author CLI provides command-line access to documentation authoring tools. When issues occur, they typically manifest as the tool failing to start, crashing during execution, or producing unexpected output.
+The cli module provides the command-line entry point for attune-author. When you run `attune-author` commands, they flow through the `main()` function in this module, which displays the welcome header and routes to appropriate subcommands.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| Command not found or import errors | Verify `attune-author` is installed and in your PATH |
-| Crashes with traceback | Review the Python traceback for the exact failure location in `main()` |
-| Wrong command behavior | Confirm you're using the correct subcommand syntax |
-| Silent exit with no output | Check the return code from `main()` — non-zero indicates failure |
+| Command not found error | Verify `attune-author` is installed and in your PATH |
+| Python traceback on startup | Check the `main()` function arguments and return handling |
+| Wrong command output | Confirm you're using the correct subcommand syntax |
+| Command hangs or runs slowly | Look for blocking I/O or infinite loops in argument parsing |
 
 ## Step-by-step diagnosis
 
-1. **Test basic installation.**
-   Run `attune-author --help` to confirm the CLI loads correctly. If this fails, the issue is with installation or environment setup, not command logic.
+1. **Test the basic entry point.**
+   Run `attune-author --help` or `python -m attune_author.cli` to confirm the module loads and the welcome header displays correctly.
 
 2. **Isolate the failing command.**
-   Strip your command down to the minimum arguments that reproduce the problem. Test each subcommand individually to narrow the scope.
+   Strip your command down to its minimal form. If `attune-author generate --complex-options` fails, try just `attune-author generate` first.
 
-3. **Check the entry point.**
-   The `main()` function in `src/attune_author/cli.py` handles all command parsing and delegation. Add print statements or use a debugger to trace execution through this function.
+3. **Check the argument parsing.**
+   Add debug prints or use a debugger in the `main()` function to inspect what arguments are being passed in the `argv` parameter.
 
-4. **Review argument parsing.**
-   Most CLI failures stem from unexpected argument combinations or malformed inputs. Verify your command syntax matches what the parser expects.
+4. **Enable Python's verbose mode.**
+   Run with `python -v -m attune_author.cli` to see module loading issues, or add `print()` statements in `main()` to trace execution flow.
 
 ## Common fixes
 
-- **Reinstall the package.** If `attune-author` command is not found, reinstall with `pip install -e .` from the project root to ensure the entry point is registered.
+- **Reinstall the package.** If the command isn't found, reinstall with `pip install -e .` from the project root to ensure the console script entry point is properly registered.
 
-- **Check Python version compatibility.** The CLI requires compatible Python version. Verify with `python --version` that you meet the minimum requirements.
+- **Check your Python environment.** Confirm you're running in the correct virtual environment with `which python` and `pip list | grep attune-author`.
 
-- **Clear your terminal cache.** Some shells cache command locations. Run `hash -r` (bash/zsh) or restart your terminal if the command was recently installed.
+- **Validate command syntax.** The cli module expects specific subcommands. Run `attune-author --help` to see available options and confirm your syntax matches.
 
-- **Validate file permissions.** If the CLI fails when accessing files, check that you have read/write permissions for the target directories.
+- **Clear Python cache.** Remove `__pycache__` directories with `find . -name "__pycache__" -type d -exec rm -rf {} +` if you're seeing import errors after code changes.
 
 ## Source files
 

@@ -2,7 +2,7 @@
 type: troubleshooting
 feature: staleness-and-maintenance
 depth: troubleshooting
-generated_at: 2026-04-14T14:06:19.355677+00:00
+generated_at: 2026-04-14T16:11:12.727240+00:00
 source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
@@ -11,76 +11,76 @@ status: generated
 
 ## Before you start
 
-The staleness and maintenance system detects when generated help templates are out of sync with their source files and automatically regenerates stale ones. Issues typically involve hash mismatches, file detection problems, or regeneration failures.
+The staleness and maintenance system tracks changes to your source files and regenerates help templates when they become outdated. When this process fails, your documentation may be missing or incorrect.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| Templates not regenerating despite source changes | Run `check_staleness()` manually and examine the `StalenessReport.stale_features` list |
-| Hash mismatch errors | Compare `current_hash` vs `stored_hash` in the `FeatureStaleness` object for the affected feature |
-| Files missing from staleness check | Inspect `matched_files` field to see which source files were detected |
-| Post-commit hook not triggering | Verify `get_changed_files()` returns the expected file paths |
-| Regeneration skipped unexpectedly | Check `MaintenanceResult.skipped_manual` for features marked as manual-only |
+| Templates not regenerating after code changes | Run `check_staleness()` manually and verify `is_stale` flags in the output |
+| "File not found" errors during hash computation | Check that source files exist and `_EXCLUDED_DIRS` isn't filtering required files |
+| Hash mismatches on identical files | Verify file encoding and line endings match between stored and computed hashes |
+| Post-commit hook not running | Confirm `run_hook()` is configured in your Git hooks and the help directory path is correct |
+| Regeneration succeeds but templates still show as stale | Check if `stored_hash` field is being updated after successful regeneration |
 
 ## Step-by-step diagnosis
 
-1. **Reproduce with a single feature.**
-   Isolate the problem by running staleness detection on one feature:
+1. **Test staleness detection in isolation.**
+   Run the staleness check for a single feature to isolate the problem:
    ```python
-   report = check_staleness(manifest, help_dir, project_root, features=['your-feature'])
-   print(report.stale_features)
+   from attune_author.staleness import check_staleness
+   report = check_staleness(manifest, help_dir, project_root, features=["your_feature"])
+   print(f"Stale features: {report.stale_features}")
    ```
 
-2. **Check hash computation.**
-   Verify that source file hashing works correctly:
+2. **Verify hash computation.**
+   Check if source file hashing works correctly:
    ```python
-   current_hash, matched_files = compute_source_hash(feature, project_root)
-   print(f"Hash: {current_hash}")
-   print(f"Files: {matched_files}")
+   from attune_author.staleness import compute_source_hash
+   hash_value, matched_files = compute_source_hash(feature, project_root)
+   print(f"Hash: {hash_value}, Files: {matched_files}")
    ```
 
-3. **Enable detailed logging.**
-   Set logging to `DEBUG` level before calling maintenance functions. The system logs file discovery, hash comparisons, and regeneration decisions.
-
-4. **Examine maintenance results.**
-   Run maintenance with dry_run enabled to see what would happen:
+3. **Check maintenance execution.**
+   Run maintenance manually to see detailed results:
    ```python
+   from attune_author.maintenance import run_maintenance
    result = run_maintenance(help_dir, project_root, dry_run=True)
-   print(f"Stale: {result.stale_count}")
-   print(f"Failed: {result.failed}")
+   print(f"Failed: {result.failed}, Skipped: {result.skipped_manual}")
    ```
 
-5. **Test the hook mechanism.**
-   If using the post-commit hook, verify file change detection:
+4. **Inspect Git integration.**
+   Test the commit hook detection:
    ```python
-   changed_files = get_changed_files(project_root)
-   print(f"Changed files: {changed_files}")
+   from attune_author.maintenance import get_changed_files
+   changed = get_changed_files(project_root)
+   print(f"Changed files: {changed}")
    ```
 
 ## Common fixes
 
-- **Clear stale hash cache.** Delete stored hash files in your help directory and re-run maintenance to force fresh hash computation.
-
-- **Fix file permissions.** Ensure the maintenance process can read source files and write to the help directory:
+- **Fix file path issues.** Verify your project root and help directory paths are absolute and correct:
   ```bash
-  chmod -R u+rw /path/to/help/dir
-  chmod -R u+r /path/to/source/files
+  python -c "from pathlib import Path; print(Path.cwd().resolve())"
   ```
 
-- **Update excluded directories.** If source files are in non-standard locations, check that they're not being filtered out by `_EXCLUDED_DIRS` (includes `__pycache__`, `.git`, `node_modules`, etc.).
-
-- **Verify feature manifest.** Ensure your feature is properly defined in the manifest with correct source file patterns.
-
-- **Check Git status.** The hook relies on Git to detect changed files. Ensure you're in a Git repository and the relevant files are committed:
+- **Update stored hashes.** If hashes are persistently mismatched, delete stored hash files and regenerate:
   ```bash
-  git status
-  git log --name-only -1
+  find . -name "*.hash" -delete
+  python -m attune_author.maintenance --force-regenerate
   ```
 
-- **Regenerate manually.** If automatic maintenance fails, force regeneration of specific features:
-  ```python
-  result = run_maintenance(help_dir, project_root, features=['problematic-feature'])
+- **Configure Git hooks properly.** Ensure the post-commit hook calls `run_hook()` with correct paths:
+  ```bash
+  echo '#!/bin/bash\npython -c "from attune_author.maintenance import run_hook; run_hook(\"/path/to/help\", \"/path/to/project\")"' > .git/hooks/post-commit
+  chmod +x .git/hooks/post-commit
+  ```
+
+- **Clear excluded directories.** If source files are being ignored, check they're not in `_EXCLUDED_DIRS` (includes `__pycache__`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `node_modules`, `.git`).
+
+- **Handle encoding issues.** Ensure consistent file encoding across environments:
+  ```bash
+  git config core.autocrlf false  # Prevent line ending changes
   ```
 
 ## Source files

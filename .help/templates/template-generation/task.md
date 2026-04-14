@@ -2,14 +2,14 @@
 type: task
 feature: template-generation
 depth: task
-generated_at: 2026-04-14T13:57:44.082676+00:00
+generated_at: 2026-04-14T16:02:30.330557+00:00
 source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
 
 # Work with template generation
 
-Use template generation when you need to create markdown help templates automatically from feature definitions and source code analysis.
+Use template generation when you need to create markdown help templates automatically from your feature definitions and source code analysis.
 
 ## Prerequisites
 
@@ -18,42 +18,45 @@ Use template generation when you need to create markdown help templates automati
 
 ## Generate templates for a feature
 
-1. **Import the generation function**
+1. **Import the generation function:**
    ```python
    from attune_author.generator import generate_feature_templates
    ```
 
-2. **Call the function with your feature**
+2. **Call the function with your feature:**
    ```python
-   from pathlib import Path
-
    result = generate_feature_templates(
        feature=your_feature,
        help_dir="docs/help",
        project_root=".",
        depths=["concept", "task", "reference"],  # Optional
-       overwrite=False  # Set True to replace existing files
+       overwrite=False  # Optional
    )
    ```
 
-3. **Check the generation result**
+3. **Check the generation result:**
    ```python
    print(f"Generated {len(result.templates)} templates for {result.feature}")
    for template in result.templates:
        print(f"  {template.depth}: {template.path}")
    ```
 
-## Verify successful generation
+## Verify template generation
 
-- Check that `result.templates` contains the expected template types
-- Confirm the generated files exist at the specified paths
-- Verify each template has a valid `source_hash` that matches the current codebase
+Check that templates were created successfully:
 
-## Key components
+- Generated template files exist at the specified paths in `result.templates`
+- Each template has valid YAML frontmatter with correct `feature`, `depth`, and `source_hash` fields
+- Template content matches the structure for its depth type (concept, task, reference, etc.)
 
-The generation process creates:
-- **Core templates**: concept, task, and reference documentation
-- **Problem templates**: error, warning, troubleshooting, and FAQ guides
-- **Guidance templates**: quickstart, tip, note, and comparison content
+## Handle generation errors
 
-Each generated template includes metadata about the source feature and creation timestamp.
+If `generate_feature_templates()` raises a `ValueError` with "Invalid feature name:", verify:
+
+- Your feature object has a valid name attribute
+- The feature name contains only allowed characters
+- Required feature properties are properly set
+
+## Key files
+
+- `src/attune_author/generator.py` — Main template generation logic

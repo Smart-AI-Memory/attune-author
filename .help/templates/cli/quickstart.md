@@ -2,44 +2,44 @@
 type: quickstart
 feature: cli
 depth: quickstart
-generated_at: 2026-04-14T14:09:55.081981+00:00
+generated_at: 2026-04-14T16:14:52.675752+00:00
 source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
 status: generated
 ---
 
 # Quickstart: cli
 
-Run the attune-author command-line tool to see available commands:
+Run the attune-author CLI to access documentation authoring commands for the attune ecosystem.
 
 ```bash
 python -m attune_author.cli
 ```
 
-Expected output:
+You'll see the welcome header and available commands:
+
 ```
 attune-author — documentation authoring for the attune ecosystem
-
-Available commands:
-  bootstrap  Set up a new documentation project
-  generate   Build documentation from source
-  status     Check project health
-  maintain   Update and clean documentation
 ```
+
+## Prerequisites
+
+- Python environment with attune-author installed
+- Command line access
 
 ## Run your first command
 
-1. **Check what commands are available.** The CLI shows you all subcommands when you run it without arguments.
+1. **Check the CLI status.** Run the main entry point to see what subcommands are available:
+   ```bash
+   python -m attune_author.cli
+   ```
 
-2. **Try the status command** to see your current project state:
+2. **Try a specific subcommand.** Use one of the available commands like `status`, `bootstrap`, `generate`, or `maintain`:
    ```bash
    python -m attune_author.cli status
    ```
 
-3. **Bootstrap a new project** if you don't have one:
-   ```bash
-   python -m attune_author.cli bootstrap
-   ```
+3. **Verify the output.** The CLI returns an integer exit code (0 for success) and displays relevant information for your chosen command.
 
 ## Next steps
 
-Run `python -m attune_author.cli generate` to build your documentation from source code.
+Run `python -m attune_author.cli --help` to explore all available subcommands and their options.

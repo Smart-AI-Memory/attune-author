@@ -2,35 +2,31 @@
 type: concept
 feature: staleness-and-maintenance
 depth: concept
-generated_at: 2026-04-14T14:05:15.488389+00:00
+generated_at: 2026-04-14T16:10:08.341587+00:00
 source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
 # Staleness And Maintenance
 
-Staleness and maintenance automatically detects when generated help templates are out of sync with their source code and regenerates outdated documentation.
+Staleness and maintenance automatically detects when help templates are outdated and regenerates them to keep documentation in sync with source code changes.
 
-## How it works
+## How detection works
 
-The system tracks changes by computing SHA-256 hashes of each feature's source files and comparing them against stored values. When source code changes, the corresponding help templates become stale and need regeneration.
+The system uses SHA-256 hashing to compare your current source files against the stored hash from when templates were last generated. When you modify source code that affects a feature's documentation, the system marks that feature's templates as stale.
 
-The staleness detection process examines specific file patterns for each feature while excluding common build artifacts like `__pycache__`, `.mypy_cache`, and `.git` directories. It returns a detailed report showing which features are current and which need updates.
-
-For maintenance operations, you can run checks manually or automatically via commit hooks. The `run_hook` function provides a post-commit entry point that only regenerates templates when relevant files have changed in the most recent commit.
+The detection process examines all source files for each feature, excluding common build artifacts like `__pycache__`, `.mypy_cache`, and `node_modules`. For example, if you update a function signature in your feature's main module, `compute_source_hash()` will generate a new hash that doesn't match the stored value.
 
 ## Core data structures
 
-**`FeatureStaleness`** captures the staleness status for a single feature, including the current source hash, previously stored hash, and list of files that contributed to the hash calculation.
+**`FeatureStaleness`** tracks the staleness status for individual features. It stores the current hash of source files, the previously stored hash, whether the feature is stale, and which specific files were included in the hash calculation.
 
-**`StalenessReport`** aggregates staleness information across all features, providing counts of stale versus current features and listing which specific features need updates.
+**`StalenessReport`** aggregates staleness information across all features in your project. It provides counts of stale versus current features and lists the names of features that need regeneration.
 
-**`MaintenanceResult`** records the outcome of a maintenance run, tracking which features were regenerated successfully, which were skipped due to manual status, and which failed during regeneration.
+**`MaintenanceResult`** captures the outcome of a maintenance run, including which features were detected as stale, which were successfully regenerated, which were skipped due to manual edits, and which failed during regeneration.
 
-## Integration points
+## Maintenance workflows
 
-| Interface | Purpose | File |
-|-----------|---------|------|
-| `FeatureStaleness` | Staleness status for one feature. | `src/attune_author/staleness.py` |
-| `StalenessReport` | Staleness report across all features. | `src/attune_author/staleness.py` |
-| `MaintenanceResult` | Result of a help maintenance run. | `src/attune_author/maintenance.py` |
+You can run maintenance in two ways: manually through `run_maintenance()` or automatically via the post-commit hook with `run_hook()`. The manual approach lets you specify which features to check and supports dry-run mode to preview changes without making them.
+
+The post-commit hook automatically triggers after commits, using `get_changed_files()` to focus only on features whose source files were modified in the most recent commit. This targeted approach keeps the hook fast while ensuring affected documentation stays current.

@@ -2,66 +2,61 @@
 type: task
 feature: bootstrap
 depth: task
-generated_at: 2026-04-14T14:03:30.154713+00:00
+generated_at: 2026-04-14T16:08:25.609534+00:00
 source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
 status: generated
 ---
 
 # Work with bootstrap
 
-Use bootstrap when you need to automatically generate a feature manifest by scanning a project's directory structure and identifying Python packages, entry points, and configuration files.
+Use bootstrap when you need to automatically generate a feature manifest by scanning an existing project's directory structure and code organization.
 
 ## Prerequisites
 
 - Access to the project source code
-- Python project with standard directory layout
-- Familiarity with `src/attune_author/bootstrap.py`
+- Python environment with the bootstrap module available
 
 ## Scan a project for features
 
-1. **Call the scan function with your project path.**
+1. **Import the bootstrap module:**
    ```python
    from attune_author.bootstrap import scan_project
+   ```
 
+2. **Run the project scan:**
+   ```python
    proposals = scan_project("/path/to/your/project")
    ```
+   The scanner examines your project structure, identifies entry points like `main.py` or `app.py`, and skips common directories like `.git`, `__pycache__`, and `node_modules`.
 
-2. **Review the proposed features.**
+3. **Review the proposed features:**
    Each `ProposedFeature` includes:
-   - Feature name and description
-   - Associated files
-   - Confidence level (low, medium, high)
-   - Discovery reasoning
-
-3. **Filter proposals by confidence if needed.**
-   ```python
-   high_confidence = [p for p in proposals if p.confidence == 'high']
-   ```
+   - `name`: The feature identifier
+   - `description`: What the feature does
+   - `files`: Associated source files
+   - `confidence`: Scanner's certainty level
+   - `reason`: Why this feature was proposed
 
 ## Convert proposals to manifest
 
-1. **Generate the manifest from accepted proposals.**
+1. **Filter proposals as needed:**
+   Review the confidence levels and reasons to accept or reject proposals.
+
+2. **Generate the manifest:**
    ```python
    from attune_author.bootstrap import proposals_to_manifest
-
-   manifest = proposals_to_manifest(proposals)
+   manifest = proposals_to_manifest(accepted_proposals)
    ```
 
-2. **Save the manifest to your project.**
-   ```python
-   with open('.help/features.yaml', 'w') as f:
-       f.write(manifest.to_yaml())
-   ```
+3. **Verify the output:**
+   The resulting `FeatureManifest` should contain only the features you want to include in your project documentation.
 
-## Verify the results
+## Success criteria
 
-Check that the generated manifest includes expected features by examining:
-- Entry point files (main.py, app.py, cli.py, etc.)
-- Configuration modules matching patterns like "config", "settings", "conf"
-- Python packages with meaningful directory structures
-
-The bootstrap skips common build and cache directories defined in `_SKIP_DIRS`.
+- `scan_project()` returns a list of `ProposedFeature` objects
+- Each proposal includes relevant files from your project
+- The generated manifest contains structured feature definitions ready for documentation
 
 ## Key files
 
-- `src/attune_author/bootstrap.py` — Main scanning and conversion logic
+- `src/attune_author/bootstrap.py`

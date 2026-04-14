@@ -2,8 +2,8 @@
 type: tip
 feature: polish
 depth: tip
-generated_at: 2026-04-14T14:00:51.150314+00:00
-source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
+generated_at: 2026-04-14T16:05:46.083180+00:00
+source_hash: 39a4215a31cf6bfa17f5b898ad071827d406cbe4dc8d2744f17fe7fd680d6891
 status: generated
 ---
 
@@ -11,12 +11,12 @@ status: generated
 
 ## Recommendation
 
-Use `build_source_summary()` to create grounded prompts before calling `polish_template()`. The polish system relies on accurate source summaries to avoid hallucinating features that don't exist in your code.
+Enable strict mode when developing polish prompts by setting `ATTUNE_AUTHOR_STRICT_POLISH=1` in your environment.
 
 ## Why
 
-Raw generated templates often contain generic advice like "follow existing patterns" — the source summary gives the LLM concrete patterns to reference instead, producing documentation that matches your actual API.
+Strict mode makes `polish_template()` raise `PolishError` on LLM failures instead of returning degraded output, so you catch prompt issues during development rather than in production.
 
 ## Tradeoff
 
-Building comprehensive source summaries adds overhead to the polish pass, but skipping this step typically produces bland, unhelpful output that reads like filler content.
+Your tests will be more brittle to API outages, but you'll ship higher-quality templates.

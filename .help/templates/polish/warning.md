@@ -2,8 +2,8 @@
 type: warning
 feature: polish
 depth: warning
-generated_at: 2026-04-14T14:00:02.214737+00:00
-source_hash: cc9d97e96d238e30cf1d9fe96dacf73df94080aa66763e646494a334efc5ce52
+generated_at: 2026-04-14T16:04:55.829496+00:00
+source_hash: 39a4215a31cf6bfa17f5b898ad071827d406cbe4dc8d2744f17fe7fd680d6891
 status: generated
 ---
 
@@ -11,35 +11,27 @@ status: generated
 
 ## What to watch for
 
-The polish feature uses LLM calls to rewrite generated templates, which introduces several failure modes that can break your documentation build or produce incorrect output.
+The `polish` module uses LLM API calls to rewrite auto-generated templates. Since it makes external network requests and processes untrusted content, several failure modes can cause delays or incorrect output in your documentation pipeline.
 
 ## Risk areas
 
-### LLM API failures break the build in strict mode
+- **API failures cascade into build failures** — `polish_template()` calls Anthropic's API, which can timeout, rate-limit, or return malformed responses. In strict mode, any API failure raises `PolishError` and stops your build.
 
-When `polish_template()` runs with `strict=True` (the default in CI environments), any Anthropic API error raises `PolishError` and stops your build. Network timeouts, rate limits, and invalid API keys all trigger this behavior.
+- **LLM hallucinations corrupt technical accuracy** — The polish pass can introduce incorrect function names, non-existent parameters, or wrong behavior descriptions. The system prompts try to prevent this, but LLMs sometimes ignore grounding constraints.
 
-**Mitigation:** Set `ATTUNE_AUTHOR_STRICT_POLISH=false` in environments where you prefer degraded output over build failures. The function will return the unpolished template instead of raising an exception.
+- **Environment variable confusion in strict mode** — The `STRICT_ENV_VAR` constant controls error handling, but its falsy values (`'0'`, `'false'`, `'no'`, `'off'`) are case-sensitive strings, not booleans. Setting `ATTUNE_AUTHOR_STRICT_POLISH=False` (with capital F) enables strict mode when you expect it disabled.
 
-### Template type mismatches produce irrelevant output
-
-The `get_system_prompt()` function returns different prompts for 'reference', 'tutorial', 'warning', and other template types. If you pass the wrong `template_type` to `polish_template()`, the LLM will follow inappropriate instructions—for example, trying to add code examples to a warning page.
-
-**Mitigation:** Ensure your `template_type` parameter matches the actual template structure. The type should align with the template's intended purpose, not its file extension or location.
-
-### Source summaries can exceed LLM context limits
-
-The `build_source_summary()` function concatenates module docstrings, function signatures, and class definitions. For large codebases, this summary may exceed the LLM's context window, causing truncated or failed requests.
-
-**Mitigation:** Monitor the length of generated summaries, especially when documenting modules with many public functions. Consider filtering or summarizing the input data before passing it to `build_source_summary()`.
+- **Source summary truncation loses context** — `build_source_summary()` condenses your codebase info for the LLM prompt. For large modules, important details about parameter validation or edge cases may get compressed out, leading to incomplete warnings in polished templates.
 
 ## How to avoid problems
 
-1. **Test API connectivity early.** Run `polish_template()` with a minimal example before integrating it into your build pipeline. Verify that your Anthropic API key works and has sufficient quota.
+1. **Handle API failures gracefully** — Set strict mode to `False` in production builds unless you can tolerate documentation generation failures. Use `try/except PolishError` around `polish_template()` calls when you need custom error handling.
 
-2. **Match template types precisely.** Double-check that your `template_type` parameter corresponds to the content structure. A mismatch will waste API calls and produce confusing documentation.
+2. **Validate polished output** — After polishing, scan the result for function names and behavior claims that don't match your source code. The polish pass sometimes merges information from different functions or invents plausible-sounding but wrong details.
 
-3. **Monitor context length.** For modules with more than 20-30 public functions, check the output of `build_source_summary()` before sending it to the LLM. Large summaries may need manual curation.
+3. **Test with realistic source summaries** — Use `build_source_summary()` with representative data from your actual modules, not toy examples. Large function lists or complex inheritance hierarchies can trigger summary truncation that affects polish quality.
+
+4. **Check environment variable spelling** — Verify that `ATTUNE_AUTHOR_STRICT_POLISH` is exactly one of the recognized falsy values if you want non-strict mode. Typos or unexpected capitalization will enable strict mode by default.
 
 ## Source files
 

@@ -2,7 +2,7 @@
 type: note
 feature: template-generation
 depth: note
-generated_at: 2026-04-14T13:58:56.643762+00:00
+generated_at: 2026-04-14T16:03:49.554663+00:00
 source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
@@ -11,38 +11,25 @@ status: generated
 
 ## Context
 
-The template generation system renders markdown help templates by combining feature definitions with source code AST inspection. It creates structured documentation files based on predefined template types and code analysis.
+The template generation system creates markdown help files by analyzing feature definitions and source code through AST (Abstract Syntax Tree) inspection. This automated process ensures that documentation stays synchronized with the codebase.
 
-## Core types
+## Template types
 
-The system defines three categories of template types through module constants:
+The generator recognizes three categories of templates:
 
-- **Core depths**: concept, task, and reference templates
-- **Problem templates**: error, warning, troubleshooting, and FAQ templates
-- **Guidance templates**: quickstart, tip, note, and comparison templates
+- **Core depths**: concept, task, and reference documentation
+- **Problem-solving**: error, warning, troubleshooting, and FAQ templates
+- **Guidance**: quickstart, tip, note, and comparison templates
 
-## Data structures
+## Generation workflow
 
-Template generation uses two main dataclasses to track results:
+When you call `generate_feature_templates()`, the system:
 
-**GeneratedTemplate** represents a single generated template file with:
-- Feature name and template depth
-- Output file path and source content hash
+1. Analyzes the specified feature's source files using AST inspection
+2. Creates `GeneratedTemplate` instances for each template type
+3. Returns a `GenerationResult` containing all generated templates and metadata
 
-**GenerationResult** aggregates the complete generation outcome with:
-- Feature name and source hash
-- List of all generated templates
-- Files that matched the generation criteria
-
-## Generation process
-
-The `generate_feature_templates()` function drives template creation by:
-- Accepting a Feature definition and target help directory
-- Optionally filtering to specific template depths
-- Supporting overwrite control for existing files
-- Returning a GenerationResult with all created templates
-
-The function validates feature names and raises `ValueError` for invalid inputs.
+Each `GeneratedTemplate` tracks the feature name, template depth, file path, and a hash of the source content. The `GenerationResult` aggregates these templates along with the list of source files that were analyzed.
 
 ## Source files
 

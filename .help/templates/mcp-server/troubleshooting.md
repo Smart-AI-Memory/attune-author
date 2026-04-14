@@ -2,77 +2,68 @@
 type: troubleshooting
 feature: mcp-server
 depth: troubleshooting
-generated_at: 2026-04-14T14:11:43.915265+00:00
+generated_at: 2026-04-14T16:16:45.430101+00:00
 source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
 status: generated
 ---
 
-# Troubleshoot mcp server
+# Troubleshoot MCP server
 
 ## Before you start
 
-The MCP server exposes attune-author's six tools (init, status, generate, maintain, docs, lookup) to Claude Code through the Model Context Protocol. Issues typically involve tool registration, workspace paths, or API key configuration.
+The MCP server exposes attune-author's six tools (init, status, generate, maintain, docs, lookup) to Claude Code through the Model Context Protocol. Issues typically stem from tool execution failures, path validation errors, or workspace configuration problems.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| Server won't start | Run `python -m attune_author.mcp.server` and check for import errors or missing dependencies |
-| Tool not found errors | Verify the tool name exists in `get_tools()` output: `author_init`, `author_status`, `author_generate`, `author_maintain`, `author_docs`, `author_lookup` |
-| Path validation failures | Check if the path contains null bytes, points outside the workspace, or hits system directories in `_DANGEROUS_PREFIXES` |
-| "ANTHROPIC_API_KEY required" errors | Confirm the environment variable is set when using `author_docs` or LLM polish features |
-| Tool returns empty/null results | Check workspace_root initialization and whether `.help/` directory structure exists |
+| Tool execution fails | Call `AttuneAuthorMCPServer.call_tool()` directly with the same arguments to isolate the handler error |
+| Path validation errors | Verify the workspace root is set correctly and paths don't escape allowed directories |
+| "Tool not found" errors | Confirm the tool name exists in `get_tools()` output and matches the schema registry |
+| API key errors with `author_docs` | Check that `ANTHROPIC_API_KEY` is set in your environment |
 
 ## Step-by-step diagnosis
 
-1. **Test the server directly.**
-   Create a minimal test to isolate the MCP server from Claude Code:
+1. **Test the failing tool directly.**
+   Before investigating the MCP layer, confirm the underlying tool works:
+   ```python
+   from attune_author.mcp.handlers import AttuneAuthorHandlers
+   handlers = AttuneAuthorHandlers(workspace_root="/path/to/project")
+   result = handlers.author_status({"help_dir": ".help"})
+   ```
+
+2. **Check the server configuration.**
+   Verify the server initializes with the correct workspace:
    ```python
    from attune_author.mcp.server import create_server
    server = create_server()
-   result = server.call_tool('author_status', {'help_dir': '.help'})
+   print(server.tools)  # Should show all 6 tools
    ```
 
-2. **Check tool registration.**
-   Verify all six tools are properly registered:
-   ```python
-   from attune_author.mcp.tool_schemas import get_tools
-   tools = get_tools()
-   print(list(tools.keys()))  # Should show all 6 author_* tools
-   ```
-
-3. **Validate workspace setup.**
-   Many tools require a properly initialized workspace:
-   - Check if `.help/` directory exists
-   - Verify `features.yaml` is present and readable
-   - Confirm project_root points to the correct directory
-
-4. **Test path validation separately.**
-   Path issues often cause silent failures:
+3. **Validate path inputs.**
+   Path validation is strict to prevent directory traversal:
    ```python
    from attune_author.mcp.path_validation import validate_file_path
-   validate_file_path('/etc/passwd')  # Should raise ValueError
-   validate_file_path('src/main.py')  # Should succeed
+   validate_file_path("../../../etc/passwd")  # Should raise ValueError
    ```
+
+4. **Enable debug logging.**
+   Set logging to DEBUG level before calling `main()` to see detailed execution traces.
 
 ## Common fixes
 
-- **Initialize the workspace first.** Run the `author_init` tool to create the `.help/` directory structure before using other tools.
+- **Set the workspace root explicitly.** If tools fail with path errors, initialize `AttuneAuthorMCPServer` with an explicit `workspace_root` parameter instead of relying on the default.
 
-- **Set ANTHROPIC_API_KEY.** The `author_docs` tool and LLM polish features require this environment variable:
-  ```bash
-  export ANTHROPIC_API_KEY=your_key_here
+- **Install required dependencies.** The `author_docs` tool requires the Anthropic SDK. Install it with `pip install anthropic`.
+
+- **Initialize the help system first.** Most tools expect a `.help/` directory with `features.yaml`. Run `author_init` before other operations:
+  ```json
+  {"tool": "author_init", "args": {"project_root": "."}}
   ```
 
-- **Fix workspace_root configuration.** If tools can't find your project files, explicitly set the workspace root:
-  ```python
-  from attune_author.mcp.server import AttuneAuthorMCPServer
-  server = AttuneAuthorMCPServer(workspace_root='/path/to/your/project')
-  ```
+- **Check file permissions.** Tools need read access to source files and write access to the `.help/` directory. Verify permissions with `ls -la .help/`.
 
-- **Check file permissions.** The server needs read access to source files and write access to the `.help/` directory.
-
-- **Update the MCP client.** If Claude Code shows connection errors, restart it or check for MCP protocol version mismatches.
+- **Escape path separators correctly.** When passing paths through JSON, use forward slashes or escape backslashes properly: `"path/to/file"` not `"path\to\file"`.
 
 ## Source files
 

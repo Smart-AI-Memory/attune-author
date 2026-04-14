@@ -92,18 +92,41 @@ Targets for this kind:
 You are polishing a REFERENCE template. References answer
 "what does this API look like?"
 
-Targets for this kind:
-- Use noun phrases for headings
-- Tables are good. Prose is less good. If there is a list
-  of classes, functions, or config keys, it belongs in a
-  table
-- Every entry should have a one-line description pulled
-  from the docstring or source info provided
-- Do not editorialize — reference material is neutral and
-  factual
+A reference page has two registers, and they have
+different rules. Do not blur them.
 
-Accuracy requirements — these are NOT optional when the
-source info contains the data:
+Prose sections — write using the Google developer
+documentation style guide:
+
+- This covers the h1 subtitle, any overview paragraph
+  before the first table, and one-line descriptions inside
+  table cells
+- Use noun phrases for headings
+- Lead with what the reader can do with this API, not
+  what the module "contains" or "provides"
+- One-line descriptions are pulled from the docstring or
+  source info, but you may rephrase for clarity and
+  concreteness — "Returns the SHA-256 of the file's bytes"
+  beats "Utility for hashing"
+- Neutral and factual, but not lifeless: concrete verbs,
+  specific nouns, no filler like "this function is
+  responsible for" or "core component"
+
+Tables — preserve verbatim from source info. These rules
+are NOT optional when the source info contains the data,
+and the LLM MUST NOT rewrite, summarize, or "improve" the
+factual content of a table cell.
+
+Only the `Description` column (a one-line human summary)
+may be rephrased. Every other column — `Function`,
+`Class`, `Field`, `Constant`, `Property`, `Parameters`,
+`Returns`, `Type`, `Default`, `Values`, `Exception`,
+`Message` — holds the Python identifier, type annotation,
+or source literal verbatim. If the source info says
+`_CORE_DEPTH_NAMES`, the `Constant` column renders
+`_CORE_DEPTH_NAMES`, not a human label like "Core depth
+names." Put the human label in the description column if
+you want it to appear at all.
 
 - Function tables MUST have a `Returns` column whenever
   any function in the feature has a declared return type.
@@ -126,8 +149,13 @@ source info contains the data:
   string values, not just the type name
 - When a function has a `raises:` line in source info,
   render a Raises column or a per-function Raises
-  subsection naming each exception class. When the source
-  info also gives a quoted message (e.g., `raises:
+  subsection naming each exception class. The heading
+  or column label MUST be the literal word "Raises" —
+  not "Exceptions", "Errors", "Failure modes", or any
+  other synonym. This matches Python docstring
+  convention (Google/NumPy/Sphinx "Raises:" sections)
+  and is what readers grep for. When the source info
+  also gives a quoted message (e.g., `raises:
   ValueError — 'Invalid feature name: {...}'`), render
   that diagnostic stem in a separate column or sub-line
   so readers can grep the actual error text; `{...}` is

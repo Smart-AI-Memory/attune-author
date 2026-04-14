@@ -2,7 +2,7 @@
 type: troubleshooting
 feature: template-generation
 depth: troubleshooting
-generated_at: 2026-04-14T13:58:21.636816+00:00
+generated_at: 2026-04-14T16:03:10.346790+00:00
 source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
 status: generated
 ---
@@ -11,52 +11,71 @@ status: generated
 
 ## Before you start
 
-The template generation feature creates markdown help templates from feature definitions and source code AST inspection. When it fails, you typically see missing output files, malformed content, or ValueError exceptions.
+Template generation creates markdown help files by inspecting your source code and feature definitions. When it fails, the issue is usually in the source parsing, template rendering, or file system operations.
 
 ## Symptom table
 
 | If you observe | Check |
 |----------------|-------|
-| ValueError: "Invalid feature name" | Feature parameter passed to `generate_feature_templates()` |
-| Empty `GenerationResult.templates` list | `matched_files` field and file discovery in project root |
-| Missing template files in help directory | `overwrite` parameter and existing file conflicts |
-| Incorrect `source_hash` values | Source file modification times and content changes |
-| Wrong template depth generated | `depths` parameter against `_CORE_DEPTH_NAMES` constants |
+| `ValueError: Invalid feature name` | Feature argument matches an existing feature directory name |
+| Empty `GenerationResult.templates` list | Source files exist at `project_root` and match the feature pattern |
+| Templates generated but content is wrong | Source code AST structure and template variables in the Jinja2 templates |
+| File permission errors during generation | Write permissions on `help_dir` and `overwrite=True` if files exist |
+| Templates missing expected depth categories | `depths` parameter includes valid values from `_CORE_DEPTH_NAMES` |
 
 ## Step-by-step diagnosis
 
-1. **Reproduce with minimal parameters.**
-   Call `generate_feature_templates()` with only the required `feature`, `help_dir`, and `project_root` arguments. Remove optional `depths` and `overwrite` parameters to isolate the core failure.
+1. **Verify your inputs**
+   Confirm the feature name, help directory path, and project root are correct:
+   ```python
+   result = generate_feature_templates(
+       feature=your_feature,
+       help_dir="docs/help",
+       project_root=".",
+       overwrite=True
+   )
+   print(f"Matched files: {result.matched_files}")
+   ```
 
-2. **Verify input paths and feature names.**
-   Check that `help_dir` and `project_root` exist and are readable. Confirm the feature name matches your project's feature definitions.
+2. **Check file discovery**
+   Examine which source files the generator found:
+   ```python
+   result = generate_feature_templates(feature, help_dir, project_root)
+   if not result.matched_files:
+       print("No source files matched the feature pattern")
+   ```
 
-3. **Examine the GenerationResult fields.**
-   Print the returned `GenerationResult` object to inspect:
-   - `matched_files`: Shows which source files were discovered
-   - `templates`: Lists successfully generated templates
-   - `source_hash`: Indicates if source content was processed
+3. **Enable detailed logging**
+   Set logging to DEBUG level to see template processing details:
+   ```python
+   import logging
+   logging.basicConfig(level=logging.DEBUG)
+   ```
 
-4. **Enable debug logging for file operations.**
-   Template generation involves file I/O and path resolution. Enable DEBUG-level logging to trace file discovery and template writing operations.
+4. **Test with minimal parameters**
+   Try generation with default depths to isolate depth-specific issues:
+   ```python
+   result = generate_feature_templates(feature, help_dir, project_root)
+   # Instead of passing custom depths parameter
+   ```
 
 ## Common fixes
 
-- **Fix invalid feature names.** The feature parameter must match your project's defined features exactly. Check spelling and case sensitivity.
+- **Fix feature name mismatch**: Ensure the feature name exactly matches your feature directory. Check for typos, case sensitivity, and special characters.
 
-- **Set overwrite=True for existing files.** If templates already exist in the help directory, set `overwrite=True` to replace them:
-  ```python
-  result = generate_feature_templates(feature, help_dir, project_root, overwrite=True)
+- **Create missing directories**: The generator requires the help directory to exist:
+  ```bash
+  mkdir -p docs/help
   ```
 
-- **Verify project structure.** The function expects your project root to contain discoverable source files. Ensure your Python files are in standard locations like `src/` or at the project root.
-
-- **Specify explicit depths.** If you need only certain template types, pass the `depths` parameter:
+- **Set overwrite permission**: If templates already exist, use `overwrite=True`:
   ```python
-  result = generate_feature_templates(feature, help_dir, project_root, depths=['concept', 'task'])
+  generate_feature_templates(feature, help_dir, project_root, overwrite=True)
   ```
 
-- **Check file permissions.** Ensure the help directory is writable and source files are readable by the process running template generation.
+- **Verify source file structure**: The generator expects standard Python module structure. Ensure your feature's source files are properly organized and importable.
+
+- **Check template depth configuration**: Use only valid depth names. The available depths are `concept`, `task`, `reference`, `error`, `warning`, `troubleshooting`, `faq`, `quickstart`, `tip`, `note`, and `comparison`.
 
 ## Source files
 

@@ -2,50 +2,50 @@
 type: warning
 feature: staleness-and-maintenance
 depth: warning
-generated_at: 2026-04-14T14:06:00.627235+00:00
+generated_at: 2026-04-14T16:10:57.879495+00:00
 source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
 status: generated
 ---
 
-# Staleness And Maintenance cautions
+# Staleness and maintenance cautions
 
 ## What to watch for
 
-The staleness detection system tracks when your source code changes make help templates outdated. Watch for hash mismatches that cause unnecessary regeneration and maintenance operations that skip files you expect to update.
+When using the staleness detection and maintenance system, you risk inconsistent help content if templates become outdated or regeneration fails silently.
 
 ## Risk areas
 
-### Hash computation includes unexpected files
+### Hash mismatches during concurrent builds
 
-`compute_source_hash()` walks your entire feature directory tree, excluding common cache folders like `__pycache__` and `.git`. If your feature contains large data files, temporary outputs, or nested repositories, the hash calculation becomes slow and may include files that shouldn't trigger regeneration.
+The `compute_source_hash()` function scans source files to detect changes, but it can miss modifications that happen between the hash calculation and file system operations. This creates a window where staleness detection reports templates as current when they actually need regeneration.
 
-**Mitigation:** Review `matched_files` in the `FeatureStaleness` result to see which files influenced the hash. Add directories to `_EXCLUDED_DIRS` if they contain build artifacts or other non-source content.
+**Mitigation:** Run maintenance operations from a single process when possible, especially in CI environments where parallel builds might modify source files.
 
-### Maintenance operations fail silently on permission errors
+### Silent failures in post-commit hooks
 
-`run_maintenance()` catches file system errors and adds affected features to the `failed` list without raising exceptions. A feature marked as failed won't get regenerated even if it's stale, leaving your templates outdated.
+The `run_hook()` function returns `None` when no changes are detected, making it difficult to distinguish between "nothing to do" and "hook failed to run." Failed hooks leave templates stale without warning.
 
-**Mitigation:** Check `MaintenanceResult.failed` after maintenance runs. Ensure your help directory is writable and that no other processes have files open during regeneration.
+**Mitigation:** Check the return value explicitly and log when maintenance runs versus when it's skipped. Consider using `run_maintenance()` directly for better error visibility.
 
-### Post-commit hook misses uncommitted changes
+### Feature filtering inconsistencies
 
-`run_hook()` uses `get_changed_files()` to identify which features need checking based on the most recent commit. If you have uncommitted changes that affect feature source files, the hook won't detect the staleness until after your next commit.
+Both `check_staleness()` and `run_maintenance()` accept a `features` parameter to limit which templates are processed. When this list doesn't match the actual feature set, you get partial staleness reports that miss outdated templates.
 
-**Mitigation:** Run manual maintenance with `run_maintenance()` before committing when you're unsure about template freshness. The hook is meant for automated consistency, not comprehensive detection.
+**Mitigation:** Either process all features (pass `None`) or validate that your feature list matches what's actually in the manifest before filtering.
 
-### Dry run mode conceals real file system issues
+### Cache directory exclusions
 
-Setting `dry_run=True` in `run_maintenance()` skips the actual file writing but still performs staleness detection and hash computation. This can mask permission problems, disk space issues, or path resolution failures that would surface during actual regeneration.
+The `_EXCLUDED_DIRS` constant filters out common cache directories when scanning for source files. If your project uses non-standard cache locations, those files might be included in hash calculations, causing false staleness reports.
 
-**Mitigation:** Follow up dry runs with actual maintenance operations in a test environment to verify that file operations succeed.
+**Mitigation:** Review the excluded directories list and ensure it covers your project's caching patterns, or add custom filtering in your maintenance workflow.
 
 ## How to avoid problems
 
-1. **Monitor staleness reports regularly.** Use `format_status_report()` to get human-readable summaries of which features are stale. Address staleness quickly to avoid accumulating outdated templates.
+1. **Verify staleness detection before regenerating.** Run `check_staleness()` independently to confirm which templates actually need updates before calling `run_maintenance()`.
 
-2. **Test maintenance operations in isolation.** Run `check_staleness()` independently before calling `run_maintenance()` to understand what will change. Use the `features` parameter to limit operations to specific features during testing.
+2. **Handle maintenance failures explicitly.** Check the `failed` list in `MaintenanceResult` and treat any failures as build errors rather than warnings.
 
-3. **Validate feature manifests after changes.** Source file additions or deletions can break the feature discovery logic that maintenance depends on. Ensure your `FeatureManifest` correctly identifies all source files before running maintenance.
+3. **Test with realistic file structures.** Create test scenarios that include nested directories, symlinks, and cache files to ensure staleness detection works correctly in your environment.
 
 ## Source files
 
