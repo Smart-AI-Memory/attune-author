@@ -293,13 +293,24 @@ def build_source_summary(
         for cls in classes[:10]:
             doc = cls.get("doc", "")
             name = cls["name"]
-            parts.append(f"  - {name}" + (f": {doc}" if doc else ""))
+            dc_tag = " [dataclass]" if cls.get("is_dataclass") else ""
+            parts.append(f"  - {name}{dc_tag}" + (f": {doc}" if doc else ""))
             methods = cls.get("methods", "").strip()
             if methods:
                 for method_line in methods.splitlines():
                     stripped = method_line.strip()
                     if stripped:
                         parts.append(f"      {stripped}")
+            for dc_field in cls.get("dataclass_fields", []) or []:
+                field_name = dc_field.get("name", "")
+                field_type = dc_field.get("type", "")
+                field_default = dc_field.get("default", "")
+                line = f"      field: {field_name}"
+                if field_type:
+                    line += f": {field_type}"
+                if field_default:
+                    line += f" = {field_default}"
+                parts.append(line)
 
     functions = function_signatures or [
         {
@@ -322,6 +333,12 @@ def build_source_summary(
             if doc:
                 header = f"{header} — {doc}"
             parts.append(header)
+            raises = fn.get("raises") or []
+            if raises:
+                parts.append(f"      raises: {', '.join(raises)}")
+            param_literals = fn.get("param_literals") or {}
+            for pname, values in param_literals.items():
+                parts.append(f"      {pname} allowed values: {', '.join(values)}")
 
     parts.append("")
     parts.append(f"Total source files: {file_count}")

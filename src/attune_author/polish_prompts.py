@@ -101,6 +101,29 @@ Targets for this kind:
   from the docstring or source info provided
 - Do not editorialize — reference material is neutral and
   factual
+
+Accuracy requirements — these are NOT optional when the
+source info contains the data:
+
+- Function tables MUST include a Parameters column that
+  preserves every argument name and its default value
+  exactly as shown in the signature. If the signature in
+  source info says `generate(feature, depth: str = "concept",
+  overwrite: bool = False)`, render all three — do not
+  truncate or omit defaults
+- When a parameter is typed as `Literal[...]` (source info
+  surfaces these under "allowed values"), the Parameters
+  column or a dedicated column MUST list the permitted
+  string values, not just the type name
+- When a function has a `raises:` line in source info,
+  render a Raises column or a per-function Raises
+  subsection naming each exception class. Never drop this
+  information
+- When a class is tagged `[dataclass]` in source info,
+  emit a Fields table with columns `Field | Type |
+  Default` covering every field listed. Dataclass field
+  lists are the primary thing users look up about a
+  dataclass — never replace them with prose
 """,
     "error": """\
 You are polishing an ERROR template. Error pages answer

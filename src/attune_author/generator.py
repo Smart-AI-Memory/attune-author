@@ -349,6 +349,128 @@ def _docstring_first_line(node: ast.AST) -> str:
     return doc.split("\n", 1)[0].strip()
 
 
+def _exception_name(exc: ast.expr) -> str | None:
+    """Return the dotted name of an exception expression, or None."""
+    if isinstance(exc, ast.Call):
+        return _exception_name(exc.func)
+    if isinstance(exc, ast.Name):
+        return exc.id
+    if isinstance(exc, ast.Attribute):
+        parts: list[str] = []
+        cur: ast.expr = exc
+        while isinstance(cur, ast.Attribute):
+            parts.append(cur.attr)
+            cur = cur.value
+        if isinstance(cur, ast.Name):
+            parts.append(cur.id)
+            return ".".join(reversed(parts))
+    return None
+
+
+def _extract_raises(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+    """Exception class names raised in a function body, in source order.
+
+    Walks the body for ``raise X(...)`` / ``raise X`` statements and
+    returns each unique class name once. Bare ``raise`` (re-raise)
+    statements are ignored because they rethrow whatever the current
+    exception handler caught — which is not a signature-level fact.
+    """
+    # Pre-order DFS via iter_child_nodes preserves source order;
+    # ast.walk is BFS and would surface siblings before their
+    # earlier-in-source nested statements.
+    seen: list[str] = []
+
+    def visit(n: ast.AST) -> None:
+        if isinstance(n, ast.Raise) and n.exc is not None:
+            name = _exception_name(n.exc)
+            if name and name not in seen:
+                seen.append(name)
+        for child in ast.iter_child_nodes(n):
+            visit(child)
+
+    visit(node)
+    return seen
+
+
+def _extract_literal_values(annotation: ast.expr | None) -> list[str] | None:
+    """Return the string values of a ``Literal[...]`` annotation, or None.
+
+    Handles both ``Literal["a", "b"]`` and ``typing.Literal["a", "b"]``
+    forms. Returns None if the annotation is not a Literal, or if any
+    argument is a non-string constant — we only surface enum-like
+    string literals since those are what users ask about.
+    """
+    if annotation is None or not isinstance(annotation, ast.Subscript):
+        return None
+    value = annotation.value
+    name = (
+        value.id
+        if isinstance(value, ast.Name)
+        else (value.attr if isinstance(value, ast.Attribute) else None)
+    )
+    if name != "Literal":
+        return None
+    slice_node = annotation.slice
+    items = slice_node.elts if isinstance(slice_node, ast.Tuple) else [slice_node]
+    out: list[str] = []
+    for item in items:
+        if isinstance(item, ast.Constant) and isinstance(item.value, str):
+            out.append(item.value)
+        else:
+            return None
+    return out
+
+
+def _extract_param_literals(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> dict[str, list[str]]:
+    """Map parameter name -> list of Literal[...] string values."""
+    out: dict[str, list[str]] = {}
+    all_args = list(node.args.posonlyargs) + list(node.args.args) + list(node.args.kwonlyargs)
+    for arg in all_args:
+        values = _extract_literal_values(arg.annotation)
+        if values:
+            out[arg.arg] = values
+    return out
+
+
+def _is_dataclass(node: ast.ClassDef) -> bool:
+    """Return True if the class has a ``@dataclass`` decorator."""
+    for dec in node.decorator_list:
+        if isinstance(dec, ast.Name) and dec.id == "dataclass":
+            return True
+        if isinstance(dec, ast.Call):
+            func = dec.func
+            if isinstance(func, ast.Name) and func.id == "dataclass":
+                return True
+            if isinstance(func, ast.Attribute) and func.attr == "dataclass":
+                return True
+        if isinstance(dec, ast.Attribute) and dec.attr == "dataclass":
+            return True
+    return False
+
+
+def _extract_dataclass_fields(node: ast.ClassDef) -> list[dict[str, str]]:
+    """Return ``[{name, type, default}]`` for each public annotated field.
+
+    Captures every top-level ``AnnAssign`` whose target is a non-underscore
+    name. The ``default`` is the unparsed right-hand side (e.g.
+    ``"field(default_factory=list)"``) or the empty string when the field
+    has no default.
+    """
+    fields_out: list[dict[str, str]] = []
+    for child in node.body:
+        if not isinstance(child, ast.AnnAssign) or not isinstance(child.target, ast.Name):
+            continue
+        name = child.target.id
+        if name.startswith("_"):
+            continue
+        field_type = _unparse_annotation(child.annotation) if child.annotation else ""
+        default = _unparse_annotation(child.value) if child.value is not None else ""
+        fields_out.append({"name": name, "type": field_type, "default": default})
+    return fields_out
+
+
 def _collect_function(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     rel_path: str,
@@ -362,6 +484,8 @@ def _collect_function(
             "signature": _format_function_signature(node),
             "doc": first_line,
             "file": rel_path,
+            "raises": _extract_raises(node),
+            "param_literals": _extract_param_literals(node),
         }
     )
 
@@ -373,12 +497,15 @@ def _collect_class(
 ) -> None:
     first_line = _docstring_first_line(node)
     info.public_classes.append({"name": node.name, "doc": first_line, "file": rel_path})
+    is_dc = _is_dataclass(node)
     info.class_signatures.append(
         {
             "name": node.name,
             "methods": _format_class_methods(node),
             "doc": first_line,
             "file": rel_path,
+            "is_dataclass": is_dc,
+            "dataclass_fields": _extract_dataclass_fields(node) if is_dc else [],
         }
     )
 
