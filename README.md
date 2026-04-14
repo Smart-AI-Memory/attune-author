@@ -68,9 +68,12 @@ for feature in report.stale:
   in template frontmatter; drift triggers regeneration on
   the next `regenerate` or post-commit hook
 - **Grounded generation** -- Templates are rendered from
-  the actual source AST (signatures, defaults, raises,
-  dataclass fields, Literal enums), optionally polished
-  by an LLM against a strict source-info anchor
+  the actual source AST (signatures, defaults, raises
+  with diagnostic messages, dataclass fields, Literal
+  enums, `@property` accessors, module-level string
+  constants), optionally polished by an LLM against a
+  strict source-info anchor that separates prose from
+  verbatim facts
 - **Bulk maintenance** -- Regenerate every stale feature
   in one command, or let the post-commit hook do it for
   you scoped to files that actually changed
