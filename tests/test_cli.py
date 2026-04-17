@@ -297,3 +297,24 @@ class TestCLI:
         assert result == 1
         captured = capsys.readouterr()
         assert "Run `attune-author init`" in captured.err
+
+    def test_docs_missing_ai_extra_points_at_install(
+        self, tmp_path: Path, capsys, monkeypatch
+    ) -> None:
+        """`docs <target>` without the [ai] extra installed should
+        fail with exit 1 and hint at the install command, not crash.
+        """
+        target = tmp_path / "mod.py"
+        target.write_text("def foo() -> None:\n    pass\n", encoding="utf-8")
+
+        # Simulate the optional dep being absent: hide the module
+        # so the import inside _cmd_docs raises ImportError.
+        import sys as _sys
+
+        monkeypatch.setitem(_sys.modules, "attune_author.doc_gen", None)
+
+        result = main(["docs", str(target)])
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "attune-author[ai]" in captured.err
