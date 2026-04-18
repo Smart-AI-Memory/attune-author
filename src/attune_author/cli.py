@@ -122,6 +122,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Overwrite templates marked 'status: manual' in their frontmatter.",
     )
+    p_gen.add_argument(
+        "--no-rag",
+        action="store_true",
+        help=(
+            "Disable RAG grounding during polish. By default, when "
+            "attune-author[rag] is installed the polish pass consults "
+            "existing attune-help templates for style / naming "
+            "references. Set this flag (or ATTUNE_AUTHOR_RAG=0 in the "
+            "environment) to skip retrieval and use the bare prompt."
+        ),
+    )
 
     p_regen = sub.add_parser(
         "regenerate",
@@ -336,6 +347,7 @@ def _cmd_generate(args: argparse.Namespace) -> int:
         help_dir=help_dir,
         project_root=root,
         overwrite=args.overwrite,
+        use_rag=not args.no_rag,
     )
 
     if result.templates:
