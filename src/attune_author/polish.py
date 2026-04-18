@@ -87,6 +87,7 @@ def polish_template(
     source_summary: str,
     template_type: str = "generic",
     strict: bool | None = None,
+    augmented_context: str | None = None,
 ) -> str:
     """Polish a generated template using an LLM.
 
@@ -124,7 +125,13 @@ def polish_template(
     effective_strict = _env_strict_default() if strict is None else strict
 
     try:
-        polished = _call_llm(content, feature_name, source_summary, template_type)
+        polished = _call_llm(
+            content,
+            feature_name,
+            source_summary,
+            template_type,
+            augmented_context=augmented_context,
+        )
         return _sanitize_output(polished)
     except Exception as exc:  # noqa: BLE001
         # INTENTIONAL: lenient mode swallows any LLM failure
@@ -181,6 +188,7 @@ def _call_llm(
     feature_name: str,
     source_summary: str,
     template_type: str,
+    augmented_context: str | None = None,
 ) -> str:
     """Make the LLM call for polishing.
 
@@ -206,9 +214,11 @@ def _call_llm(
     client = get_client()
     system_prompt = get_system_prompt(template_type)
 
+    grounding = augmented_context or ""
     user_message = (
         f"Polish this auto-generated {template_type} template "
         f"for the '{feature_name}' feature.\n\n"
+        f"{grounding}"
         f"## Source info (for accuracy checking)\n\n"
         f"{source_summary}\n\n"
         f"## Template to polish\n\n"

@@ -138,6 +138,7 @@ def generate_feature_templates(
     project_root: str | Path,
     depths: list[str] | None = None,
     overwrite: bool = False,
+    use_rag: bool = True,
 ) -> GenerationResult:
     """Generate help templates for a feature.
 
@@ -228,6 +229,7 @@ def generate_feature_templates(
             feature,
             source_info,
             template_type=depth,
+            use_rag=use_rag,
         )
 
         out_path.write_text(content, encoding="utf-8")
@@ -248,6 +250,7 @@ def _maybe_polish(
     feature: Feature,
     source_info: _SourceInfo,
     template_type: str = "generic",
+    use_rag: bool = True,
 ) -> str:
     """Run the LLM polish pass on rendered template content.
 
@@ -287,11 +290,25 @@ def _maybe_polish(
         module_constants=source_info.module_constants or None,
     )
 
+    augmented_context: str | None = None
+    if use_rag:
+        # Opt-in grounding via attune-rag. Returns None when
+        # the [rag] extra isn't installed, the env var disables
+        # it, or retrieval doesn't find relevant templates —
+        # in any of those cases polish proceeds unchanged.
+        from attune_author.rag_hook import ground_polish_context
+
+        augmented_context = ground_polish_context(
+            feature.name,
+            template_type,
+        )
+
     return polish_template(
         content,
         feature.name,
         summary,
         template_type=template_type,
+        augmented_context=augmented_context,
     )
 
 

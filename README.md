@@ -21,8 +21,36 @@ attune-help (reader) --> attune-author (authoring) --> attune-ai (full workflows
 ```bash
 pip install attune-author           # Core (templates, staleness)
 pip install 'attune-author[ai]'     # + AI-powered doc generation
+pip install 'attune-author[rag]'    # + RAG-grounded polish (see below)
 pip install 'attune-author[rich]'   # + Rich CLI formatting
 ```
+
+### RAG-grounded polish (optional)
+
+When `attune-author[rag]` is installed, the LLM polish pass
+consults existing attune-help templates via
+[attune-rag](https://github.com/Smart-AI-Memory/attune-rag)
+before rewriting your generated template. It surfaces
+related templates as style and naming references so the
+polished output stays consistent with the wider
+ecosystem's conventions — not to copy content, but to keep
+headings, terminology, and structure aligned.
+
+Grounding is **on by default** when the extra is
+installed. To disable per-invocation:
+
+```bash
+attune-author generate my-feature --no-rag
+```
+
+To disable globally (e.g. in CI for deterministic output):
+
+```bash
+ATTUNE_AUTHOR_RAG=0 attune-author generate my-feature
+```
+
+Without the `[rag]` extra installed, `attune-author`
+proceeds as before — no behavior change.
 
 ## Quick Start
 

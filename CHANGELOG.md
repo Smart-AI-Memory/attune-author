@@ -13,6 +13,54 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.4.0] - 2026-04-18
+
+### Added (0.4.0)
+
+- **Optional RAG-grounded polish** — new `[rag]` extra
+  (`pip install 'attune-author[rag]'`). When installed,
+  the LLM polish pass consults existing attune-help
+  templates via
+  [attune-rag](https://github.com/Smart-AI-Memory/attune-rag)
+  before rewriting, using hits as style and naming
+  references. Off via `--no-rag` per invocation or
+  `ATTUNE_AUTHOR_RAG=0` globally. Without the extra
+  installed, behavior is unchanged.
+- **`src/attune_author/rag_hook.py`** — new module
+  exposing `rag_enabled()` and
+  `ground_polish_context(feature_name, template_type, k)`.
+  Lazy imports throughout; graceful degradation on any
+  retrieval failure.
+
+### Changed (0.4.0)
+
+- **`polish_template()`** gains optional
+  `augmented_context` kwarg. Injected into the LLM
+  user_message between the feature intro and source-info
+  sections. Existing callers unaffected.
+- **`generate_feature_templates()`** gains
+  `use_rag: bool = True` kwarg. Threads through
+  `_maybe_polish()` to `rag_hook.ground_polish_context`.
+- **`attune-author generate`** gains `--no-rag` flag.
+
+### Safety (0.4.0)
+
+- Injected retrieval context is framed with an explicit
+  "Use as style reference — do NOT copy content or invent
+  anything they don't attest" instruction as mild
+  defense against prompt injection from retrieved content.
+- Joined context capped at 8,000 characters to protect
+  prompt budgets.
+- All exception paths degrade to `None` + warning log
+  rather than breaking generation.
+
+### Tests (0.4.0)
+
+- 10 new `tests/test_rag_hook.py` covering env-var gate,
+  import gate, happy path with mocked `RagPipeline`,
+  fallback path, exception recovery, and query shape.
+  Full suite: 497 passed + 31 skipped (no regressions).
+
 ## [0.3.9] - 2026-04-14
 
 ### Changed (0.3.9)
