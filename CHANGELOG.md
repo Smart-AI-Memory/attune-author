@@ -13,6 +13,34 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.4.2] - 2026-04-19
+
+### Changed
+
+- **`rag_hook.ground_polish_context` now uses
+  `RagResult.context` directly** instead of rebuilding the
+  context block from citation hits via a corpus lookup.
+  attune-rag 0.1.3+ exposes the pre-joined context on the
+  result object; the old `_hits_from_citation` helper
+  duplicated that logic and held a fragile dependency on
+  `attune_rag.retrieval.RetrievalHit`,
+  `attune_rag.prompts.join_context`, and the `pipeline.corpus`
+  attribute. Deleting it removes 3 medium-risk rows from
+  attune-author's attune-rag API surface — any future minor-
+  version refactor of those internals no longer breaks the
+  polish hook. The character budget for the polish context
+  block is now pinned at 8 KB (was also 8 KB before, passed
+  to `join_context(max_chars=...)`); changes that matter to
+  polish cost stay visible as a module-level constant
+  (`_POLISH_CONTEXT_MAX_CHARS`).
+
+### Verified
+
+- 497 tests pass, 31 skipped. `test_rag_hook.py`
+  test_ground_polish_context_returns_markdown_when_hits
+  updated to stage `result.context` directly (no more
+  `pipeline.corpus.get` mock).
+
 ## [0.4.1] - 2026-04-19
 
 ### Changed

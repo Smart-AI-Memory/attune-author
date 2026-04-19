@@ -141,14 +141,8 @@ def test_ground_polish_context_returns_markdown_when_hits(
     pytest.importorskip("attune_rag")
     monkeypatch.delenv("ATTUNE_AUTHOR_RAG", raising=False)
 
-    from attune_rag import RetrievalEntry
     from attune_rag.provenance import CitationRecord, CitedSource
 
-    fake_entry = RetrievalEntry(
-        path="concepts/tool-security-audit.md",
-        category="concepts",
-        content="Security audit scans for vulnerabilities.",
-    )
     cited = CitedSource(
         template_path="concepts/tool-security-audit.md",
         category="concepts",
@@ -162,16 +156,20 @@ def test_ground_polish_context_returns_markdown_when_hits(
         retrieved_at=datetime.now(timezone.utc),
         retriever_name="KeywordRetriever",
     )
+    # attune-rag 0.1.3+ exposes the joined context directly on
+    # RagResult. The hook no longer walks the corpus — it just
+    # reads `result.context`. We stage a realistic context string
+    # here so the assertions below can exercise the real hook
+    # output, not a MagicMock.
     fake_result = MagicMock()
     fake_result.fallback_used = False
     fake_result.citation = citation
-
-    mock_corpus = MagicMock()
-    mock_corpus.get.return_value = fake_entry
+    fake_result.context = (
+        "[P1] source: concepts/tool-security-audit.md\n" "Security audit scans for vulnerabilities."
+    )
 
     with patch("attune_rag.RagPipeline") as mock_pipeline_cls:
         mock_pipeline = MagicMock()
-        mock_pipeline.corpus = mock_corpus
         mock_pipeline.run.return_value = fake_result
         mock_pipeline_cls.return_value = mock_pipeline
 

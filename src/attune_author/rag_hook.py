@@ -93,7 +93,6 @@ def ground_polish_context(
 
     try:
         from attune_rag import RagPipeline
-        from attune_rag.prompts import join_context
     except ImportError:
         return None
 
@@ -118,13 +117,13 @@ def ground_polish_context(
     if result.fallback_used or not result.citation.hits:
         return None
 
-    context_body = join_context(
-        # retrieval.RetrievalHit isn't exposed here, but the
-        # citation already has enough metadata — reconstruct
-        # a lightweight context block from entry contents.
-        _hits_from_citation(pipeline, result.citation),
-        max_chars=8_000,
-    )
+    # attune-rag 0.1.3+ exposes the joined context directly on
+    # RagResult; previously we rebuilt it from citation hits via
+    # pipeline.corpus.get + join_context. Slice to an 8 KB
+    # budget so polish prompts stay bounded (join_context itself
+    # truncates at 20 KB by default, which is larger than polish
+    # calls need).
+    context_body = result.context[:_POLISH_CONTEXT_MAX_CHARS]
 
     source_paths = ", ".join(h.template_path for h in result.citation.hits)
     header = (
@@ -137,20 +136,4 @@ def ground_polish_context(
     return header + context_body + "\n\n"
 
 
-def _hits_from_citation(pipeline, citation):
-    """Rebuild RetrievalHit list from a citation + pipeline's corpus.
-
-    ``join_context`` wants RetrievalHit objects (with
-    ``.entry`` and ``.score``). We hold CitedSource records
-    here — look up the full entries via the pipeline's
-    corpus so content is fresh.
-    """
-    from attune_rag.retrieval import RetrievalHit
-
-    hits = []
-    for cited in citation.hits:
-        entry = pipeline.corpus.get(cited.template_path)
-        if entry is None:
-            continue
-        hits.append(RetrievalHit(entry=entry, score=cited.score, match_reason="polish-grounding"))
-    return hits
+_POLISH_CONTEXT_MAX_CHARS = 8_000
