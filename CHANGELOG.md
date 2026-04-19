@@ -13,6 +13,40 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.4.1] - 2026-04-19
+
+### Changed
+
+- **Upper cap on `attune-help` raised from `<0.6` to `<0.8`.**
+  attune-help 0.7.0 is additive per its CHANGELOG (path-keyed
+  summary sidecar, per-feature query fixtures, CLI, Beta
+  classifier) — no API breaks. Bumping the cap unblocks
+  attune-ai consumers that want to pull in both attune-rag
+  0.1.4 (transitively requires `attune-help>=0.7.0`) and
+  attune-author via a single extras install, without forcing
+  attune-help back down to 0.5.x.
+
+### Added
+
+- **`--all-kinds` flag on `attune-author generate`.** By
+  default the CLI produces the three core template depths
+  (concept, task, reference). `--all-kinds` generates the
+  full 11-kind surface (adds comparison, error, faq, note,
+  quickstart, tip, troubleshooting, warning) so consumers
+  that want uniform staleness tracking across every template
+  kind can get it in one command. Previously only
+  `scripts/regenerate_help.py` passed the full kind list.
+- **`rag-hook` feature** in `.help/features.yaml` + 11
+  polished templates covering the optional RAG-grounded
+  polish path (`src/attune_author/rag_hook.py`). Dogfoods
+  the new `--all-kinds` flag.
+
+### Verified
+
+- 497 tests pass / 31 skipped with attune-help upgraded
+  from 0.5.1 to 0.7.0. No behavioral regressions, public
+  API unchanged.
+
 ## [0.4.0] - 2026-04-18
 
 ### Added (0.4.0)

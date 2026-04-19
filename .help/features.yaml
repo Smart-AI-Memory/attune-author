@@ -129,3 +129,20 @@ features:
       - pipeline
       - llm
       - multi-stage
+
+  rag-hook:
+    description: >
+      Optional RAG grounding for the polish pass —
+      retrieves related attune-help templates via
+      attune-rag so the LLM rewrite references real
+      patterns instead of inventing them. Lazy imports
+      and graceful degradation keep attune-author
+      installable without the [rag] extra
+    files:
+      - src/attune_author/rag_hook.py
+    tags:
+      - rag
+      - retrieval
+      - grounding
+      - polish
+      - optional-extra

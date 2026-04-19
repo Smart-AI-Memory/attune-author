@@ -133,6 +133,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "environment) to skip retrieval and use the bare prompt."
         ),
     )
+    p_gen.add_argument(
+        "--all-kinds",
+        action="store_true",
+        help=(
+            "Generate every template kind (concept, task, reference, "
+            "quickstart, faq, error, warning, tip, note, comparison, "
+            "troubleshooting) instead of only the three core depths. "
+            "Use this when you want staleness tracking to cover the "
+            "full help surface for a feature."
+        ),
+    )
 
     p_regen = sub.add_parser(
         "regenerate",
@@ -342,10 +353,13 @@ def _cmd_generate(args: argparse.Namespace) -> int:
             )
         return 1
 
+    from attune_author.generator import _ALL_TEMPLATE_NAMES
+
     result = generate_feature_templates(
         feature=feature,
         help_dir=help_dir,
         project_root=root,
+        depths=list(_ALL_TEMPLATE_NAMES) if args.all_kinds else None,
         overwrite=args.overwrite,
         use_rag=not args.no_rag,
     )
