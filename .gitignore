@@ -8,7 +8,8 @@ build/
 dist/
 *.egg-info/
 *.egg
-MANIFEST
+/MANIFEST
+/MANIFEST.in
 
 # Unit test / coverage reports
 .pytest_cache/

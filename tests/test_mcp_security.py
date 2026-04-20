@@ -297,8 +297,12 @@ def test_author_docs_rejects_output_parent_in_system_dir(
 ) -> None:
     """Output_path parent must be validated *before* mkdir.
 
-    Attempting `/etc/attune-out/doc.md` should fail with a
-    system-directory error and never touch the filesystem.
+    Attempting `/etc/attune-out/doc.md` should fail and never
+    touch the filesystem. On Unix the dangerous-prefix rule
+    fires ("system directory"); on Windows `/etc` is neither
+    a system dir nor under the workspace, so the containment
+    rule fires ("outside allowed directory"). Both outcomes
+    satisfy the security contract — the write must not land.
     """
     result = asyncio.run(
         handlers.author_docs(
@@ -309,7 +313,10 @@ def test_author_docs_rejects_output_parent_in_system_dir(
         )
     )
     assert result["success"] is False
-    assert "system directory" in result["error"]
+    err = result["error"]
+    assert (
+        "system directory" in err or "outside allowed directory" in err
+    ), f"expected rejection by system-dir or containment rule, got: {err!r}"
     assert not Path("/etc/attune-out").exists()
 
 
