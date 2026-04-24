@@ -13,6 +13,83 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.5.0] - 2026-04-24
+
+### Added — Project-doc generation (four new kinds that write to `docs/`)
+
+- **`how-to`** — procedural guides for competent readers
+  (quick-start, core API, integration patterns).
+- **`tutorial`** — step-by-step learning content with
+  prerequisites and verification.
+- **`cli-reference`** — precise command reference
+  (description, usage, options, exit codes).
+- **`architecture`** — structural/design overview for
+  engineers extending the subsystem.
+
+Unlike `.help/` templates, project-doc kinds render without
+YAML frontmatter. Staleness is tracked via an HTML comment
+footer appended to the file, so the output renders cleanly
+as plain markdown in a `docs/` tree:
+
+    <!-- attune-generated: source_hash=<sha256> feature=<name>
+         kind=<kind> generated_at=<YYYY-MM-DD> -->
+
+Output paths: the generator respects `feature.doc_path` /
+`feature.arch_path` from the manifest when set, otherwise
+falls back to `docs/<subdir>/<feature-name>.md` (subdirs:
+`how-to/`, `tutorials/`, `reference/`, `architecture/`).
+
+`attune-author generate --all-kinds` now renders both the
+`.help/` set and the four project-doc kinds in one call.
+
+### Added — Polish prompts for the new kinds
+
+Per-kind system prompts and anti-patterns in
+`polish_prompts.py` for `how-to`, `tutorial`, `cli-reference`,
+and `architecture`. Prompt guidance is distinctive enough
+that the test suite asserts each kind carries a unique phrase
+and lists its anti-patterns.
+
+### Added — Validation hardening
+
+- **Multi-path warning.** When `feature.doc_paths` has more
+  than one entry, the generator logs a WARNING naming the
+  ignored paths. Only `doc_paths[0]` is written in this
+  release; multi-path generation is a planned follow-on.
+  Additional paths are still tracked by `check_staleness`.
+- **HTML-footer staleness round-trip tests.** New
+  `tests/test_staleness.py::TestProjectDocFooterStaleness`
+  exercises generator → `parse_doc_footer` →
+  `check_staleness` end to end: fresh doc is current, source
+  change flips it to stale, missing doc is stale.
+- **Multi-path warning tests.** New
+  `TestMultiDocPathWarning` asserts the warning fires for
+  `doc_paths` with >1 entry and stays silent for 1.
+
+### Changed
+
+- **`attune-help` dep lower bound raised to `>=0.8.0`** so we
+  can use the new `doc_paths` list, `arch_path`, `doc_kinds`,
+  and `build_doc_footer` / `parse_doc_footer` helpers that
+  landed in attune-help 0.8.0.
+- **`StalenessReport`** now has separate `help_entries` and
+  `doc_entries`. `format_status_report()` renders the two
+  sections independently so users can see template vs. doc
+  staleness at a glance.
+- **Shim tightening.** `attune_author.staleness` and
+  `attune_author.manifest` continue to re-export the shared
+  implementations from `attune_help` so existing imports keep
+  working.
+
+### Docs
+
+- README Roadmap and feature-matrix callouts updated to
+  mention the `docs/` output alongside `.help/templates/`.
+
+### Tests
+
+- **497 tests pass** (6 new), ruff clean, mypy clean.
+
 ## [0.4.2] - 2026-04-19
 
 ### Changed

@@ -89,6 +89,14 @@ for feature in report.stale:
   view, plus optional problem-shaped (error, warning,
   troubleshooting, faq) and guidance-shaped (quickstart,
   tip, note, comparison) kinds
+- **Project-doc generation** -- Four additional kinds
+  (`how-to`, `tutorial`, `cli-reference`, `architecture`)
+  render to `docs/` for end-user consumption. These use
+  HTML comment footers for staleness tracking instead of
+  YAML frontmatter, so the output is clean plain markdown.
+  Run `attune-author generate <feature> --all-kinds` to
+  produce both `.help/` templates and `docs/` output in
+  one pass
 - **Context-sensitive delivery** -- Readers fetch only the
   depth they need via `attune-help`; AI assistants pull
   the right slice through the MCP `author_lookup` tool
