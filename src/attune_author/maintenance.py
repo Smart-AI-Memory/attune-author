@@ -75,7 +75,7 @@ def run_maintenance(
     if dry_run or report.stale_count == 0:
         return result
 
-    for entry in report.entries:
+    for entry in report.help_entries:
         if not entry.is_stale:
             continue
 
@@ -192,6 +192,12 @@ def format_status_report(
 ) -> str:
     """Format a staleness report for display.
 
+    Renders two sections:
+    - **Help Templates** — ``.help/`` template staleness by feature.
+    - **Project Docs** — ``docs/`` file staleness (missing or hash
+      mismatch). Only shown when the manifest has ``doc_path`` /
+      ``arch_path`` entries.
+
     Args:
         report: The staleness report to format.
         help_dir: Path to .help/ directory for preamble lookup.
@@ -201,23 +207,26 @@ def format_status_report(
     """
     from attune_author.preamble import get_preamble
 
-    lines = ["## Help Status\n"]
-    lines.append(f"**{report.current_count}** current, **{report.stale_count}** stale\n")
+    help_stale = sum(1 for e in report.help_entries if e.is_stale)
+    help_current = sum(1 for e in report.help_entries if not e.is_stale)
 
-    if report.stale_count > 0:
-        lines.append("### Stale Features\n")
+    lines = ["## Help Templates\n"]
+    lines.append(f"**{help_current}** current, **{help_stale}** stale\n")
+
+    if help_stale > 0:
+        lines.append("### Stale\n")
         lines.append("| Feature | Description | Files Changed |\n")
         lines.append("|---------|-------------|---------------|\n")
-        for entry in report.entries:
+        for entry in report.help_entries:
             if entry.is_stale:
                 count = len(entry.matched_files)
                 preamble = get_preamble(entry.feature, help_dir) or ""
                 lines.append(f"| {entry.feature} | {preamble} | {count} source files |\n")
         lines.append("")
 
-    if report.current_count > 0:
-        lines.append("### Current Features\n")
-        for entry in report.entries:
+    if help_current > 0:
+        lines.append("### Current\n")
+        for entry in report.help_entries:
             if not entry.is_stale:
                 preamble = get_preamble(entry.feature, help_dir) or ""
                 if preamble:
@@ -225,5 +234,30 @@ def format_status_report(
                 else:
                     lines.append(f"- {entry.feature}\n")
         lines.append("")
+
+    # --- Project Docs section (only shown when doc entries exist) ---
+    if report.doc_entries:
+        doc_stale = sum(1 for d in report.doc_entries if d.is_stale)
+        doc_current = sum(1 for d in report.doc_entries if not d.is_stale)
+
+        lines.append("## Project Docs\n")
+        lines.append(f"**{doc_current}** current, **{doc_stale}** stale\n")
+
+        if doc_stale > 0:
+            lines.append("### Stale\n")
+            lines.append("| Feature | Path | Kind | Status |\n")
+            lines.append("|---------|------|------|--------|\n")
+            for doc in report.doc_entries:
+                if doc.is_stale:
+                    status = "missing" if doc.missing else "hash mismatch"
+                    lines.append(f"| {doc.feature} | {doc.doc_path} | {doc.kind} | {status} |\n")
+            lines.append("")
+
+        if doc_current > 0:
+            lines.append("### Current\n")
+            for doc in report.doc_entries:
+                if not doc.is_stale:
+                    lines.append(f"- **{doc.feature}** `{doc.doc_path}` ({doc.kind})\n")
+            lines.append("")
 
     return "\n".join(lines)

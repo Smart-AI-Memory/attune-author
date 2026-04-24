@@ -187,7 +187,7 @@ class TestHandlersIntegration:
         )
         assert result["success"] is True
         assert result["stale_count"] >= 1  # No template generated yet
-        assert "Help Status" in result["report"]
+        assert "Help Templates" in result["report"]
 
     def test_author_generate(self, project_with_help: Path) -> None:
         srv = AttuneAuthorMCPServer(workspace_root=str(project_with_help))

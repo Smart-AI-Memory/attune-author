@@ -137,11 +137,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--all-kinds",
         action="store_true",
         help=(
-            "Generate every template kind (concept, task, reference, "
-            "quickstart, faq, error, warning, tip, note, comparison, "
-            "troubleshooting) instead of only the three core depths. "
-            "Use this when you want staleness tracking to cover the "
-            "full help surface for a feature."
+            "Generate every template kind: .help/ kinds (concept, task, "
+            "reference, quickstart, faq, error, warning, tip, note, "
+            "comparison, troubleshooting) plus project-doc kinds that "
+            "write to docs/ (how-to, tutorial, cli-reference, "
+            "architecture). Use this for full help and docs coverage."
         ),
     )
 

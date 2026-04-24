@@ -320,6 +320,176 @@ Targets for this kind:
   source info suggests otherwise — pick a winner when
   the evidence allows it
 """,
+    "decision": """\
+You are polishing a DECISION record. Decision records
+answer "what choice was made and why?"
+
+Targets for this kind:
+- First sentence must name the decision:
+  "We chose X over Y for Z."
+- Capture rejected alternatives with a brief reason
+  each — one line per alternative is enough
+- Include context that made this choice reasonable
+  (constraints, scale assumptions, time pressure)
+- End with "Revisit when:" followed by concrete
+  invalidation signals — conditions that would make
+  the decision wrong
+- Past tense for what was decided; present tense for
+  what still holds
+""",
+    "pattern": """\
+You are polishing a PATTERN record. Pattern records
+answer "what recurring approach solves this class of
+problem?"
+
+Targets for this kind:
+- Lead with the problem the pattern solves, not the
+  solution. "When you need X" beats "This pattern
+  does X"
+- Name the trigger condition precisely — when to apply
+  vs. when NOT to apply this pattern
+- Give a minimal concrete example: code snippet,
+  command, or config block. The example must be
+  complete enough to copy-paste
+- End with "Anti-pattern:" naming the wrong approach
+  this replaces, with one sentence on why it fails
+""",
+    "how-to": """\
+You are polishing a HOW-TO guide. How-to guides answer
+"what's the recipe for X?" for a reader who already
+knows why they want X.
+
+How-to guides target competent readers — assume the
+reader knows the surrounding concepts and just needs
+the steps. Do not explain what the subsystem is or why
+it exists; that belongs in a concept doc.
+
+Targets for this kind:
+- The first paragraph states the specific problem the
+  recipe solves and who should use it. "Use this guide
+  when you need to X with Y constraints" — not "This
+  guide covers X"
+- "Quick start" must be a runnable block that produces
+  a visible result. No placeholders like (...) or
+  "replace this with your code"
+- "Core API" is a scanable table (function or class,
+  one-line purpose). Longer prose belongs in the
+  reference doc
+- "Integration patterns" is concrete: one or two real
+  code blocks showing composition with other parts of
+  the codebase, not abstract advice
+- "See also" is short — only genuine follow-on reading,
+  not every tag on the feature
+- Narrative prose, second person, present tense. Unlike
+  reference docs, you may omit pedantic completeness
+  in favor of the 80% case
+""",
+    "tutorial": """\
+You are polishing a TUTORIAL. Tutorials answer "help me
+build X so I understand why it works" for a reader
+seeing this subsystem for the first time.
+
+Tutorials are learning-oriented, not task-oriented.
+A how-to gets the reader unblocked; a tutorial gets the
+reader competent. Length and hand-holding are
+appropriate here — but earn every paragraph.
+
+Targets for this kind:
+- "What you will build" is concrete and visible — a
+  working artifact the reader will possess at the end.
+  Not "you'll understand X" but "you'll have a running
+  X that does Y"
+- Steps are numbered, small, and each one ends with
+  what the reader should see. A step with no
+  verification is a step the reader can't confirm
+- At each step, explain the *why* in one sentence
+  before the code block. A tutorial that only shows
+  *what* is indistinguishable from a how-to
+- Import paths must be valid and runnable. If the
+  source lives at ``src/pkg/mod.py``, the import is
+  ``from pkg.mod import X``, not
+  ``from src.pkg.mod import X``. Strip the ``src.``
+  prefix
+- Prefer one happy-path example over branching
+  coverage. The reference doc is where exhaustive
+  combinatorics live
+- "What you learned" is a real recap — tie each bullet
+  back to a step the reader actually executed
+- "Next steps" points at ONE specific follow-up
+  (another tutorial, the reference, a how-to), not a
+  menu of options
+""",
+    "cli-reference": """\
+You are polishing a CLI REFERENCE. CLI references answer
+"what does this command do, exactly?" for a reader who
+needs precise, complete information about a command's
+surface.
+
+This is a REFERENCE register, not narrative. Be precise,
+complete, and scannable. Do not editorialize.
+
+Targets for this kind:
+- "Description" is two to four sentences: what the
+  command does, the main input it operates on, and the
+  main output or side effect. Nothing else
+- "Usage" shows the exact invocation syntax —
+  ``command [OPTIONS] SUBCOMMAND [ARGS]`` — with
+  metavariable names that match the options/args tables
+  below
+- "Options" is a complete table of flags the command
+  actually accepts. If the generator produced a table
+  populated from module constants rather than argparse
+  metadata, replace those rows with only options you
+  can confirm exist in the source. Delete unverified
+  rows rather than inventing flag names. An empty table
+  with "No options" is better than a fabricated one
+- "Output" includes a realistic fenced code block of
+  what the command prints on success. If stdout is
+  machine-readable (JSON, CSV), show the format and
+  one sample record
+- "Exit codes" lists every meaningful exit path.
+  Include only codes you can verify in the source;
+  ``0`` / ``1`` at minimum
+- "Related commands" points at other CLI entry points
+  the reader would reach for next, not abstract tags
+""",
+    "architecture": """\
+You are polishing an ARCHITECTURE doc. Architecture docs
+answer "how is this subsystem organized, and why that
+way?" for a reader who will extend or modify it.
+
+Architecture docs serve engineers who need a mental
+model before touching the code. Focus on structure,
+responsibilities, and design intent — not usage.
+
+Targets for this kind:
+- "Purpose" is one paragraph: what this subsystem is
+  responsible for AND what it is explicitly NOT
+  responsible for. The negation is load-bearing for
+  extension work
+- "Key classes" is a table with three columns: class,
+  responsibility, file. Responsibility is one tight
+  sentence, not a paraphrased docstring. If a class
+  does three things, say so — that may itself be a
+  design smell worth naming
+- "Data flow" needs a real ASCII diagram if the source
+  has more than one major component. Replace the
+  placeholder comment with actual arrows and component
+  names from the source. Linear flows are fine;
+  fan-out/fan-in flows should show the branches
+- "Design decisions" captures choices that would
+  surprise a new reader. "We chose composition over
+  inheritance because ..." — each decision names what
+  was rejected and why. Omit this section if there are
+  no non-obvious decisions; do not pad
+- "Extension points" is actionable: "Subclass X to add
+  a new backend" or "Register a handler via
+  ``register_handler()``". Vague guidance like "follow
+  existing patterns" is not useful
+- Write for a reader who will modify this code, not
+  use it. Pointing at the reference doc for usage
+  questions is correct
+""",
 }
 
 #: Phrases that reliably produce formulaic-sounding output.
@@ -385,6 +555,47 @@ ANTI_PATTERNS: dict[str, list[str]] = {
         "Reach for",
         "The polish pass rewrites this section",
         "Alternatives in this project",
+    ],
+    "decision": [
+        "After careful consideration",
+        "The team decided",
+        "It was determined that",
+        "moving forward with",
+    ],
+    "pattern": [
+        "This pattern is used when",
+        "The general approach is",
+        "Developers should consider",
+        "Best practice is to",
+    ],
+    "how-to": [
+        "Use {feature} when you need this capability",
+        "See source in",
+        "Compose with the rest of the codebase",
+        "No configuration keys discovered",
+        "Typical pattern: instantiate",
+    ],
+    "tutorial": [
+        "By the end of this tutorial you will have",
+        "Every call to",
+        "At this point",
+        "Inspect its type and fields",
+        "Understanding the design intent",
+        "Explore related topics",
+    ],
+    "cli-reference": [
+        "provides command-line access to its core operations",
+        "Example output shown here after LLM polish pass",
+        "See the project README",
+        "General error",
+    ],
+    "architecture": [
+        "a subsystem responsible for a distinct slice",
+        "Replace with an ASCII diagram",
+        "the subsystem isolates",
+        "making it possible to swap implementations",
+        "each class owns a single responsibility",
+        "following the existing naming and error-handling conventions",
     ],
 }
 

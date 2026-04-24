@@ -55,7 +55,7 @@ wheels = [
 
 [[package]]
 name = "attune-author"
-version = "0.4.2"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "attune-help" },
@@ -94,7 +94,7 @@ requires-dist = [
     { name = "anthropic", marker = "extra == 'ai'", specifier = ">=0.40.0" },
     { name = "anthropic", marker = "extra == 'dev'", specifier = ">=0.40.0" },
     { name = "anthropic", marker = "extra == 'plugin'", specifier = ">=0.40.0" },
-    { name = "attune-help", specifier = ">=0.5.1,<0.8" },
+    { name = "attune-help", editable = "../attune-help" },
     { name = "attune-rag", marker = "extra == 'rag'", specifier = ">=0.1.0,<0.2" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.0" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0" },
@@ -113,15 +113,23 @@ provides-extras = ["ai", "rag", "plugin", "rich", "dev"]
 
 [[package]]
 name = "attune-help"
-version = "0.7.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.8.0"
+source = { editable = "../attune-help" }
 dependencies = [
     { name = "python-frontmatter" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/7d/1272632cf6bca5d2e6d2458862fe3db27369c2807c5cef69822c9573b909/attune_help-0.7.0.tar.gz", hash = "sha256:e45fd10f66b7ba4d571e78f68565835e067005de874d0ba720c5e183e7881e77", size = 417299, upload-time = "2026-04-19T02:56:25.199Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/47/4d0d60f7ab6c0d94abe0dca8060346771f781003e13f16682f496997ab45/attune_help-0.7.0-py3-none-any.whl", hash = "sha256:16067046c55f505271281606f90cd06cbecba59e697ba8781d7d1416d4baf8e9", size = 704311, upload-time = "2026-04-19T02:56:23.597Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "mcp", marker = "extra == 'dev'", specifier = ">=0.9.0" },
+    { name = "mcp", marker = "extra == 'plugin'", specifier = ">=0.9.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
+    { name = "python-frontmatter", specifier = ">=1.0.0" },
+    { name = "rich", marker = "extra == 'rich'", specifier = ">=13.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
 ]
+provides-extras = ["rich", "plugin", "dev"]
 
 [[package]]
 name = "attune-rag"

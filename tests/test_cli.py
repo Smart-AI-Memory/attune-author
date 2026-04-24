@@ -212,7 +212,7 @@ class TestCLI:
 
         assert result == 0
         captured = capsys.readouterr()
-        assert "Help Status" in captured.out
+        assert "Help Templates" in captured.out
 
     def test_generate_feature(self, help_dir: Path, project_root: Path, capsys) -> None:
         """Test generate command creates templates."""

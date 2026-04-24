@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from attune_author.generator import _ALL_TEMPLATE_NAMES
+from attune_author.generator import _ALL_TEMPLATE_NAMES, _PROJECT_DOC_NAMES
 from attune_author.manifest import load_manifest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -39,8 +39,8 @@ def feature_names(manifest) -> list[str]:
 
 @pytest.fixture(scope="module")
 def template_kinds() -> list[str]:
-    """Every template kind the generator can produce."""
-    return list(_ALL_TEMPLATE_NAMES)
+    """Template kinds that write to .help/templates/ (excludes project-doc kinds)."""
+    return [k for k in _ALL_TEMPLATE_NAMES if k not in _PROJECT_DOC_NAMES]
 
 
 class TestManifestStructure:
@@ -238,6 +238,16 @@ class TestNoHallucinatedSymbols:
 
     SOURCE_DIR = REPO_ROOT / "src" / "attune_author"
 
+    @staticmethod
+    def _attune_help_source_dir() -> Path | None:
+        """Locate attune_help's installed source for re-export scanning."""
+        import importlib.util
+
+        spec = importlib.util.find_spec("attune_help")
+        if spec and spec.origin:
+            return Path(spec.origin).parent
+        return None
+
     #: Names that are real methods on stdlib or third-party
     #: types but not defined in attune_author. The polish
     #: pass is allowed to reference them.
@@ -311,19 +321,27 @@ class TestNoHallucinatedSymbols:
         import ast
 
         symbols: set[str] = set()
-        for py_file in self.SOURCE_DIR.rglob("*.py"):
-            if "__pycache__" in str(py_file):
-                continue
-            try:
-                tree = ast.parse(py_file.read_text(encoding="utf-8"))
-            except SyntaxError:
-                continue
+        scan_dirs = [self.SOURCE_DIR]
+        # Also scan attune_help — manifest/staleness functions are
+        # re-exported from there and still count as "real" symbols.
+        help_src = self._attune_help_source_dir()
+        if help_src:
+            scan_dirs.append(help_src)
 
-            for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    symbols.add(node.name)
-                elif isinstance(node, ast.ClassDef):
-                    symbols.add(node.name)
+        for src_dir in scan_dirs:
+            for py_file in src_dir.rglob("*.py"):
+                if "__pycache__" in str(py_file):
+                    continue
+                try:
+                    tree = ast.parse(py_file.read_text(encoding="utf-8"))
+                except SyntaxError:
+                    continue
+
+                for node in ast.walk(tree):
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        symbols.add(node.name)
+                    elif isinstance(node, ast.ClassDef):
+                        symbols.add(node.name)
 
         return symbols
 

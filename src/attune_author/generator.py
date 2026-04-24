@@ -53,10 +53,24 @@ _GUIDANCE_TEMPLATE_NAMES = (
     "comparison",
 )
 
+#: Project-doc kinds — output to docs/ instead of
+#: .help/templates/. These use an HTML comment footer
+#: for staleness tracking instead of YAML frontmatter.
+#: Generated only when explicitly requested via the
+#: ``depths=`` kwarg.
+_PROJECT_DOC_NAMES = (
+    "how-to",
+    "tutorial",
+    "cli-reference",
+    "architecture",
+)
+
 #: All template kinds known to the generator. New kinds are
 #: added here so validation and frontmatter type mapping
 #: stay in one place.
-_ALL_TEMPLATE_NAMES = _CORE_DEPTH_NAMES + _PROBLEM_TEMPLATE_NAMES + _GUIDANCE_TEMPLATE_NAMES
+_ALL_TEMPLATE_NAMES = (
+    _CORE_DEPTH_NAMES + _PROBLEM_TEMPLATE_NAMES + _GUIDANCE_TEMPLATE_NAMES + _PROJECT_DOC_NAMES
+)
 
 #: Backward-compatible alias. External callers historically
 #: imported ``_DEPTH_NAMES`` — keep it working but map to
@@ -154,9 +168,15 @@ def generate_feature_templates(
     - **Guidance-shaped** kinds sit alongside the
       reference material with opinionated or contextual
       content: quickstart, tip, note, comparison.
+    - **Project-doc** kinds output to ``docs/`` instead of
+      ``.help/templates/`` and use an HTML comment footer
+      for staleness tracking instead of YAML frontmatter:
+      how-to, tutorial, cli-reference, architecture.
 
-    Files with ``status: manual`` in frontmatter are
-    skipped unless ``overwrite=True``.
+    ``.help/`` files with ``status: manual`` in frontmatter
+    are skipped unless ``overwrite=True``. Project-doc files
+    that already exist on disk are also skipped unless
+    ``overwrite=True``.
 
     Args:
         feature: The feature to generate for.
@@ -167,8 +187,10 @@ def generate_feature_templates(
             Pass an explicit list to include any of:
             concept, task, reference, error, warning,
             troubleshooting, faq, quickstart, tip, note,
-            comparison.
-        overwrite: If True, overwrite manual templates.
+            comparison, how-to, tutorial, cli-reference,
+            architecture.
+        overwrite: If True, overwrite manual and existing
+            project-doc templates.
 
     Returns:
         GenerationResult with paths and metadata.
@@ -198,30 +220,64 @@ def generate_feature_templates(
     # Build Jinja2 environment with project-first resolution
     env = _build_jinja_env(help_path)
 
+    if (
+        any(d in _PROJECT_DOC_NAMES and d != "architecture" for d in target_depths)
+        and len(feature.doc_paths) > 1
+    ):
+        logger.warning(
+            "Feature '%s' has %d doc_paths; only the first (%s) is generated. "
+            "Remaining paths (%s) are tracked by staleness but not written. "
+            "Multi-path project-doc generation is a planned follow-on.",
+            feature.name,
+            len(feature.doc_paths),
+            feature.doc_paths[0],
+            ", ".join(feature.doc_paths[1:]),
+        )
+
     for depth in target_depths:
         if depth not in _ALL_TEMPLATE_NAMES:
             logger.warning("Unknown template kind '%s', skipping", depth)
             continue
 
-        out_path = template_dir / f"{depth}.md"
+        is_project_doc = depth in _PROJECT_DOC_NAMES
 
-        # Respect manual templates
-        if out_path.exists() and not overwrite:
-            if _is_manual(out_path):
+        if is_project_doc:
+            out_path = _project_doc_output_path(depth, feature, root)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            if out_path.exists() and not overwrite:
                 logger.info(
-                    "Skipping %s/%s.md (status: manual)",
-                    feature.name,
+                    "Skipping %s (%s exists, use --overwrite to regenerate)",
+                    out_path,
                     depth,
                 )
                 continue
+        else:
+            out_path = template_dir / f"{depth}.md"
+            if out_path.exists() and not overwrite:
+                if _is_manual(out_path):
+                    logger.info(
+                        "Skipping %s/%s.md (status: manual)",
+                        feature.name,
+                        depth,
+                    )
+                    continue
 
-        content = _render_template(
-            env=env,
-            feature=feature,
-            depth=depth,
-            source_hash=source_hash,
-            source_info=source_info,
-        )
+        if is_project_doc:
+            content = _render_project_doc_template(
+                env=env,
+                feature=feature,
+                depth=depth,
+                source_hash=source_hash,
+                source_info=source_info,
+            )
+        else:
+            content = _render_template(
+                env=env,
+                feature=feature,
+                depth=depth,
+                source_hash=source_hash,
+                source_info=source_info,
+            )
 
         # LLM polish pass — improves writing quality
         content = _maybe_polish(
@@ -328,6 +384,104 @@ def _is_manual(path: Path) -> bool:
         return False
 
     return _read_frontmatter_value(text, "status") == "manual"
+
+
+#: Maps each project-doc kind to its default docs/ subdirectory.
+_PROJECT_DOC_KIND_SUBDIRS: dict[str, str] = {
+    "how-to": "how-to",
+    "tutorial": "tutorials",
+    "cli-reference": "reference",
+    "architecture": "architecture",
+}
+
+
+def _project_doc_output_path(
+    kind: str,
+    feature: Feature,
+    project_root: Path,
+) -> Path:
+    """Compute the output path for a project-doc kind.
+
+    Respects ``arch_path`` (for the architecture kind) and uses the
+    primary entry of ``doc_paths`` (for other project-doc kinds) from
+    the feature manifest when set. The primary doc is
+    ``feature.doc_paths[0]`` (also available as ``feature.doc_path``
+    for backward compatibility). Features with multiple doc paths are
+    not yet supported here — bulk generation across the full list is
+    a follow-on feature. Falls back to
+    ``docs/<subdir>/<feature-name>.md`` relative to ``project_root``.
+
+    Args:
+        kind: Template kind (one of ``_PROJECT_DOC_NAMES``).
+        feature: The feature being documented.
+        project_root: Project root directory.
+
+    Returns:
+        Absolute Path where the doc file should be written.
+    """
+    if kind == "architecture" and feature.arch_path:
+        return project_root / feature.arch_path
+    if kind != "architecture" and feature.doc_path:
+        return project_root / feature.doc_path
+    subdir = _PROJECT_DOC_KIND_SUBDIRS.get(kind, kind)
+    return project_root / "docs" / subdir / f"{feature.name}.md"
+
+
+def _render_project_doc_template(
+    env: jinja2.Environment,
+    feature: Feature,
+    depth: str,
+    source_hash: str,
+    source_info: _SourceInfo,
+) -> str:
+    """Render a project-level docs template with an HTML comment footer.
+
+    Unlike ``.help/`` templates, project-doc kinds do not use YAML
+    frontmatter. Staleness tracking uses an HTML comment appended at
+    the end of the file so it does not pollute the rendered output.
+
+    Args:
+        env: Jinja2 environment with template search paths.
+        feature: The feature being documented.
+        depth: Template kind (one of ``_PROJECT_DOC_NAMES``).
+        source_hash: SHA-256 of source files at generation time.
+        source_info: Extracted source information.
+
+    Returns:
+        Markdown string with HTML comment footer and no YAML
+        frontmatter.
+    """
+    title = feature.name.replace("-", " ").replace("_", " ").title()
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    template = env.get_template(f"{depth}.md.j2")
+    body = template.render(
+        title=title,
+        feature_name=feature.name,
+        description=feature.description,
+        file_patterns=feature.files,
+        tags=feature.tags,
+        public_classes=source_info.public_classes,
+        public_functions=source_info.public_functions,
+        module_docstrings=source_info.module_docstrings,
+        config_keys=source_info.config_keys,
+        file_count=source_info.file_count,
+    )
+
+    body = "\n".join(line.rstrip() for line in body.splitlines())
+
+    footer = (
+        f"\n<!-- attune-generated:"
+        f" source_hash={source_hash}"
+        f" feature={feature.name}"
+        f" kind={depth}"
+        f" generated_at={generated_at} -->"
+    )
+
+    result = body + footer
+    if not result.endswith("\n"):
+        result += "\n"
+    return result
 
 
 @dataclass

@@ -177,7 +177,7 @@ class TestFormatStatusReport:
     def test_formats_stale_report(self) -> None:
         """Test markdown formatting of a staleness report."""
         report = StalenessReport(
-            entries=[
+            help_entries=[
                 FeatureStaleness(
                     feature="auth",
                     is_stale=True,
@@ -196,7 +196,7 @@ class TestFormatStatusReport:
 
         output = format_status_report(report)
 
-        assert "Help Status" in output
+        assert "Help Templates" in output
         assert "1** current" in output
         assert "1** stale" in output
         assert "auth" in output
@@ -204,7 +204,7 @@ class TestFormatStatusReport:
     def test_all_current_report(self) -> None:
         """Test report with no stale features."""
         report = StalenessReport(
-            entries=[
+            help_entries=[
                 FeatureStaleness(
                     feature="cli",
                     is_stale=False,
@@ -216,12 +216,12 @@ class TestFormatStatusReport:
 
         output = format_status_report(report)
         assert "0** stale" in output
-        assert "Stale Features" not in output
+        assert "### Stale" not in output
 
     def test_all_stale_report(self) -> None:
         """Test report with all stale features."""
         report = StalenessReport(
-            entries=[
+            help_entries=[
                 FeatureStaleness(
                     feature="auth",
                     is_stale=True,
@@ -234,4 +234,4 @@ class TestFormatStatusReport:
 
         output = format_status_report(report)
         assert "0** current" in output
-        assert "Stale Features" in output
+        assert "### Stale" in output

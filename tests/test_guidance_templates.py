@@ -26,6 +26,7 @@ from attune_author.generator import (
     _CORE_DEPTH_NAMES,
     _GUIDANCE_TEMPLATE_NAMES,
     _PROBLEM_TEMPLATE_NAMES,
+    _PROJECT_DOC_NAMES,  # noqa: F401 — used in test_all_template_names_covers_all_groups
     generate_feature_templates,
 )
 from attune_author.manifest import Feature
@@ -186,9 +187,7 @@ class TestGuidanceTemplateGeneration:
 
         content = result.templates[0].path.read_text(encoding="utf-8")
         for line in content.splitlines():
-            assert (
-                line == line.rstrip()
-            ), f"{kind}: line has trailing whitespace: {line!r}"
+            assert line == line.rstrip(), f"{kind}: line has trailing whitespace: {line!r}"
 
     @pytest.mark.parametrize("kind", GUIDANCE_KINDS)
     def test_ends_with_single_newline(
@@ -286,6 +285,7 @@ class TestGuidanceTemplateConstants:
             set(_CORE_DEPTH_NAMES)
             | set(_PROBLEM_TEMPLATE_NAMES)
             | set(_GUIDANCE_TEMPLATE_NAMES)
+            | set(_PROJECT_DOC_NAMES)
         )
         assert set(_ALL_TEMPLATE_NAMES) == expected
 
@@ -314,9 +314,7 @@ class TestGuidancePolishPrompts:
             ("comparison", "decision rule"),
         ],
     )
-    def test_kind_guidance_has_distinctive_phrase(
-        self, kind: str, expected_phrase: str
-    ) -> None:
+    def test_kind_guidance_has_distinctive_phrase(self, kind: str, expected_phrase: str) -> None:
         """Each guidance-kind prompt carries a phrase unique
         to that kind — guards against silent regression
         to the base-only fallback.
@@ -336,6 +334,4 @@ class TestGuidancePolishPrompts:
 
         prompt = SYSTEM_PROMPTS[kind]
         for phrase in ANTI_PATTERNS[kind]:
-            assert (
-                phrase in prompt
-            ), f"{kind}: anti-pattern {phrase!r} missing from prompt"
+            assert phrase in prompt, f"{kind}: anti-pattern {phrase!r} missing from prompt"

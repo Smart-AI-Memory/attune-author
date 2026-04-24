@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attune-author"
-version = "0.4.2"
+version = "0.5.0"
 description = "Documentation authoring and maintenance for the attune ecosystem — generate, maintain, and validate help content with AI assistance."
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
@@ -41,7 +41,7 @@ dependencies = [
     "jinja2>=3.1.0",
     "python-frontmatter>=1.0.0",
     "pyyaml>=6.0",
-    "attune-help>=0.5.1,<0.8",  # Schema contract: attune-author generates content that attune-help renders. Cap raised from <0.6 to <0.8 in 0.4.1 to admit attune-help 0.7.0 (path-keyed summaries + CLI + Beta). 0.7.0 is additive; no API breaks per its CHANGELOG.
+    "attune-help>=0.8.0",  # manifest + staleness now live in attune-help; attune-author re-exports them as shims.
 ]
 
 [project.optional-dependencies]
@@ -80,6 +80,9 @@ Repository = "https://github.com/Smart-AI-Memory/attune-author"
 Documentation = "https://github.com/Smart-AI-Memory/attune-author/blob/main/README.md"
 Changelog = "https://github.com/Smart-AI-Memory/attune-author/blob/main/CHANGELOG.md"
 Issues = "https://github.com/Smart-AI-Memory/attune-author/issues"
+
+[tool.uv.sources]
+attune-help = { path = "../attune-help", editable = true }
 
 [tool.setuptools.packages.find]
 where = ["src"]
