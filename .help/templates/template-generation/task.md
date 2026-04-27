@@ -2,61 +2,76 @@
 type: task
 feature: template-generation
 depth: task
-generated_at: 2026-04-14T16:02:30.330557+00:00
-source_hash: 83bb6e5c2f6907087e0db48de07d88ae3c21652d99c4be4964d15c1658289845
+generated_at: 2026-04-26T19:46:35.990000+00:00
+source_hash: e3ad2679109ec5bb81db1607254855a0f32feadedbce291531797eb11bf09912
 status: generated
 ---
 
 # Work with template generation
 
-Use template generation when you need to create markdown help templates automatically from your feature definitions and source code analysis.
+Use template generation when you need to create markdown help templates from feature definitions and source code analysis.
 
 ## Prerequisites
 
 - Access to the project source code
-- Familiarity with `src/attune_author/generator.py`
+- Understanding of the `src/attune_author/generator.py` module structure
 
 ## Generate templates for a feature
 
-1. **Import the generation function:**
+1. **Import the generation function**
    ```python
    from attune_author.generator import generate_feature_templates
    ```
 
-2. **Call the function with your feature:**
+2. **Define your feature and paths**
+   ```python
+   feature = Feature(name="your-feature-name")
+   help_dir = Path("help")
+   project_root = Path(".")
+   ```
+
+3. **Call the generator with your parameters**
    ```python
    result = generate_feature_templates(
-       feature=your_feature,
-       help_dir="docs/help",
-       project_root=".",
-       depths=["concept", "task", "reference"],  # Optional
-       overwrite=False  # Optional
+       feature=feature,
+       help_dir=help_dir,
+       project_root=project_root,
+       depths=["concept", "task", "reference"],  # optional
+       overwrite=False,  # optional
+       use_rag=True  # optional
    )
    ```
 
-3. **Check the generation result:**
+4. **Check the generation result**
    ```python
    print(f"Generated {len(result.templates)} templates for {result.feature}")
    for template in result.templates:
-       print(f"  {template.depth}: {template.path}")
+       print(f"- {template.depth}: {template.path}")
    ```
 
-## Verify template generation
+## Modify template generation behavior
 
-Check that templates were created successfully:
+1. **Locate the function you need to change**
+   Open `src/attune_author/generator.py` and find `generate_feature_templates()`. This function orchestrates the entire generation process.
 
-- Generated template files exist at the specified paths in `result.templates`
-- Each template has valid YAML frontmatter with correct `feature`, `depth`, and `source_hash` fields
-- Template content matches the structure for its depth type (concept, task, reference, etc.)
+2. **Review the current implementation**
+   Read the function's docstring, parameters, and return type to understand its responsibilities before making changes.
 
-## Handle generation errors
+3. **Follow the existing patterns**
+   Use the same naming conventions, error handling style (raising `ValueError` for invalid feature names), and return type structure (`GenerationResult`) as the current code.
 
-If `generate_feature_templates()` raises a `ValueError` with "Invalid feature name:", verify:
+4. **Test your changes**
+   Run the template generation tests to verify your modifications work correctly:
+   ```bash
+   pytest -k "template-generation"
+   ```
 
-- Your feature object has a valid name attribute
-- The feature name contains only allowed characters
-- Required feature properties are properly set
+## Verify template generation worked
 
-## Key files
+After running `generate_feature_templates()`, you should see:
+- A `GenerationResult` object with the correct feature name
+- Template files created at the specified paths in the help directory
+- Each generated template has a unique `source_hash` matching the input
+- The `matched_files` list contains the source files that were analyzed
 
-- `src/attune_author/generator.py` — Main template generation logic
+The generation succeeds when all specified depths produce valid markdown files with proper YAML frontmatter.

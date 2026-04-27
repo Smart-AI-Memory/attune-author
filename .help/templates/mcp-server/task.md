@@ -2,69 +2,86 @@
 type: task
 feature: mcp-server
 depth: task
-generated_at: 2026-04-14T16:15:33.250705+00:00
-source_hash: 05e470fa9511d5f688563c951fcd05ded9d16bcb0a768159c902d303a6418936
+generated_at: 2026-04-26T19:49:11.751377+00:00
+source_hash: ac562ed08ae3ee05fce7d2be7da63d01dec77f2cc64ab8e75c6cd9b9ea9a676e
 status: generated
 ---
 
-# Work with mcp server
+# Work with MCP server
 
-Use the MCP server when you need to expose attune-author's documentation generation capabilities as Model Context Protocol tools for Claude or other AI assistants.
+Use the MCP server when you need to expose attune-author's capabilities as callable tools through the Model Context Protocol.
 
 ## Prerequisites
 
 - Access to the project source code
-- Familiarity with the MCP server implementation in `src/attune_author/mcp/`
+- Python development environment set up
+- Understanding of MCP (Model Context Protocol) concepts
+
+## Configure the server
+
+1. **Review the server entry point**
+
+   Examine `main()` in `src/attune_author/mcp/server.py` to understand how the server initializes and handles requests.
+
+2. **Set up tool definitions**
+
+   Check `get_tools()` in `src/attune_author/mcp/tool_schemas.py` to see the available tools:
+   - `author_init` - Bootstrap help directory
+   - `author_status` - Report stale templates
+   - `author_generate` - Generate feature templates
+   - `author_maintain` - Regenerate stale templates
+   - `author_docs` - Generate documentation
+   - `author_lookup` - Look up help topics
+
+3. **Configure path validation**
+
+   Use `validate_file_path()` in `src/attune_author/mcp/path_validation.py` to ensure user-provided paths are safe and within allowed directories.
 
 ## Start the server
 
-1. **Run the MCP server entry point:**
+1. **Create a server instance**
+
+   Call `create_server()` to get a fresh `AttuneAuthorMCPServer` with the default workspace root.
+
+2. **Initialize with custom workspace**
+
+   If you need a specific workspace root:
+   ```python
+   server = AttuneAuthorMCPServer(workspace_root="/path/to/project")
+   ```
+
+3. **Run the server**
+
+   Execute the main entry point:
    ```bash
    python -m attune_author.mcp.server
    ```
 
-2. **Verify the server starts successfully:**
-   The server should initialize without errors and begin listening for tool calls.
+## Handle tool calls
 
-## Add a new tool
+1. **Process incoming requests**
 
-1. **Define the tool schema in `tool_schemas.py`:**
-   Add your tool definition to the dictionary returned by `get_tools()`, following the existing pattern with description, input_schema, and required fields.
+   The server automatically routes tool calls through `call_tool()` method on `AttuneAuthorMCPServer`.
 
-2. **Implement the handler in `handlers.py`:**
-   Add a new async method to the `AttuneAuthorHandlers` class that processes your tool's arguments and returns a result dictionary.
+2. **Access tool handlers**
 
-3. **Register the tool in `server.py`:**
-   Ensure the `AttuneAuthorMCPServer.call_tool()` method can route to your new handler.
+   Each tool maps to a method in `AttuneAuthorHandlers`:
+   - Tool calls validate arguments against schemas
+   - Handlers execute the requested operations
+   - Results return as structured dictionaries
 
-4. **Test the tool integration:**
-   Run `pytest -k "mcp"` to verify your changes don't break existing functionality.
+3. **Handle validation errors**
 
-## Modify existing tools
+   Path validation raises `ValueError` with specific messages for:
+   - Empty or null paths
+   - System directory access attempts
+   - Paths outside allowed directories
 
-1. **Locate the tool definition:**
-   Find your target tool in the `get_tools()` return value to understand its current schema and parameters.
+## Test your setup
 
-2. **Update the handler method:**
-   Modify the corresponding method in `AttuneAuthorHandlers` (like `author_generate`, `author_status`, etc.) to implement your changes.
+Run the MCP server tests to verify everything works:
+```bash
+pytest -k "mcp"
+```
 
-3. **Validate file paths if needed:**
-   Use `validate_file_path()` for any user-provided file paths to prevent directory traversal attacks.
-
-4. **Test the modified behavior:**
-   Verify that your changes work correctly and don't introduce security vulnerabilities.
-
-## Verify success
-
-The MCP server is working correctly when:
-- It starts without errors when you run the main entry point
-- Tool calls return expected results without exceptions
-- File path validation blocks attempts to access system directories
-- Tests pass with `pytest -k "mcp"`
-
-## Key files
-
-- `src/attune_author/mcp/server.py` — Core server and tool dispatcher
-- `src/attune_author/mcp/handlers.py` — Tool implementation logic
-- `src/attune_author/mcp/tool_schemas.py` — Tool definitions and schemas
-- `src/attune_author/mcp/path_validation.py` — Security validation for file paths
+You should see the server respond to tool calls and validate file paths correctly.

@@ -2,57 +2,44 @@
 type: reference
 feature: manifest
 depth: reference
-generated_at: 2026-04-14T16:06:38.652788+00:00
-source_hash: 9a254478123a04daeb294db1576d4b58b18d970e577f6263f65fa33be54c42ee
+generated_at: 2026-04-26T19:47:47.883498+00:00
+source_hash: 83a32541b2c8d0a608f767253efe855779cf22ea2a49e097f1c34012c2
 status: generated
 ---
 
 # Manifest reference
 
-Parse and query features.yaml manifests for project documentation.
+Load, validate, and manage feature manifest files that map source code to help templates.
+
+## Source files
+
+- `src/attune_author/manifest.py`
+
+## Tags
+
+`configuration`, `yaml`, `features`
+
+## Exports
+
+| Function | Parameters | Returns | Description |
+|---|---|---|---|
+| `is_safe_feature_name` | `name: str` | `bool` | Check if a feature name follows safe naming conventions |
+| `load_manifest` | `path: str` | `FeatureManifest` | Load and parse a manifest YAML file |
+| `match_files_to_features` | `files: list[str], manifest: FeatureManifest` | `dict[str, str]` | Map source files to their declared features |
+| `resolve_topic` | `topic: str, manifest: FeatureManifest` | `Feature | None` | Find the feature that handles a given topic |
+| `save_manifest` | `manifest: FeatureManifest, path: str` | `None` | Write a feature manifest to a YAML file |
+| `slugify` | `text: str` | `str` | Convert text to a URL-safe slug |
 
 ## Classes
 
-### Feature
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `str` | | Feature name |
-| `description` | `str` | | Human-readable description |
-| `files` | `list[str]` | `[]` | File glob patterns covered by this feature |
-| `tags` | `list[str]` | `[]` | Categorization tags |
-
-### FeatureManifest
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `version` | `int` | | Manifest format version |
-| `features` | `dict[str, Feature]` | | Feature definitions by name |
-| `path` | `Path \| None` | `None` | Source file path |
-
-## Functions
-
-| Function | Parameters | Returns | Description |
-|----------|------------|---------|-------------|
-| `is_safe_feature_name` | `name: object` | `bool` | Check whether a feature name is safe to use as a path component |
-| `load_manifest` | `help_dir: str \| Path` | `FeatureManifest` | Load and validate features.yaml from a .help/ directory |
-| `save_manifest` | `manifest: FeatureManifest, help_dir: str \| Path` | `Path` | Write a FeatureManifest to features.yaml |
-| `match_files_to_features` | `changed_files: list[str], manifest: FeatureManifest` | `dict[str, list[str]]` | Match changed files against feature glob patterns |
-| `resolve_topic` | `query: str, manifest: FeatureManifest` | `str \| None` | Resolve a user query to a feature name |
-
-### Raises
-
-| Function | Exception | Message |
-|----------|-----------|---------|
-| `load_manifest` | `FileNotFoundError` | 'No {...} in {...}' |
-| `load_manifest` | `ValueError` | 'Invalid manifest at {...}: expected mapping, got {...}' |
-| `load_manifest` | `ValueError` | "Invalid manifest at {...}: 'features' must be a mapping" |
-| `load_manifest` | `ValueError` | 'Invalid feature name: {...}' |
-| `load_manifest` | `ValueError` | "Invalid manifest at {...}: feature '{...}' must be a mapping" |
+| Class | Description |
+|---|---|
+| `Feature` | Single feature definition with source files and help metadata |
+| `FeatureManifest` | Collection of features with validation and lookup methods |
+| `Manifest` | Root manifest containing feature definitions and global settings |
 
 ## Constants
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `_MANIFEST_FILENAME` | `'features.yaml'` | Default manifest filename |
-| `_UNSAFE_NAME_TOKENS` | `{'/', '\\', '..', '\x00'}` | Character patterns forbidden in feature names |
+| Constant | Values | Description |
+|---|---|---|
+| `_MANIFEST_VERSION` | `"1.0"` | Current manifest file format version |

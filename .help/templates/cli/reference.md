@@ -2,26 +2,26 @@
 type: reference
 feature: cli
 depth: reference
-generated_at: 2026-04-14T16:14:12.030995+00:00
-source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
+generated_at: 2026-04-26T19:48:48.916783+00:00
+source_hash: f0f928daa13f792e7874da74f9fd669dc0e772acc208349a075625078eeb59c7
 status: generated
 ---
 
 # CLI reference
 
-Provides the command-line interface entry point for attune-author.
+Launch the attune-author command-line interface to author documentation templates and help content.
 
 ## Functions
 
 | Function | Parameters | Returns | Description |
 |----------|------------|---------|-------------|
-| `main` | `argv: list[str] \| None = None` | `int` | CLI entry point for attune-author |
+| `main` | `argv: list[str] \| None = None` | `int` | CLI entry point |
 
 ## Constants
 
-| Constant | Type | Description |
-|----------|------|-------------|
-| `_WELCOME_HEADER` | `str` | Header text displayed when the CLI starts |
+| Constant | Values | Description |
+|----------|---------|-------------|
+| `_WELCOME_HEADER` | `'attune-author — documentation authoring for the attune ecosystem'` | Welcome banner text |
 
 ## Source files
 

@@ -2,19 +2,35 @@
 type: concept
 feature: cli
 depth: concept
-generated_at: 2026-04-14T16:13:57.456552+00:00
-source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
+generated_at: 2026-04-26T19:48:32.149684+00:00
+source_hash: f0f928daa13f792e7874da74f9fd669dc0e772acc208349a075625078eeb59c7
 status: generated
 ---
 
 # Cli
 
+The CLI is the command-line interface for attune-author, providing access to documentation authoring commands through a single entry point.
+
 ## How it works
 
-The CLI module provides the command-line interface for attune-author, serving as the primary entry point for documentation authoring tasks in the attune ecosystem.
+The CLI acts as the user-facing gateway to attune-author functionality. When you run `attune-author` in your terminal, it routes to the `main()` function in the cli module, which presents the welcome header "attune-author — documentation authoring for the attune ecosystem" and handles command parsing and execution.
 
-When you run `attune-author` from the command line, the `main()` function processes your command-line arguments and routes them to the appropriate functionality. The interface displays "attune-author — documentation authoring for the attune ecosystem" as its welcome header, establishing the tool's purpose and scope.
+The system follows a standard CLI pattern where `main()` accepts an optional argument list (defaulting to command-line arguments) and returns an integer exit code to indicate success or failure to the shell.
 
-## Entry point
+## Entry point structure
 
-The `main()` function accepts an optional list of command-line arguments and returns an integer exit code. If you don't provide arguments, it reads them from `sys.argv`. This design allows the CLI to work both as a standalone command-line tool and as a programmatically callable interface for testing or integration purposes.
+The CLI provides a single point of access:
+
+- **`main(argv)`** — Processes command-line arguments and coordinates subcommand execution
+
+The function signature `main(argv: list[str] | None = None) -> int` allows the CLI to work both as a standalone command-line tool and as a programmatically callable interface for testing or integration scenarios.
+
+## Integration points
+
+Other parts of the attune-author system interact with the CLI through:
+
+| Function | Purpose | Location |
+|----------|---------|----------|
+| `main()` | CLI entry point and command router | `src/attune_author/cli.py` |
+
+The CLI serves as the primary interface between users and the attune-author documentation system, translating command-line intentions into internal function calls.

@@ -2,31 +2,32 @@
 type: concept
 feature: rag-hook
 depth: concept
-generated_at: 2026-04-19T06:42:38.488219+00:00
-source_hash: 65b7894e3d740f95f49a63218fbd54af3c2199aaf6aca5558be701274ef8f8e5
+generated_at: 2026-04-26T19:50:37.332949+00:00
+source_hash: d61374d79edea28930ef15ec35497f1fe3d5042dd35a449b02dca7cd837e332e
 status: generated
 ---
 
-# Rag Hook
+# RAG Hook
 
-The rag-hook feature enhances template polishing by retrieving real examples from existing attune-help documentation to guide LLM rewrites.
+The RAG hook provides optional retrieval-augmented generation for template polishing, letting the AI rewriter reference real attune-help patterns instead of inventing content.
 
-## How retrieval works
+## Core responsibilities
 
-When you polish a generated template, the rag-hook can search through your existing attune-help documentation to find similar templates. This gives the LLM concrete examples to follow instead of making up patterns from scratch.
+The hook acts as a bridge between attune-author's polish pass and the attune-rag system. When enabled, it retrieves existing templates that match the feature being polished, giving the LLM concrete examples of style, structure, and naming conventions to follow.
 
-The hook retrieves the top 3 most relevant templates based on the feature name and template type. For example, when polishing a concept template about error handling, it might find other concept templates that document error-related features.
+Two functions handle this integration:
 
-## Optional dependency design
+- **`rag_enabled()`** checks whether RAG grounding is available and should be used
+- **`ground_polish_context()`** fetches related templates and formats them as context for the polish prompt
 
-The rag-hook implements graceful degradation so attune-author works whether or not you have the RAG capabilities installed:
+## Graceful degradation model
 
-- **Without `[rag]` extra**: The `rag_enabled()` function returns `False`, and polishing proceeds without retrieval
-- **With `[rag]` extra**: The hook imports attune-rag and builds grounding context from your existing templates
-- **Environment override**: Set `ATTUNE_AUTHOR_RAG` to disable RAG even when the dependencies are available
+The hook uses lazy imports and optional dependencies to keep attune-author lightweight. If the `[rag]` extra isn't installed or the `ATTUNE_AUTHOR_RAG` environment variable is set, RAG grounding is silently disabled and polishing continues without retrieval context.
 
-## Core functions
+This design lets users install attune-author standalone for basic template generation while providing enhanced polish quality when the full RAG stack is available.
 
-**`rag_enabled()`** checks whether RAG grounding should be active for the current polish operation. It returns `True` when the optional dependencies are available and not explicitly disabled.
+## Integration with the polish workflow
 
-**`ground_polish_context()`** searches your documentation and returns a formatted context block containing relevant template examples. The LLM receives this context along with the auto-generated template to improve its rewriting.
+During template polishing, the hook retrieves up to 3 related templates based on feature name and template type. These examples appear in the LLM prompt as "Related existing templates (for reference)" — giving the AI concrete patterns to follow rather than generating formulaic placeholder content.
+
+The retrieved templates serve as style guides, showing real section structures, naming conventions, and content depth that match the project's documentation standards.

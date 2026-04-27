@@ -2,64 +2,45 @@
 type: task
 feature: cli
 depth: task
-generated_at: 2026-04-14T16:14:02.965746+00:00
-source_hash: 4ac30d5131e33f6a69817200fcda2b4abf2333630a486563d638d8630c15d2a9
+generated_at: 2026-04-26T19:48:40.826441+00:00
+source_hash: f0f928daa13f792e7874da74f9fd669dc0e772acc208349a075625078eeb59c7
 status: generated
 ---
 
 # Work with cli
 
-Use the attune-author CLI when you need to run documentation authoring commands from the command line, including bootstrap, generate, status, and maintain operations.
+Use the attune-author CLI when you need to run documentation authoring commands from the terminal, including bootstrap, generate, status, and maintenance operations.
 
 ## Prerequisites
 
 - Access to the project source code
-- Python environment with attune-author installed
+- Python development environment set up
 - Familiarity with `src/attune_author/cli.py`
 
-## Run the CLI
+## Steps
 
-1. **Execute the main entry point.**
-   Run the CLI through the `main()` function:
-   ```bash
-   python -m attune_author
-   ```
+1. **Examine the CLI entry point.**
+   Review the `main()` function in `src/attune_author/cli.py` to understand the current command structure and argument parsing.
 
-2. **Pass command arguments.**
-   Provide subcommands and options as needed:
-   ```bash
-   python -m attune_author generate --help
-   ```
+2. **Identify the target functionality.**
+   Locate the specific function or command handler that controls the behavior you want to modify. The `main()` function serves as the primary entry point for all CLI operations.
 
-3. **Verify the welcome message appears.**
-   The CLI displays "attune-author — documentation authoring for the attune ecosystem" when started successfully.
+3. **Modify the CLI behavior.**
+   Update the relevant code sections while maintaining the existing argument parsing patterns and error handling conventions used throughout the file.
 
-## Modify CLI behavior
-
-1. **Locate the main function.**
-   Open `src/attune_author/cli.py` and find the `main(argv: list[str] | None = None) -> int` function that serves as the CLI entry point.
-
-2. **Update command handling.**
-   Modify the argument parsing logic within `main()` to add new subcommands or change existing behavior.
-
-3. **Test your changes.**
-   Run the CLI with your modifications:
-   ```bash
-   python -m attune_author [your-command]
-   ```
-
-4. **Run targeted tests.**
-   Verify your changes don't break existing functionality:
+4. **Test your changes.**
+   Run targeted tests to verify your modifications work correctly:
    ```bash
    pytest -k "cli"
    ```
 
-## Verify success
+## Verification
 
-The task succeeds when:
-- The CLI runs without errors
-- Your new commands or modifications work as expected
-- All CLI-related tests pass
+Your CLI modifications are working correctly when:
+- The command executes without syntax errors
+- All existing CLI commands continue to function as expected
+- New functionality responds with the expected output or behavior
+- The welcome header "_WELCOME_HEADER" displays correctly when appropriate
 
 ## Key files
 

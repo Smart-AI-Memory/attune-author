@@ -2,31 +2,39 @@
 type: concept
 feature: staleness-and-maintenance
 depth: concept
-generated_at: 2026-04-14T16:10:08.341587+00:00
-source_hash: c10710575b8cb6254ba10924c1586487b414a6595a4130159511d0fd6754ca50
+generated_at: 2026-04-26T19:47:57.095143+00:00
+source_hash: 196e1038a7194fe466fe8c96559cc4197bb18833f5afc123452ec132dd9007b6
 status: generated
 ---
 
 # Staleness And Maintenance
 
-Staleness and maintenance automatically detects when help templates are outdated and regenerates them to keep documentation in sync with source code changes.
+## How it works
 
-## How detection works
+Staleness detection identifies when generated help templates are out of sync with their source code. When you modify functions, classes, or files that generated templates reference, those templates become stale and need regeneration to reflect current behavior.
 
-The system uses SHA-256 hashing to compare your current source files against the stored hash from when templates were last generated. When you modify source code that affects a feature's documentation, the system marks that feature's templates as stale.
+The system tracks this through source hashes — cryptographic fingerprints of the code that generated each template. When source files change, their hashes change, marking dependent templates as stale.
 
-The detection process examines all source files for each feature, excluding common build artifacts like `__pycache__`, `.mypy_cache`, and `node_modules`. For example, if you update a function signature in your feature's main module, `compute_source_hash()` will generate a new hash that doesn't match the stored value.
+## Core components
 
-## Core data structures
+**MaintenanceResult** captures what happened during a maintenance run. It tracks which features were stale, which got regenerated successfully, which were skipped because they require manual updates, and which failed during regeneration.
 
-**`FeatureStaleness`** tracks the staleness status for individual features. It stores the current hash of source files, the previously stored hash, whether the feature is stale, and which specific files were included in the hash calculation.
+**Staleness detection** compares current source hashes against the hashes stored in template frontmatter. Templates with mismatched hashes are marked stale and queued for regeneration.
 
-**`StalenessReport`** aggregates staleness information across all features in your project. It provides counts of stale versus current features and lists the names of features that need regeneration.
+**Automated maintenance** runs either manually through `run_maintenance()` or automatically via the post-commit hook. The hook examines recent git changes and regenerates only templates affected by those changes.
 
-**`MaintenanceResult`** captures the outcome of a maintenance run, including which features were detected as stale, which were successfully regenerated, which were skipped due to manual edits, and which failed during regeneration.
+## When staleness matters
 
-## Maintenance workflows
+Templates become stale in three scenarios:
 
-You can run maintenance in two ways: manually through `run_maintenance()` or automatically via the post-commit hook with `run_hook()`. The manual approach lets you specify which features to check and supports dry-run mode to preview changes without making them.
+1. **Function signatures change** — adding parameters, changing return types, or modifying docstrings
+2. **Class structure evolves** — new methods, field additions, or inheritance changes
+3. **Module organization shifts** — moving files, renaming modules, or changing import paths
 
-The post-commit hook automatically triggers after commits, using `get_changed_files()` to focus only on features whose source files were modified in the most recent commit. This targeted approach keeps the hook fast while ensuring affected documentation stays current.
+The maintenance system prevents documentation drift by catching these changes before templates mislead users.
+
+## Hook integration
+
+The post-commit hook automatically runs maintenance after each commit. It examines `get_changed_files()` to identify what changed, then regenerates only the templates that depend on those files. This keeps help content fresh without manual intervention.
+
+For manual maintenance, `run_maintenance()` can target specific features or scan the entire help directory. The `dry_run` option shows what would be regenerated without making changes.

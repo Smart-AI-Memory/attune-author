@@ -2,34 +2,47 @@
 type: concept
 feature: doc-gen-pipeline
 depth: concept
-generated_at: 2026-04-14T16:17:53.986879+00:00
-source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
+generated_at: 2026-04-26T19:49:52.268283+00:00
+source_hash: ed1e0ee4f61601566ddf49801a234a64d93605b2683aafe5ee4f86d48d8dd885
 status: generated
 ---
 
 # Doc Gen Pipeline
 
-## How it works
+A three-stage documentation generation process that creates higher-quality help content by having an LLM plan, write, and polish documentation rather than generating it in a single pass.
 
-The doc gen pipeline transforms source code into polished documentation through three sequential AI-powered stages: outline generation, content writing, and review.
+## Architecture
 
-Instead of generating documentation in a single step, this pipeline breaks the process into focused phases. First, `build_outline` creates a structured plan for the documentation. Then `write_content` expands that outline into full prose, optionally focusing on specific sections. Finally, `review_content` polishes the draft for clarity and consistency.
+The pipeline breaks documentation generation into distinct phases that mirror how human writers work:
 
-You configure the pipeline through `DocGenConfig`, which lets you specify the target audience (like "developers"), document type (like "api-reference"), and token limits for each stage. The pipeline tracks its progress in `DocGenResult`, recording the content from each stage and which stages completed successfully.
+1. **Outline** — Analyze source code and create a structured plan
+2. **Write** — Generate content section by section following the outline
+3. **Review** — Polish the draft for clarity, accuracy, and style
 
-## Core components
+Each stage uses focused prompts and token limits to produce better results than a monolithic "write documentation" approach. The outline stage caps at 1,000 tokens to force concise planning, while writing and review stages get 8,000 tokens each for detailed work.
 
-**`DocGenConfig`** stores your pipeline preferences, including the AI model to use (`claude-sonnet-4-20250514` by default), maximum tokens per stage, and how many outline sections to process in each writing chunk.
+## Configuration options
 
-**`DocGenResult`** captures everything the pipeline produces: the final content, intermediate outline and draft versions, completed stages, and the original source file path.
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `doc_type` | `'api-reference'` | Format to generate (API docs, README, tutorial) |
+| `audience` | `'developers'` | Target reader level (affects complexity and examples) |
+| `model` | `'claude-sonnet-4-20250514'` | LLM model for all stages |
+| `sections_per_chunk` | `4` | How many outline sections to write at once |
+| `section_focus` | `[]` | Specific sections to prioritize or generate exclusively |
 
-**Stage functions** handle the AI interactions:
-- `build_outline` analyzes source code and creates a documentation structure
-- `write_content` converts outline sections into readable prose
-- `review_content` refines the draft for publication quality
+You configure the pipeline through `DocGenConfig`, then call `generate_docs()` with a source file path. The function returns a `DocGenResult` containing the final content plus intermediate artifacts (outline, draft) and metadata about which stages completed successfully.
 
-## Integration points
+## Stage breakdown
 
-You start the pipeline by calling `generate_docs()` with a source file path and optional configuration. The function coordinates all three stages and returns a complete `DocGenResult`.
+**Outline stage** (`build_outline`) reads your source code and creates a structured plan showing what sections the documentation needs and what each should cover. This prevents the writing stage from wandering or missing important details.
 
-The pipeline requires the Anthropic AI library — if it's not installed, you'll get an `AnthropicCallError` with installation instructions for the `attune-author[ai]` extra.
+**Write stage** (`write_content`) generates prose for each section in the outline. It processes sections in chunks (4 by default) to stay within token limits while maintaining context across related sections.
+
+**Review stage** (`review_content`) takes the complete draft and polishes it for clarity, technical accuracy, and style consistency. It can catch issues like unclear explanations, missing context, or inconsistent terminology that emerge when sections are written separately.
+
+## When stages fail
+
+If any stage encounters an error, the pipeline stops and returns what it completed successfully. You get partial results rather than losing all work when one step fails. The `stages_completed` field in `DocGenResult` shows which phases finished so you can resume or debug from the failure point.
+
+The pipeline requires the `attune-author[ai]` extra for Anthropic API access. Without it, `generate_docs()` raises `AnthropicCallError` with installation instructions.

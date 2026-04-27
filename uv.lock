@@ -113,7 +113,7 @@ provides-extras = ["ai", "rag", "plugin", "rich", "dev"]
 
 [[package]]
 name = "attune-help"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "../attune-help" }
 dependencies = [
     { name = "python-frontmatter" },

@@ -2,41 +2,33 @@
 type: concept
 feature: manifest
 depth: concept
-generated_at: 2026-04-14T16:06:14.749377+00:00
-source_hash: 9a254478123a04daeb294db1576d4b58b18d970e577f6263f65fa33be54c42ee
+generated_at: 2026-04-26T19:47:27.049260+00:00
+source_hash: 83a32541b2c8d0a608f767253efe855779cf22ea2a49e097f20091f1c34012c2
 status: generated
 ---
 
 # Manifest
 
-The manifest is a parser and query engine for the `.help/features.yaml` file that maps project features to their source code files.
+## What
 
-## Core components
+The manifest is a centralized registry that maps your project's features to their help content. It lives in `.help/features.yaml` and tells the attune-help engine which features exist, how to identify source files that belong to each feature, and where to find their documentation templates.
 
-**Feature dataclass**
-Represents a single project feature with its metadata:
-- `name`: The feature identifier
-- `description`: Human-readable description
-- `files`: List of file paths or glob patterns associated with the feature
-- `tags`: Optional labels for categorization
+## Why
 
-**FeatureManifest dataclass**
-Contains the complete parsed manifest:
-- `version`: Schema version for the manifest format
-- `features`: Dictionary mapping feature names to Feature objects
-- `path`: File system location of the source `features.yaml`
+Without a manifest, the help system would have to guess which files relate to which features by scanning your entire codebase on every query. The manifest eliminates this overhead by providing a definitive mapping. It also lets you control feature boundaries — deciding that "authentication" includes both `auth.py` and `session.py`, or that "database" covers everything in the `models/` directory.
 
-## File operations
+## Structure and components
 
-The manifest system loads and validates `features.yaml` from `.help/` directories through `load_manifest()`, which enforces naming rules and structural requirements. You can persist changes back to disk using `save_manifest()`.
+The manifest contains three main elements:
 
-Feature names must pass safety checks via `is_safe_feature_name()` to prevent path traversal issues—names cannot contain `/`, `\`, `..`, or null bytes.
+**Feature definitions** — Each feature has a name (like `authentication` or `task-runner`) and file patterns that identify which source files belong to it. The engine uses these patterns to match code changes to the right documentation.
 
-## Query capabilities
+**Version tracking** — The manifest includes a version field that the engine checks to ensure compatibility between your project's manifest format and the help system's expectations.
 
-Two query functions help connect user requests to features:
+**Name validation** — Feature names must follow specific rules (alphanumeric, hyphens, and underscores only) to work correctly with the template naming system and cross-linking engine.
 
-- `match_files_to_features()`: Given a list of changed files, returns which features contain those files based on glob pattern matching
-- `resolve_topic()`: Takes a user query string and attempts to find the corresponding feature name
+## File matching and topic resolution
 
-These functions enable workflows like "show me help for the files I just modified" or "find documentation for the authentication system."
+When you ask about a feature, the engine uses the manifest to find relevant source files, then looks for templates that cover that feature. The `match_files_to_features` function takes a list of file paths and returns which features they belong to. The `resolve_topic` function does the reverse — given a feature name, it finds the appropriate help content.
+
+This two-way mapping ensures that whether you start from code or from a question, the engine can connect you to the right information.

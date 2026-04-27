@@ -2,57 +2,78 @@
 type: task
 feature: rag-hook
 depth: task
-generated_at: 2026-04-19T06:42:48.889284+00:00
-source_hash: 65b7894e3d740f95f49a63218fbd54af3c2199aaf6aca5558be701274ef8f8e5
+generated_at: 2026-04-26T19:50:48.254347+00:00
+source_hash: d61374d79edea28930ef15ec35497f1fe3d5042dd35a449b02dca7cd837e332e
 status: generated
 ---
 
 # Work with rag hook
 
-Use the RAG hook when you need to enhance LLM template polishing with real examples from existing documentation instead of letting the model invent patterns.
+Use rag hook when you need to add contextual grounding to the template polish pass or modify how attune-author retrieves related help content.
 
 ## Prerequisites
 
 - Access to the project source code
 - Familiarity with `src/attune_author/rag_hook.py`
 
-## Enable RAG grounding
+## Check if RAG is enabled
 
-1. **Check if RAG is available.**
-   Call `rag_enabled()` to verify the RAG system is installed and not disabled via the `ATTUNE_AUTHOR_RAG` environment variable.
+1. **Call the detection function.**
+   Use `rag_enabled()` to check whether RAG grounding is available:
+   ```python
+   from attune_author.rag_hook import rag_enabled
 
-2. **Retrieve grounding context.**
-   Call `ground_polish_context(feature_name, template_type, k=3)` to get relevant examples:
-   - `feature_name`: The feature you're documenting
-   - `template_type`: The type of template being polished
-   - `k`: Number of related examples to retrieve (default: 3)
+   if rag_enabled():
+       # RAG is available
+   else:
+       # Fall back to non-RAG behavior
+   ```
 
-3. **Verify context retrieval.**
-   The function returns a string with grounding context when successful, or `None` when RAG is unavailable or no relevant examples exist.
+2. **Handle the disabled state.**
+   When RAG is disabled (via `ATTUNE_AUTHOR_RAG` environment variable), your code should degrade gracefully without the extra context.
 
-## Configure RAG behavior
+## Retrieve grounding context
 
-1. **Disable RAG when needed.**
-   Set the `ATTUNE_AUTHOR_RAG` environment variable to disable RAG grounding entirely.
+1. **Build the context block.**
+   Call `ground_polish_context()` with your feature name and template type:
+   ```python
+   from attune_author.rag_hook import ground_polish_context
 
-2. **Adjust retrieval count.**
-   Pass a different `k` value to `ground_polish_context()` to control how many examples are retrieved for grounding.
+   context = ground_polish_context("your-feature", "task", k=3)
+   ```
 
-## Test your changes
+2. **Handle the None case.**
+   The function returns `None` when RAG is disabled or no relevant templates are found:
+   ```python
+   if context:
+       # Include context in your polish prompt
+       prompt = f"Context:\n{context}\n\nTemplate to polish:\n{template}"
+   else:
+       # Polish without additional context
+       prompt = f"Template to polish:\n{template}"
+   ```
 
-Run the RAG hook tests to verify your modifications work correctly:
+## Modify RAG behavior
 
-```bash
-pytest -k "rag-hook"
-```
+1. **Locate the function you need.**
+   - `rag_enabled()` controls when RAG grounding runs
+   - `ground_polish_context()` builds the context block from retrieved templates
 
-## Verify success
+2. **Follow the existing patterns.**
+   - Use lazy imports to keep dependencies optional
+   - Return graceful defaults when RAG is unavailable
+   - Maintain the same return types and error handling
 
-Your RAG hook integration works when:
-- `rag_enabled()` returns `True` when the RAG system is available
-- `ground_polish_context()` returns relevant example content for valid feature names
-- The system gracefully handles missing RAG dependencies without breaking attune-author
+3. **Test your changes.**
+   Run the test suite to verify your modifications work:
+   ```bash
+   pytest -k "rag_hook"
+   ```
 
-## Key files
+## Verification
 
-- `src/attune_author/rag_hook.py`
+You successfully modified the rag hook when:
+- `rag_enabled()` returns the expected boolean value
+- `ground_polish_context()` returns properly formatted context or `None` as appropriate
+- The system gracefully handles cases when RAG dependencies are unavailable
+- All existing tests pass

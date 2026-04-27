@@ -2,28 +2,23 @@
 type: reference
 feature: doc-gen-pipeline
 depth: reference
-generated_at: 2026-04-14T16:18:17.690202+00:00
-source_hash: 6474cc0d69cd0c4e82d4326b3b640d5a2a68fcfc45b228e045a8cca9f9c93b0b
+generated_at: 2026-04-26T19:50:22.310414+00:00
+source_hash: ed1e0ee4f61601566ddf49801a234a64d93605b2683aafe5ee4f86d48d8dd885
 status: generated
 ---
 
 # Doc Gen Pipeline reference
 
-Generate documentation through a multi-stage pipeline that creates outlines, writes content, and reviews drafts.
+Generate documentation through a three-stage pipeline: outline, write, and review. Configure documentation type, audience, and model parameters to produce API references, README sections, or docstrings from source code.
 
 ## Classes
 
-### DocGenResult
+| Class | Description |
+|-------|-------------|
+| `DocGenConfig` | Configuration for the document generation pipeline |
+| `DocGenResult` | Result of document generation with content and pipeline stages |
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `content` | `str` | `''` | Final generated documentation content |
-| `outline` | `str` | `''` | Documentation outline from the first stage |
-| `draft` | `str` | `''` | Draft content from the writing stage |
-| `stages_completed` | `list[str]` | `field(default_factory=list)` | Names of completed pipeline stages |
-| `source_path` | `str` | `''` | Path to the source file that was processed |
-
-### DocGenConfig
+### DocGenConfig fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -34,7 +29,17 @@ Generate documentation through a multi-stage pipeline that creates outlines, wri
 | `max_write_tokens` | `int` | `8000` | Token limit for content writing |
 | `max_review_tokens` | `int` | `8000` | Token limit for content review |
 | `sections_per_chunk` | `int` | `4` | Number of sections to process per chunk |
-| `section_focus` | `list[str]` | `field(default_factory=list)` | Specific sections to emphasize |
+| `section_focus` | `list[str]` | `field(default_factory=list)` | Specific sections to focus on during generation |
+
+### DocGenResult fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `content` | `str` | `''` | Final generated documentation content |
+| `outline` | `str` | `''` | Structured outline created in stage one |
+| `draft` | `str` | `''` | Draft content from stage two |
+| `stages_completed` | `list[str]` | `field(default_factory=list)` | Pipeline stages that completed successfully |
+| `source_path` | `str` | `''` | Path to the source file or content |
 
 ## Functions
 
@@ -50,14 +55,4 @@ Generate documentation through a multi-stage pipeline that creates outlines, wri
 
 | Function | Exception | Message |
 |----------|-----------|---------|
-| `generate_docs` | `AnthropicCallError` | `"{...} — install with: pip install 'attune-author[ai]'"` |
-
-## Source files
-
-- `src/attune_author/doc_gen/pipeline.py`
-- `src/attune_author/doc_gen/stages.py`
-- `src/attune_author/doc_gen/config.py`
-
-## Tags
-
-`doc-gen`, `pipeline`, `llm`, `multi-stage`
+| `generate_docs` | `AnthropicCallError` | `{...} — install with: pip install 'attune-author[ai]'` |
