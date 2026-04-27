@@ -1,0 +1,108 @@
+name: RAG Gate
+
+# Runs the smoke eval before any publish to PyPI.
+# Replaces the Vercel Blue-Green model from the strategic plan:
+# this is a PyPI package, not a web app.
+#
+# Blue-Green mapping:
+#   Blue  = stable release on pypi.org        (publish.yml, environment: pypi)
+#   Green = candidate installed from source   (this workflow)
+#
+# Gate logic:
+#   Pass → merge to main and publish are unblocked.
+#   Fail → merge is blocked; publish.yml requires this job via `needs:`.
+#
+# Cooldown (30 min between publish attempts):
+#   Enforced by GitHub Environment protection rule on the `pypi` environment.
+#   Settings → Environments → pypi → Wait timer: 30 minutes.
+#   No workflow-level sleep needed.
+#
+# Cost: ~10 answer calls + ~10 judge calls (~$0.10–0.30 per run).
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why are you running the gate manually?"
+        required: false
+        default: "pre-publish check"
+
+  # Run weekly so regressions from model drift surface before a release.
+  # Monday 13:00 UTC — one hour before cross-repo-compat.yml (14:00 UTC).
+  schedule:
+    - cron: "0 13 * * 1"
+
+  # Uncomment to gate every push to main (adds ~$0.20/push to API costs):
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-eval:
+    name: RAG smoke eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package with eval dependencies
+        # Installs from source (the "Green" candidate) — not from PyPI.
+        # python-dotenv is included so smoke_eval.py load_dotenv() is a no-op
+        # in CI (ANTHROPIC_API_KEY comes from the secret, not a .env file).
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[ai]"
+          python -m pip install pyyaml python-dotenv
+
+      - name: Run smoke eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NO_COLOR: "1"
+        run: |
+          python benchmarks/smoke_eval.py --out smoke_results.json
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-eval-results
+          path: smoke_results.json
+          retention-days: 30
+
+      - name: Annotate PR with gate summary
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          python - <<'EOF'
+          import json, os, sys
+          data = json.loads(open("smoke_results.json").read())
+          m = data["metrics"]
+          gates = data["gates"]
+          passed = data["exit_code"] == 0
+          icon = "✅" if passed else "❌"
+          status = "PASSED" if passed else "FAILED"
+          lines = [
+              f"## {icon} RAG Gate {status}",
+              "",
+              "| Metric | Value | Gate | Result |",
+              "| :----- | ----: | ---: | :----- |",
+              f"| Faithfulness | {m['faithfulness']*100:.1f}% | ≥95% | {'✅' if gates['faithfulness']['passed'] else '❌'} |",
+              f"| Strict Accuracy | {m['strict_accuracy']*100:.1f}% | ≥85% | {'✅' if gates['strict_accuracy']['passed'] else '❌'} |",
+              "",
+              f"Valid judgments: {m['total_valid']}/5",
+          ]
+          summary = "\n".join(lines)
+          step_summary = os.environ.get("GITHUB_STEP_SUMMARY", "")
+          if step_summary:
+              with open(step_summary, "a") as f:
+                  f.write(summary + "\n")
+          print(summary)
+          EOF

@@ -1,0 +1,155 @@
+# RAG evaluation configuration for attune-author.
+#
+# Canonical spec for eval mechanics — maps persona thresholds in the
+# strategic plan to concrete scripts, metrics, and data sources.
+# Thresholds are grounded in measured v0.3.9 data; see BASELINES.md.
+
+version: 1
+
+# ---------------------------------------------------------------------------
+# Evaluator framework
+# ---------------------------------------------------------------------------
+
+evaluator:
+  framework: anthropic-judge
+  # Opus judges answers produced by the answer models. Temperature 0 for
+  # determinism. Verdicts: correct | partial | hallucinated.
+  judge_model: claude-opus-4-6
+  answer_models:
+    - id: sonnet
+      model_id: claude-sonnet-4-6
+    - id: opus
+      model_id: claude-opus-4-6
+  temperature: 0
+  max_tokens_answer: 1024
+  max_tokens_judge: 512
+
+# ---------------------------------------------------------------------------
+# Corpus
+# ---------------------------------------------------------------------------
+
+corpus:
+  question_set: benchmarks/hallucination-v0.3.9/questions.yaml
+  question_count: 25
+  categories:
+    - location    # 4 questions — which module defines X?
+    - signature   # 8 questions — what are the parameters of X?
+    - default     # 4 questions — what is the default value of X?
+    - enum        # 4 questions — what are the allowed values of X?
+    - behavior    # 3 questions — what does X do when Y?
+    - dataclass   # 2 questions — what fields does X have?
+
+# ---------------------------------------------------------------------------
+# Conditions (baseline vs treated)
+# ---------------------------------------------------------------------------
+
+conditions:
+  baseline:
+    description: README + git file tree only (no RAG context)
+    rag_enabled: false
+    context_sources:
+      - README.md
+      - git_file_tree  # produced by `git ls-files`
+  treated:
+    description: Baseline context + attune-help reference template for each question's feature
+    rag_enabled: true
+    context_sources:
+      - README.md
+      - git_file_tree
+      - ".help/templates/{feature}/reference.md"  # one per feature, loaded by feature tag on question
+
+# ---------------------------------------------------------------------------
+# Metrics
+# ---------------------------------------------------------------------------
+
+metrics:
+  faithfulness:
+    description: >
+      Fraction of answers that are not hallucinated (correct + partial).
+      Measures whether the model fabricates facts. A partial answer that says
+      "I cannot verify this" is not a hallucination; a fabricated module path is.
+    formula: (correct + partial) / (correct + partial + hallucinated)
+    persona: end_user
+    gate_condition: treated  # threshold applies to the RAG-enabled condition
+
+  strict_accuracy:
+    description: >
+      Fraction of answers fully correct. Maps to context recall: did the
+      retrieved context contain enough information to answer exactly?
+    formula: correct / (correct + partial + hallucinated)
+    persona: developer
+    gate_condition: treated
+
+  context_precision:
+    description: >
+      Fraction of retrieved context tokens actually cited in the answer.
+      Measures whether the RAG corpus contains irrelevant chunks that dilute
+      signal. Requires per-answer citation attribution — not yet implemented.
+    formula: cited_context_chunks / total_retrieved_chunks
+    persona: support_agent
+    gate_condition: treated
+    status: TODO  # extend run_judge.py to emit cited_context_ids per judgment
+
+# ---------------------------------------------------------------------------
+# Thresholds (all data-backed; see BASELINES.md for derivation)
+# ---------------------------------------------------------------------------
+
+thresholds:
+  end_user:
+    metric: faithfulness
+    gate: 0.95
+    rollback_on: below
+    # Baseline (no RAG) measures 0.92. Treated measures 1.00.
+    # The gate sits between them: any deploy that silently drops RAG
+    # context will score 0.92 and trigger rollback.
+
+  developer:
+    metric: strict_accuracy
+    gate: 0.85
+    rollback_on: below
+    # Baseline measures 0.24–0.36. Treated measures 1.00.
+    # 49pp gap between gate and baseline — catches partial context
+    # degradation (stale reference templates) before strict accuracy
+    # falls below 85%.
+
+  support_agent:
+    metric: context_precision
+    gate: 0.80
+    rollback_on: below
+    status: NOT_ENFORCED  # threshold is a placeholder until metric is implemented
+
+# ---------------------------------------------------------------------------
+# Script mapping
+# ---------------------------------------------------------------------------
+
+scripts:
+  run_answers: benchmarks/hallucination-v0.3.9/run_answers.py
+  run_judge:   benchmarks/hallucination-v0.3.9/run_judge.py
+  report:      benchmarks/hallucination-v0.3.9/report.py
+  # Full eval: python run_answers.py && python run_judge.py && python report.py
+  # Cost: ~100 answer calls + ~100 judge calls (~$3–8 depending on model mix)
+
+  smoke_eval:  benchmarks/smoke_eval.py
+  # Subset eval for CI: 5 questions, 1 model (sonnet), 2 conditions
+  # Cost: ~10 answer calls + ~10 judge calls (~$0.10–0.30)
+  # Questions: 2, 9, 12, 27, 39 (maximally discriminating; see BASELINES.md)
+
+# ---------------------------------------------------------------------------
+# Deployment gate model (PyPI package, not a web app)
+# ---------------------------------------------------------------------------
+#
+# "Blue-Green" for a Python package maps as follows:
+#
+#   Blue  = stable production release on pypi.org
+#   Green = pre-release or candidate on test.pypi.org
+#
+# There is NO automatic rollback for a published PyPI release — once a
+# version is published it cannot be deleted (only yanked). The gate
+# therefore BLOCKS merging to main and BLOCKS the publish.yml from running
+# when smoke_eval fails.
+#
+# Cooldown (30 min) is enforced via GitHub Environment protection rules:
+#   Settings → Environments → pypi → "Wait timer: 30 minutes"
+# This prevents back-to-back publish attempts after a failed gate.
+#
+# Workflow: .github/workflows/rag-gate.yml

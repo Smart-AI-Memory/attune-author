@@ -24,6 +24,12 @@ status: ## Check help template staleness
 regenerate: ## Regenerate all help templates
 	uv run python scripts/regenerate_help.py
 
+eval: ## Full RAG hallucination benchmark (25 questions, 2 models — costs ~$3-8 in API calls)
+	cd benchmarks/hallucination-v0.3.9 && uv run python run_answers.py && uv run python run_judge.py && uv run python report.py
+
+eval-smoke: ## Smoke RAG gate check (5 questions, 1 model — costs ~$0.10-0.30 in API calls)
+	uv run python benchmarks/smoke_eval.py
+
 clean: ## Remove build artifacts
 	rm -rf build/ dist/ *.egg-info src/*.egg-info
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
