@@ -16,6 +16,7 @@ from attune_help.staleness import (
     _read_frontmatter_value,
     build_doc_footer,
     check_staleness,
+    compute_semantic_hash,
     compute_source_hash,
     parse_doc_footer,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "_read_frontmatter_value",
     "build_doc_footer",
     "check_staleness",
+    "compute_semantic_hash",
     "compute_source_hash",
     "parse_doc_footer",
 ]
