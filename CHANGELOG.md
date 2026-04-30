@@ -13,6 +13,15 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.5.1] - 2026-04-30
+
+### Changed
+
+- **Staleness shim** — `attune_author.staleness` now re-exports
+  `compute_semantic_hash` from `attune-help>=0.10.0`, which introduced
+  Phase 1 semantic freshness hashing. No behaviour change for existing
+  callers of `compute_source_hash` — the delegation is automatic.
+
 ## [0.5.0] - 2026-04-24
 
 ### Added — Project-doc generation (four new kinds that write to `docs/`)
