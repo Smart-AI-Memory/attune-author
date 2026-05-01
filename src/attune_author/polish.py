@@ -34,8 +34,11 @@ Opting out of strict mode is explicit and deliberate:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+import time
+from pathlib import Path
 
 from attune_author.doc_gen._anthropic import (
     AnthropicCallError,
@@ -43,6 +46,149 @@ from attune_author.doc_gen._anthropic import (
     get_client,
 )
 from attune_author.polish_prompts import get_system_prompt
+
+#: Anthropic model used for the polish pass. Hoisted to a
+#: module-level constant so it participates in the cache key —
+#: bumping the model invalidates cache entries automatically.
+_POLISH_MODEL = "claude-sonnet-4-20250514"
+
+#: Env var that overrides the default polish cache directory.
+_CACHE_DIR_ENV = "ATTUNE_AUTHOR_POLISH_CACHE"
+_CACHE_DIR_DEFAULT = Path.home() / ".attune" / "polish_cache"
+
+#: Env var (in seconds) that overrides the default cache-entry
+#: TTL. ``0`` disables pruning entirely; negatives and unparseable
+#: values fall back to the default. Tracked via mtime, which we
+#: bump on every cache hit so heat is observed reliably even on
+#: filesystems mounted ``noatime``.
+_CACHE_TTL_ENV = "ATTUNE_AUTHOR_POLISH_CACHE_TTL_SECONDS"
+_CACHE_TTL_DEFAULT_SECONDS = 30 * 24 * 60 * 60  # 30 days
+
+
+def _cache_dir() -> Path:
+    env = os.environ.get(_CACHE_DIR_ENV, "").strip()
+    return Path(env) if env else _CACHE_DIR_DEFAULT
+
+
+def _cache_ttl_seconds() -> int:
+    """Read the cache TTL from the environment.
+
+    Returns the default (30 days) when the env var is unset,
+    blank, negative, or unparseable. ``0`` is honored as
+    "disable pruning" and returned verbatim.
+    """
+    raw = os.environ.get(_CACHE_TTL_ENV, "").strip()
+    if not raw:
+        return _CACHE_TTL_DEFAULT_SECONDS
+    try:
+        val = int(raw)
+    except ValueError:
+        return _CACHE_TTL_DEFAULT_SECONDS
+    return val if val >= 0 else _CACHE_TTL_DEFAULT_SECONDS
+
+
+def _cache_key(*parts: str) -> str:
+    h = hashlib.sha256()
+    for part in parts:
+        h.update(part.encode())
+        h.update(b"\x00")
+    return h.hexdigest()
+
+
+def _cache_get(key: str) -> str | None:
+    path = _cache_dir() / f"{key}.md"
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    # Bump mtime so the prune sweeper treats this entry as hot.
+    # Best-effort: a permission error here just means the entry
+    # may age out sooner than its actual access pattern warrants,
+    # which is acceptable degradation.
+    try:
+        os.utime(path, None)
+    except OSError:
+        pass
+    return content
+
+
+def _cache_put(key: str, content: str) -> None:
+    cache = _cache_dir()
+    cache.mkdir(parents=True, exist_ok=True)
+    tmp = cache / f"{key}.tmp"
+    tmp.write_text(content, encoding="utf-8")
+    tmp.rename(cache / f"{key}.md")
+    # Lazy disk-space hygiene: piggyback the prune onto write
+    # operations so we don't need a separate scheduler. Cost is
+    # one stat per entry in the cache dir, which is negligible
+    # for the entry counts a single project produces.
+    try:
+        _cache_prune(cache)
+    except OSError:
+        # INTENTIONAL: prune failure must not break a successful
+        # write — the cache stays usable, it just doesn't shrink.
+        pass
+
+
+def _cache_prune(cache: Path | None = None) -> int:
+    """Delete cache entries whose mtime is older than the TTL.
+
+    Args:
+        cache: Cache directory to sweep. Defaults to
+            :func:`_cache_dir`. Accepting an explicit path keeps
+            the function trivially testable without monkey-patching
+            the env.
+
+    Returns:
+        Count of files deleted. ``0`` when the cache directory
+        does not exist or the TTL is set to ``0`` (disabled).
+    """
+    cache = cache if cache is not None else _cache_dir()
+    ttl = _cache_ttl_seconds()
+    if ttl <= 0 or not cache.exists():
+        return 0
+    cutoff = time.time() - ttl
+    deleted = 0
+    for entry in cache.iterdir():
+        if entry.suffix != ".md":
+            continue
+        try:
+            if entry.stat().st_mtime < cutoff:
+                entry.unlink()
+                deleted += 1
+        except OSError:
+            # Swallow per-entry failures so a single locked or
+            # vanished file doesn't block the rest of the sweep.
+            continue
+    return deleted
+
+
+def clear_cache() -> int:
+    """Delete every entry in the polish cache directory.
+
+    Removes both finalized ``.md`` entries and any leftover
+    ``.tmp`` files from interrupted writes. Best-effort: per-entry
+    failures are swallowed so a single locked file does not block
+    the remaining deletions.
+
+    Returns:
+        Count of files deleted. ``0`` when the cache directory
+        does not exist.
+    """
+    cache = _cache_dir()
+    if not cache.exists():
+        return 0
+    deleted = 0
+    for entry in cache.iterdir():
+        if entry.suffix not in {".md", ".tmp"}:
+            continue
+        try:
+            entry.unlink()
+            deleted += 1
+        except OSError:
+            continue
+    return deleted
+
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +270,20 @@ def polish_template(
     """
     effective_strict = _env_strict_default() if strict is None else strict
 
+    system_prompt = get_system_prompt(template_type)
+    key = _cache_key(
+        content,
+        source_summary,
+        template_type,
+        system_prompt,
+        augmented_context or "",
+        _POLISH_MODEL,
+    )
+    cached = _cache_get(key)
+    if cached is not None:
+        logger.debug("Polish cache hit for %s/%s", feature_name, template_type)
+        return cached
+
     try:
         polished = _call_llm(
             content,
@@ -132,7 +292,12 @@ def polish_template(
             template_type,
             augmented_context=augmented_context,
         )
-        return _sanitize_output(polished)
+        result = _sanitize_output(polished)
+        try:
+            _cache_put(key, result)
+        except OSError as cache_exc:
+            logger.debug("Polish cache write failed (non-fatal): %s", cache_exc)
+        return result
     except Exception as exc:  # noqa: BLE001
         # INTENTIONAL: lenient mode swallows any LLM failure
         # so that `attune-author` can still run without an
@@ -229,7 +394,7 @@ def _call_llm(
         client,
         system=system_prompt,
         user_message=user_message,
-        model="claude-sonnet-4-20250514",
+        model=_POLISH_MODEL,
         max_tokens=4096,
     )
     return polished or content
@@ -244,6 +409,7 @@ __all__ = [
     "STRICT_ENV_VAR",
     "_env_strict_default",
     "build_source_summary",
+    "clear_cache",
     "polish_template",
 ]
 

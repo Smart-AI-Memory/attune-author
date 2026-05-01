@@ -27,10 +27,30 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 
 logger = logging.getLogger(__name__)
 
 _DISABLE_ENV = "ATTUNE_AUTHOR_RAG"
+
+# Module-level singleton so the corpus is loaded once per process rather than
+# once per template kind. Thread-safe: _PIPELINE_LOCK guards first-time
+# construction; subsequent reads need no lock (pipeline is immutable after init).
+_PIPELINE = None  # type: ignore[assignment]  # RagPipeline | None
+_PIPELINE_LOCK = threading.Lock()
+
+
+def _get_pipeline():  # type: ignore[return]
+    """Return the process-level RagPipeline, constructing it on first call."""
+    global _PIPELINE
+    if _PIPELINE is not None:
+        return _PIPELINE
+    with _PIPELINE_LOCK:
+        if _PIPELINE is None:
+            from attune_rag import RagPipeline
+
+            _PIPELINE = RagPipeline()
+    return _PIPELINE
 
 
 def rag_enabled() -> bool:
@@ -91,15 +111,10 @@ def ground_polish_context(
     if not rag_enabled():
         return None
 
-    try:
-        from attune_rag import RagPipeline
-    except ImportError:
-        return None
-
     query = f"{template_type} template for {feature_name}"
 
     try:
-        pipeline = RagPipeline()
+        pipeline = _get_pipeline()
         result = pipeline.run(query, k=k)
     except Exception:  # noqa: BLE001
         # INTENTIONAL: grounding is best-effort. Any
