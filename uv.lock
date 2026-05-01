@@ -55,7 +55,7 @@ wheels = [
 
 [[package]]
 name = "attune-author"
-version = "0.5.1"
+version = "0.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "attune-help" },
@@ -113,7 +113,7 @@ provides-extras = ["ai", "rag", "plugin", "rich", "dev"]
 
 [[package]]
 name = "attune-help"
-version = "0.10.0"
+version = "0.10.1"
 source = { editable = "../attune-help" }
 dependencies = [
     { name = "python-frontmatter" },
