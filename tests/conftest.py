@@ -31,6 +31,19 @@ def _lenient_polish_by_default(monkeypatch: pytest.MonkeyPatch) -> Iterator[None
     yield
 
 
+@pytest.fixture(autouse=True)
+def _reset_rag_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reset the module-level RagPipeline singleton before each test.
+
+    ground_polish_context() caches the pipeline after first construction.
+    Tests that patch attune_rag.RagPipeline need the singleton to be None
+    so the patch intercepts construction rather than being bypassed.
+    """
+    import attune_author.rag_hook as _rh
+
+    monkeypatch.setattr(_rh, "_PIPELINE", None)
+
+
 @pytest.fixture
 def help_dir(tmp_path: Path) -> Path:
     """Create a .help/ directory with a features.yaml."""

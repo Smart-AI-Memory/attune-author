@@ -169,6 +169,27 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Report stale features without regenerating.",
     )
 
+    p_cache = sub.add_parser(
+        "cache",
+        help="Manage the on-disk polish cache",
+        description=(
+            "Inspect and clear the on-disk LLM polish cache used by the "
+            "generator. Entries are pruned automatically by mtime (default "
+            "TTL 30 days, configurable via ATTUNE_AUTHOR_POLISH_CACHE_TTL_SECONDS); "
+            "this command exposes a manual nuke."
+        ),
+    )
+    cache_sub = p_cache.add_subparsers(dest="cache_command", help="Cache subcommands")
+    cache_sub.add_parser(
+        "clear",
+        help="Delete every cached polish entry",
+        description=(
+            "Remove all entries from the polish cache directory. Useful "
+            "after a prompt change in attune-author itself, or to reclaim "
+            "disk space without waiting for the TTL sweep."
+        ),
+    )
+
     p_docs = sub.add_parser(
         "docs",
         help="Generate docs from source (requires [ai])",
@@ -220,6 +241,7 @@ def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         "generate": _cmd_generate,
         "regenerate": _cmd_regenerate,
         "docs": _cmd_docs,
+        "cache": _cmd_cache,
     }
     handler = handlers.get(args.command)
     if handler is None:
@@ -401,6 +423,20 @@ def _cmd_regenerate(args: argparse.Namespace) -> int:
             print(f"Failed: {', '.join(result.failed)}")
 
     return 0
+
+
+def _cmd_cache(args: argparse.Namespace) -> int:
+    """Handle the cache command and its subcommands."""
+    from attune_author.polish import _cache_dir, clear_cache
+
+    if args.cache_command == "clear":
+        deleted = clear_cache()
+        cache_path = _cache_dir()
+        print(f"Cleared {deleted} entries from {cache_path}")
+        return 0
+
+    print("Usage: attune-author cache clear", file=sys.stderr)
+    return 1
 
 
 def _cmd_docs(args: argparse.Namespace) -> int:

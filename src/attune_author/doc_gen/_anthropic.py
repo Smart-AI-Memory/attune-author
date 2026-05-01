@@ -12,12 +12,16 @@ from __future__ import annotations
 import logging
 import os
 import re
+import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)
+
+_MAX_RETRIES = 3
+_RETRY_BASE_DELAY = 1.0  # seconds; doubles each attempt
 
 #: Source-content character budgets per doc-gen stage. Tuned so
 #: the outline and review stages see enough code for accuracy
@@ -55,6 +59,19 @@ def _redact(text: str) -> str:
     return _KEY_PATTERN.sub(_REDACTED, text)
 
 
+def _is_retryable(exc: Exception) -> bool:
+    """Return True for transient Anthropic errors that are safe to retry."""
+    try:
+        from anthropic import APIConnectionError, APIStatusError
+    except ImportError:
+        return False
+    if isinstance(exc, APIConnectionError):
+        return True
+    if isinstance(exc, APIStatusError):
+        return exc.status_code in (429, 529)
+    return False
+
+
 def get_client(api_key: str | None = None) -> Anthropic:
     """Instantiate an Anthropic client.
 
@@ -85,11 +102,11 @@ def call_anthropic(
     model: str,
     max_tokens: int,
 ) -> str:
-    """Make a single-turn ``messages.create`` call.
+    """Make a single-turn ``messages.create`` call with retry/backoff.
 
-    Wraps the SDK call so every caller shares identical error
-    handling, message shape, and response unwrapping. Any
-    exception raised by the SDK is re-raised as
+    Retries up to ``_MAX_RETRIES`` times on transient errors (rate
+    limits and overload responses). Non-transient SDK errors fail
+    immediately. All exceptions are re-raised as
     :class:`AnthropicCallError` with a redacted message and an
     empty ``__cause__`` chain to guarantee credential material
     cannot leak through ``str(exc.__cause__)``.
@@ -106,23 +123,40 @@ def call_anthropic(
         string if the response carried no content.
 
     Raises:
-        AnthropicCallError: On any SDK or transport failure.
+        AnthropicCallError: On any SDK or transport failure after
+            retries are exhausted.
     """
-    try:
-        response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user_message}],
-        )
-    except Exception as exc:  # noqa: BLE001
-        # INTENTIONAL: every SDK exception type funnels through
-        # one redaction pass so credential material can't leak
-        # into logs, error surfaces, or upstream exception
-        # chains. `from None` strips __cause__ so callers
-        # inspecting the chain only ever see the redacted form.
-        raise AnthropicCallError(_redact(str(exc))) from None
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES + 1):
+        if attempt:
+            delay = _RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            logger.warning(
+                "Anthropic call failed (attempt %d/%d), retrying in %.1fs: %s",
+                attempt,
+                _MAX_RETRIES,
+                delay,
+                _redact(str(last_exc)),
+            )
+            time.sleep(delay)
+        try:
+            response = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": user_message}],
+            )
+            if response.content:
+                return response.content[0].text
+            return ""
+        except Exception as exc:  # noqa: BLE001
+            # INTENTIONAL: every SDK exception type funnels through
+            # one redaction pass so credential material can't leak
+            # into logs, error surfaces, or upstream exception
+            # chains. `from None` strips __cause__ so callers
+            # inspecting the chain only ever see the redacted form.
+            if _is_retryable(exc):
+                last_exc = exc
+                continue
+            raise AnthropicCallError(_redact(str(exc))) from None
 
-    if response.content:
-        return response.content[0].text
-    return ""
+    raise AnthropicCallError(_redact(str(last_exc))) from None

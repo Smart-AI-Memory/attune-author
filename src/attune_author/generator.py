@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,55 @@ from attune_author.manifest import Feature, is_safe_feature_name
 from attune_author.staleness import _read_frontmatter_value, compute_source_hash
 
 logger = logging.getLogger(__name__)
+
+#: Cap on concurrent LLM calls during the parallel polish phase.
+#: Sized to comfortably fit under Anthropic's per-minute rate
+#: limits while still saturating the LLM-bound wall time of a
+#: typical ``regenerate --all-kinds`` run.
+_POLISH_MAX_WORKERS = 4
+
+
+def _parallel_polish(
+    pending: list[tuple[str, str, Path]],
+    feature: object,
+    source_info: object,
+    use_rag: bool,
+) -> dict[str, tuple[str, Path]]:
+    """Polish a batch of rendered templates concurrently.
+
+    Args:
+        pending: List of (depth, rendered_content, out_path) tuples.
+        feature: Feature being documented (read-only, thread-safe).
+        source_info: Extracted source info (read-only, thread-safe).
+        use_rag: Whether to use RAG grounding during polish.
+
+    Returns:
+        Mapping of depth -> (polished_content, out_path). Raises
+        the first exception encountered (propagated from the future).
+    """
+
+    def _task(depth: str, content: str, out_path: Path) -> tuple[str, str, Path]:
+        polished = _maybe_polish(
+            content,
+            feature,  # type: ignore[arg-type]
+            source_info,  # type: ignore[arg-type]
+            template_type=depth,
+            use_rag=use_rag,
+        )
+        return depth, polished, out_path
+
+    results: dict[str, tuple[str, Path]] = {}
+    workers = min(len(pending), _POLISH_MAX_WORKERS)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(_task, depth, content, out_path): depth
+            for depth, content, out_path in pending
+        }
+        for future in as_completed(futures):
+            depth, polished, out_path = future.result()
+            results[depth] = (polished, out_path)
+    return results
+
 
 #: Core progressive-depth template kinds. These form the
 #: progressive disclosure path that attune-help renders:
@@ -234,6 +284,9 @@ def generate_feature_templates(
             ", ".join(feature.doc_paths[1:]),
         )
 
+    # Phase 1: render all templates (fast Jinja2, sequential).
+    # Determines which depths are active and builds the rendered skeleton.
+    pending: list[tuple[str, str, Path]] = []
     for depth in target_depths:
         if depth not in _ALL_TEMPLATE_NAMES:
             logger.warning("Unknown template kind '%s', skipping", depth)
@@ -278,17 +331,15 @@ def generate_feature_templates(
                 source_hash=source_hash,
                 source_info=source_info,
             )
+        pending.append((depth, content, out_path))
 
-        # LLM polish pass — improves writing quality
-        content = _maybe_polish(
-            content,
-            feature,
-            source_info,
-            template_type=depth,
-            use_rag=use_rag,
-        )
+    # Phase 2: LLM polish — run all depths concurrently.
+    polished = _parallel_polish(pending, feature, source_info, use_rag)
 
-        out_path.write_text(content, encoding="utf-8")
+    # Phase 3: write results in original depth order.
+    for depth, content, out_path in pending:
+        final_content, _ = polished[depth]
+        out_path.write_text(final_content, encoding="utf-8")
         result.templates.append(
             GeneratedTemplate(
                 feature=feature.name,
