@@ -229,3 +229,51 @@ class TestPolishTemplateCacheIntegration:
         # The LLM must have been called exactly once — the second
         # call is served from the on-disk cache.
         assert mock_llm.call_count == 1
+
+    def test_volatile_generated_at_does_not_invalidate_cache(self, cache_dir: Path) -> None:
+        """Regression test for the 0.6.0 bug: the rendered template
+        embeds a fresh ``generated_at`` timestamp on every render,
+        which made the cache key change every time and the cache
+        never hit. Two renders that differ ONLY in generated_at
+        must share a cache entry.
+        """
+        from attune_author import polish
+
+        first_render = (
+            "---\n"
+            "type: concept\n"
+            "feature: foo\n"
+            "generated_at: 2026-05-01T10:00:00.000000+00:00\n"
+            "source_hash: abc\n"
+            "---\n\n"
+            "# Foo\n"
+        )
+        second_render = first_render.replace("10:00:00", "12:34:56")
+        assert first_render != second_render  # sanity: timestamps differ
+
+        with patch.dict(
+            "os.environ",
+            {"ANTHROPIC_API_KEY": "fake"},  # pragma: allowlist secret
+        ):
+            with patch(
+                "attune_author.polish._call_llm",
+                return_value="polished",
+            ) as mock_llm:
+                polish.polish_template(first_render, "foo", "sum", template_type="concept")
+                polish.polish_template(second_render, "foo", "sum", template_type="concept")
+
+        assert (
+            mock_llm.call_count == 1
+        ), "second render with different generated_at should have hit cache"
+
+    def test_normalize_for_key_strips_generated_at(self) -> None:
+        """Unit-level check on the normalizer used to build the key."""
+        from attune_author.polish import _normalize_for_key
+
+        a = "type: concept\ngenerated_at: 2026-05-01T10:00:00+00:00\nsource_hash: x\n"
+        b = "type: concept\ngenerated_at: 2026-05-01T11:11:11+00:00\nsource_hash: x\n"
+        assert _normalize_for_key(a) == _normalize_for_key(b)
+        # Other fields must NOT be stripped — changing source_hash
+        # is a real input change and must produce a different key.
+        c = "type: concept\ngenerated_at: 2026-05-01T10:00:00+00:00\nsource_hash: DIFFERENT\n"
+        assert _normalize_for_key(a) != _normalize_for_key(c)

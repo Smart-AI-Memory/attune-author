@@ -37,6 +37,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import re
 import time
 from pathlib import Path
 
@@ -85,6 +86,31 @@ def _cache_ttl_seconds() -> int:
     except ValueError:
         return _CACHE_TTL_DEFAULT_SECONDS
     return val if val >= 0 else _CACHE_TTL_DEFAULT_SECONDS
+
+
+#: Volatile YAML frontmatter fields that change on every render
+#: but do not affect the polish output. Stripped from ``content``
+#: before hashing the cache key so the cache actually hits when
+#: the same source is regenerated. The LLM still sees the real
+#: ``content`` (with the live timestamp) — only the *key* is
+#: normalized. Without this, every render embeds a fresh
+#: ``generated_at: <iso-8601>`` and the cache never hits.
+_VOLATILE_FRONTMATTER_FIELDS = ("generated_at",)
+_VOLATILE_FRONTMATTER_RE = re.compile(
+    r"^(" + "|".join(re.escape(f) for f in _VOLATILE_FRONTMATTER_FIELDS) + r"):.*$",
+    re.MULTILINE,
+)
+
+
+def _normalize_for_key(content: str) -> str:
+    """Strip volatile frontmatter fields so the cache key is stable.
+
+    Replaces every line beginning with a known volatile field
+    (currently just ``generated_at:``) with a placeholder. The
+    real content fed to the LLM is unchanged — this transform
+    only feeds the hash.
+    """
+    return _VOLATILE_FRONTMATTER_RE.sub(r"\1: <stable>", content)
 
 
 def _cache_key(*parts: str) -> str:
@@ -272,7 +298,7 @@ def polish_template(
 
     system_prompt = get_system_prompt(template_type)
     key = _cache_key(
-        content,
+        _normalize_for_key(content),
         source_summary,
         template_type,
         system_prompt,
