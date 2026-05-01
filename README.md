@@ -68,6 +68,33 @@ attune-author generate security-audit
 attune-author regenerate
 ```
 
+## Polish cache
+
+`attune-author` caches LLM polish responses on disk so re-generating an
+already-polished template is instant and costs zero tokens. The cache
+lives at `~/.attune/polish_cache/` by default.
+
+```bash
+# View cache stats (entries, size)
+attune-author cache status
+
+# Flush all entries (e.g. after a major prompt change)
+attune-author cache clear
+```
+
+**Environment variables**
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `ATTUNE_AUTHOR_POLISH_CACHE` | `~/.attune/polish_cache` | Override cache directory |
+| `ATTUNE_AUTHOR_POLISH_CACHE_TTL_SECONDS` | `2592000` (30 days) | TTL in seconds; `0` disables expiry |
+
+Cache entries are keyed by a SHA-256 hash of the content (with
+volatile frontmatter fields like `generated_at` stripped),
+`source_summary`, `template_type`, system prompt, augmented RAG
+context, and model name. Changing the model automatically invalidates
+all prior entries.
+
 ## Python API
 
 ```python
