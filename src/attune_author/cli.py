@@ -14,10 +14,16 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+import webbrowser
 from pathlib import Path
 
+from attune_author.editor_launcher import PortfileData, SidecarStartError, ensure_sidecar
 from attune_author.mcp.path_validation import validate_file_path
 
 logger = logging.getLogger(__name__)
@@ -190,6 +196,34 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    p_edit = sub.add_parser(
+        "edit",
+        help="Open a template in the browser editor",
+        description=(
+            "Open a template file in the attune-gui editor. Ensures a "
+            "local sidecar is running (spawning one if needed), resolves "
+            "the path to its registered corpus, and opens the editor in "
+            "your default browser."
+        ),
+    )
+    p_edit.add_argument("path", help="Template file to open.")
+    p_edit.add_argument(
+        "--corpus",
+        default=None,
+        help="Force a specific registered corpus id instead of auto-resolving.",
+    )
+    p_edit.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Print the editor URL without launching a browser.",
+    )
+    p_edit.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Sidecar port (default: discover via portfile, else auto-pick).",
+    )
+
     p_docs = sub.add_parser(
         "docs",
         help="Generate docs from source (requires [ai])",
@@ -242,6 +276,7 @@ def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         "regenerate": _cmd_regenerate,
         "docs": _cmd_docs,
         "cache": _cmd_cache,
+        "edit": _cmd_edit,
     }
     handler = handlers.get(args.command)
     if handler is None:
@@ -473,6 +508,146 @@ def _cmd_docs(args: argparse.Namespace) -> int:
     else:
         print(result.content)
 
+    return 0
+
+
+def _cmd_edit(args: argparse.Namespace) -> int:
+    """Handle the ``edit`` command — open a template in the browser editor.
+
+    Returns:
+        - ``0`` on success.
+        - ``1`` if the path doesn't exist or isn't covered by a registered
+          corpus and the user declines to register one.
+        - ``2`` if the sidecar can't be started.
+    """
+    abs_path = Path(args.path).expanduser().resolve()
+    if not abs_path.exists():
+        print(
+            f"Path does not exist: {abs_path}\n"
+            f"  Hint: pass an absolute or working-dir-relative path to a "
+            f"template file.",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        sidecar = ensure_sidecar(port=args.port)
+    except SidecarStartError as exc:
+        print(f"Could not start the editor sidecar ({exc.reason}): {exc}", file=sys.stderr)
+        if exc.reason == "missing_command":
+            print("  Install with: pip install attune-gui", file=sys.stderr)
+        elif exc.reason == "timeout":
+            print(
+                "  The configured port may be in use. Try `--port <n>` "
+                "with a different port, or stop the conflicting process.",
+                file=sys.stderr,
+            )
+        return 2
+
+    if args.corpus:
+        corpus_id = args.corpus
+        try:
+            rel_path = abs_path.relative_to(_corpus_root(sidecar, corpus_id))
+        except ValueError:
+            print(
+                f"Path {abs_path} is not inside corpus {corpus_id!r}.",
+                file=sys.stderr,
+            )
+            return 1
+        rel = rel_path.as_posix()
+    else:
+        resolved = _resolve_path(sidecar, abs_path)
+        if resolved is None:
+            return _handle_unregistered_path(sidecar, abs_path)
+        corpus_id, rel = resolved
+
+    url = (
+        f"{sidecar.url}/editor"
+        f"?corpus={urllib.parse.quote(corpus_id)}"
+        f"&path={urllib.parse.quote(rel)}"
+    )
+    print(url)
+
+    if not args.no_open:
+        webbrowser.open(url)
+
+    return 0
+
+
+def _resolve_path(sidecar: PortfileData, abs_path: Path) -> tuple[str, str] | None:
+    """POST /api/corpus/resolve. Returns ``(corpus_id, rel_path)`` or None."""
+    payload = json.dumps({"abs_path": str(abs_path)}).encode("utf-8")
+    req = urllib.request.Request(
+        f"{sidecar.url}/api/corpus/resolve",
+        data=payload,
+        headers={"Content-Type": "application/json", "Origin": "http://127.0.0.1"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5.0) as resp:  # noqa: S310
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+    return body["corpus_id"], body["rel_path"]
+
+
+def _corpus_root(sidecar: PortfileData, corpus_id: str) -> Path:
+    """GET /api/corpus → look up the registered root for ``corpus_id``."""
+    req = urllib.request.Request(
+        f"{sidecar.url}/api/corpus",
+        headers={"Origin": "http://127.0.0.1"},
+    )
+    with urllib.request.urlopen(req, timeout=5.0) as resp:  # noqa: S310
+        body = json.loads(resp.read().decode("utf-8"))
+    for entry in body.get("corpora", []):
+        if entry.get("id") == corpus_id:
+            return Path(entry["path"])
+    raise FileNotFoundError(f"Unknown corpus id: {corpus_id!r}")
+
+
+def _handle_unregistered_path(sidecar: PortfileData, abs_path: Path) -> int:
+    """Path is outside every registered corpus. Prompt to register the parent."""
+    parent = abs_path.parent
+    print(
+        f"{abs_path} is not inside any registered corpus.",
+        file=sys.stderr,
+    )
+    if not sys.stdin.isatty():
+        print(
+            f"  Register one with the dashboard, or run again interactively. "
+            f"Suggested root: {parent}",
+            file=sys.stderr,
+        )
+        return 1
+    answer = input(f"Register {parent} as a new corpus? [y/N] ").strip().lower()
+    if answer != "y":
+        return 1
+    return _register_and_retry(sidecar, abs_path, parent)
+
+
+def _register_and_retry(sidecar: PortfileData, abs_path: Path, root: Path) -> int:
+    """POST /api/corpus/register, then retry the open flow."""
+    payload = json.dumps({"name": root.name, "path": str(root), "kind": "ad-hoc"}).encode("utf-8")
+    req = urllib.request.Request(
+        f"{sidecar.url}/api/corpus/register",
+        data=payload,
+        headers={"Content-Type": "application/json", "Origin": "http://127.0.0.1"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=5.0) as resp:  # noqa: S310
+        entry = json.loads(resp.read().decode("utf-8"))
+
+    corpus_id = entry["id"]
+    rel = abs_path.relative_to(root).as_posix()
+    url = (
+        f"{sidecar.url}/editor"
+        f"?corpus={urllib.parse.quote(corpus_id)}"
+        f"&path={urllib.parse.quote(rel)}"
+    )
+    print(url)
+    webbrowser.open(url)
     return 0
 
 
