@@ -1125,9 +1125,17 @@ def _render_template(
     # reads when discriminating template kinds) and ``depth``
     # (legacy field kept for backward compatibility with
     # anything reading older generated output).
+    #
+    # ``name`` is the human-readable template name and is required
+    # by the editor schema. Combining feature + depth keeps the
+    # name distinct across features sharing a depth (e.g., two
+    # different ``concept`` templates) so editors / retrievers can
+    # disambiguate without collisions.
+    template_name = f"{feature.name}-{depth}"
     frontmatter = (
         f"---\n"
         f"type: {depth}\n"
+        f"name: {template_name}\n"
         f"feature: {feature.name}\n"
         f"depth: {depth}\n"
         f"generated_at: {now}\n"
