@@ -59,6 +59,11 @@ class TestGenerateFeatureTemplates:
             assert content.startswith("---\n")
             assert "source_hash:" in content
             assert "feature: auth" in content
+            # Schema requires `name`; combining feature+depth keeps it
+            # distinct across features. Regression: prior versions
+            # omitted `name`, which surfaced as a `missing-required`
+            # diagnostic in the editor for every generated template.
+            assert f"name: auth-{t.depth}" in content
 
     def test_specific_depths(self, help_dir: Path, project_root: Path) -> None:
         """Test generating only specific depths."""
