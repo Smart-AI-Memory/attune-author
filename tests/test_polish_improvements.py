@@ -293,8 +293,15 @@ class TestPolishTemplateUsesPerTypePrompt:
 
         call_kwargs = mock_client.messages.create.call_args.kwargs
         sent_system = call_kwargs["system"]
-        assert "TROUBLESHOOTING" in sent_system
-        assert "symptom table" in sent_system
+        # Polish wraps the system in a content-block list with
+        # cache_control; flatten to text for substring assertions.
+        sent_text = (
+            "".join(block["text"] for block in sent_system)
+            if isinstance(sent_system, list)
+            else sent_system
+        )
+        assert "TROUBLESHOOTING" in sent_text
+        assert "symptom table" in sent_text
 
     def test_call_llm_includes_template_type_in_user_message(self) -> None:
         """The user message mentions the template type so the
