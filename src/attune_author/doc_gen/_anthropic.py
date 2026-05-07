@@ -101,6 +101,7 @@ def call_anthropic(
     user_message: str,
     model: str,
     max_tokens: int,
+    cache_system: bool = False,
 ) -> str:
     """Make a single-turn ``messages.create`` call with retry/backoff.
 
@@ -117,6 +118,13 @@ def call_anthropic(
         user_message: User-turn content.
         model: Anthropic model ID.
         max_tokens: Response token budget.
+        cache_system: When True, wraps ``system`` as a content-block
+            list with an ``ephemeral`` ``cache_control`` marker.
+            Anthropic's prompt caching kicks in when the cacheable
+            block crosses a model-specific threshold (1024 tokens
+            for sonnet/opus, 2048 for haiku); below that, the call
+            still works but no cache is used. Cache token usage is
+            emitted at INFO so callers can verify hits.
 
     Returns:
         The first text block of the response, or the empty
@@ -126,6 +134,17 @@ def call_anthropic(
         AnthropicCallError: On any SDK or transport failure after
             retries are exhausted.
     """
+    if cache_system:
+        system_payload: object = [
+            {
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ]
+    else:
+        system_payload = system
+
     last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES + 1):
         if attempt:
@@ -142,9 +161,10 @@ def call_anthropic(
             response = client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
-                system=system,
+                system=system_payload,
                 messages=[{"role": "user", "content": user_message}],
             )
+            _log_cache_usage(response, model)
             if response.content:
                 return response.content[0].text
             return ""
@@ -160,3 +180,24 @@ def call_anthropic(
             raise AnthropicCallError(_redact(str(exc))) from None
 
     raise AnthropicCallError(_redact(str(last_exc))) from None
+
+
+def _log_cache_usage(response: object, model: str) -> None:
+    """Emit cache hit telemetry from an Anthropic response.
+
+    Reads ``cache_creation_input_tokens`` and ``cache_read_input_tokens``
+    from the response's usage object when present and logs them at INFO.
+    Older SDK responses without those fields are silently skipped.
+    """
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return
+    creation = getattr(usage, "cache_creation_input_tokens", 0) or 0
+    read = getattr(usage, "cache_read_input_tokens", 0) or 0
+    if creation or read:
+        logger.info(
+            "anthropic cache: model=%s creation=%d read=%d",
+            model,
+            creation,
+            read,
+        )

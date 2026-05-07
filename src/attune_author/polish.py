@@ -422,6 +422,10 @@ def _call_llm(
         user_message=user_message,
         model=_POLISH_MODEL,
         max_tokens=4096,
+        # Polish system prompt is ~6000 tokens — well over the 1024-token
+        # threshold for sonnet caching. Cache hits cut input cost ~90% on
+        # repeated polish passes (template regen, retries, etc.).
+        cache_system=True,
     )
     return polished or content
 

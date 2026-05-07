@@ -232,3 +232,108 @@ class TestCredentialRedaction:
             )
 
         assert exc_info.value.__cause__ is None
+
+
+class TestCacheSystem:
+    """The new ``cache_system`` flag must wrap the system prompt in
+    a content-block list with an ephemeral ``cache_control`` marker
+    matching Anthropic's prompt-caching API.
+    """
+
+    def test_cache_system_false_passes_string_system(self) -> None:
+        """Default behavior: system is sent as a plain string."""
+        from attune_author.doc_gen import _anthropic
+
+        client = MagicMock()
+        client.messages.create.return_value = _ok_response("ok")
+
+        _anthropic.call_anthropic(
+            client,
+            system="prompt",
+            user_message="u",
+            model="m",
+            max_tokens=10,
+        )
+
+        call = client.messages.create.call_args
+        assert call.kwargs["system"] == "prompt"
+
+    def test_cache_system_true_wraps_in_content_block(self) -> None:
+        """When True, system is a list with a cache_control marker."""
+        from attune_author.doc_gen import _anthropic
+
+        client = MagicMock()
+        client.messages.create.return_value = _ok_response("ok")
+
+        _anthropic.call_anthropic(
+            client,
+            system="big prompt",
+            user_message="u",
+            model="m",
+            max_tokens=10,
+            cache_system=True,
+        )
+
+        call = client.messages.create.call_args
+        system = call.kwargs["system"]
+        assert isinstance(system, list)
+        assert len(system) == 1
+        assert system[0] == {
+            "type": "text",
+            "text": "big prompt",
+            "cache_control": {"type": "ephemeral"},
+        }
+
+    def test_cache_usage_logged_when_present(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Response usage with cache fields gets logged at INFO."""
+        import logging
+
+        from attune_author.doc_gen import _anthropic
+
+        client = MagicMock()
+        block = MagicMock()
+        block.text = "ok"
+        response = MagicMock()
+        response.content = [block]
+        response.usage.cache_creation_input_tokens = 1024
+        response.usage.cache_read_input_tokens = 0
+        client.messages.create.return_value = response
+
+        with caplog.at_level(logging.INFO, logger=_anthropic.logger.name):
+            _anthropic.call_anthropic(
+                client,
+                system="s",
+                user_message="u",
+                model="claude-sonnet-4-6",
+                max_tokens=10,
+                cache_system=True,
+            )
+
+        assert any(
+            "cache" in r.message.lower() and "creation=1024" in r.message
+            for r in caplog.records
+        )
+
+    def test_cache_usage_silent_when_no_cache_activity(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """No log line when both cache counters are zero."""
+        import logging
+
+        from attune_author.doc_gen import _anthropic
+
+        client = MagicMock()
+        block = MagicMock()
+        block.text = "ok"
+        response = MagicMock()
+        response.content = [block]
+        response.usage.cache_creation_input_tokens = 0
+        response.usage.cache_read_input_tokens = 0
+        client.messages.create.return_value = response
+
+        with caplog.at_level(logging.INFO, logger=_anthropic.logger.name):
+            _anthropic.call_anthropic(
+                client, system="s", user_message="u", model="m", max_tokens=10
+            )
+
+        assert not any("cache" in r.message.lower() for r in caplog.records)
