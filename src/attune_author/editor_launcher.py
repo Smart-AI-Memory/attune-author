@@ -93,18 +93,69 @@ def read_portfile(path: Path = _PORTFILE_PATH) -> PortfileData | None:
 
 
 def is_pid_alive(pid: int) -> bool:
-    """Return ``True`` if a process with ``pid`` is currently running."""
+    """Return ``True`` if a process with ``pid`` is currently running.
+
+    Dispatches to a platform-specific check. POSIX uses ``os.kill(pid, 0)``;
+    Windows uses ``OpenProcess`` + ``GetExitCodeProcess`` via ctypes because
+    ``os.kill(pid, 0)`` for a non-existent PID hangs on the GitHub Actions
+    Windows runner (and is brittle in general — Windows preserves PID slots
+    briefly after a process exits, so signal-style probes can't distinguish
+    "running" from "recently dead").
+    """
     if pid <= 0:
         return False
+    if sys.platform == "win32":
+        return _is_pid_alive_win32(pid)
+    return _is_pid_alive_posix(pid)
+
+
+def _is_pid_alive_posix(pid: int) -> bool:
+    """POSIX path: probe with signal 0."""
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     except PermissionError:
+        # The process exists but we lack permission to signal it.
         return True
     except OSError:
         return False
     return True
+
+
+def _is_pid_alive_win32(pid: int) -> bool:
+    """Windows path: open the process and check its exit code.
+
+    ``OpenProcess`` returns NULL when the PID doesn't exist (or we lack
+    access — but PROCESS_QUERY_LIMITED_INFORMATION is broadly granted).
+    A live process has exit code ``STILL_ACTIVE`` (259); anything else
+    means the process has terminated and Windows is just keeping the
+    PID slot reserved.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    STILL_ACTIVE = 259
+
+    kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.GetExitCodeProcess.restype = wintypes.BOOL
+    kernel32.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        return False
+    try:
+        exit_code = wintypes.DWORD()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == STILL_ACTIVE
+    finally:
+        kernel32.CloseHandle(handle)
 
 
 def is_healthy(port: int, token: str, *, timeout: float = _HEALTH_TIMEOUT) -> bool:

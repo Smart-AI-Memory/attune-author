@@ -64,6 +64,58 @@ def test_is_pid_alive_for_dead_pid() -> None:
     assert editor_launcher.is_pid_alive(999_999_999) is False
 
 
+def test_is_pid_alive_negative_pid() -> None:
+    """Negative PIDs short-circuit before any platform-specific call."""
+    assert editor_launcher.is_pid_alive(-1) is False
+
+
+def test_is_pid_alive_dispatches_to_platform_helper(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Linux/Mac path must go through ``_is_pid_alive_posix``;
+    Windows path must go through ``_is_pid_alive_win32``."""
+    calls: dict[str, list[int]] = {"posix": [], "win32": []}
+
+    def fake_posix(pid: int) -> bool:
+        calls["posix"].append(pid)
+        return True
+
+    def fake_win32(pid: int) -> bool:
+        calls["win32"].append(pid)
+        return True
+
+    monkeypatch.setattr(editor_launcher, "_is_pid_alive_posix", fake_posix)
+    monkeypatch.setattr(editor_launcher, "_is_pid_alive_win32", fake_win32)
+
+    monkeypatch.setattr(editor_launcher.sys, "platform", "linux")
+    editor_launcher.is_pid_alive(123)
+    assert calls == {"posix": [123], "win32": []}
+
+    monkeypatch.setattr(editor_launcher.sys, "platform", "win32")
+    editor_launcher.is_pid_alive(456)
+    assert calls == {"posix": [123], "win32": [456]}
+
+
+def test_is_pid_alive_win32_returns_false_when_open_process_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """OpenProcess returning NULL (0) means the PID doesn't exist."""
+    if not hasattr(editor_launcher, "_is_pid_alive_win32"):
+        pytest.skip("win32 helper unavailable")
+
+    fake_kernel32 = MagicMock()
+    fake_kernel32.OpenProcess.return_value = 0  # NULL handle = failure
+    fake_ctypes = MagicMock()
+    fake_ctypes.windll.kernel32 = fake_kernel32
+
+    import sys
+
+    monkeypatch.setitem(sys.modules, "ctypes", fake_ctypes)
+    monkeypatch.setitem(sys.modules, "ctypes.wintypes", MagicMock())
+
+    assert editor_launcher._is_pid_alive_win32(999_999_999) is False
+    fake_kernel32.OpenProcess.assert_called_once()
+    fake_kernel32.CloseHandle.assert_not_called()
+
+
 # -- find_existing_sidecar -------------------------------------------
 
 
