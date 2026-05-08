@@ -13,6 +13,28 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.9.1] - 2026-05-08
+
+### Added
+
+- **`attune_author.orchestration.commands.help`** — owns three
+  `help.*` commands: `lookup`, `search`, `list`. Phase D3 of the
+  architecture-realignment spec. Importing the module registers
+  all three specs.
+- `help.lookup` walks progressive depth (concept → task → reference)
+  the same way the gui executor did; `help.search` and `help.list`
+  pass through to `attune_help.HelpEngine` unchanged.
+
+### Notes
+
+- attune-help is **not** a hard dep of attune-author. The executor
+  lazy-imports `HelpEngine` and surfaces a clear `ValidationError`
+  if attune-help is missing. Hosts that wire `help.*` into a job
+  runner (currently only attune-gui) already declare attune-help.
+  Adding it as a hard dep here would create a circular metadata
+  edge with attune-help's transitional shim (which depends on
+  attune-author until 2026-07-07).
+
 ## [0.9.0] - 2026-05-08
 
 ### Added
