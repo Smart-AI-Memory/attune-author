@@ -13,6 +13,21 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.8.0] - 2026-05-08
+
+### Added
+
+- **`attune_author.orchestration` scaffold.** New public package
+  exporting `run_command`, `list_commands`, `register`,
+  `CommandSpec`, `JobContext`, `RunResult`, and the
+  `OrchestrationError` family (`CommandNotFound`, `ValidationError`,
+  `RunnerBusy`). Phase C of the architecture-realignment spec.
+  The registry ships empty; Phases D1–D3 will move the existing
+  commands in from `attune_gui.commands` so attune-gui shrinks to a
+  thin route layer (closing finding #2 / ADR-003).
+- `CommandSpec` is field-for-field compatible with attune-gui's
+  current dataclass so the migration PRs are mechanical.
+
 ## [0.7.0] - 2026-05-08
 
 ### Changed
