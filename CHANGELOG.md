@@ -13,6 +13,59 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.11.0] - 2026-05-08
+
+### Added
+
+- **`attune-author regenerate --batch`** — opt-in batch path
+  that submits all polish requests for stale features as one
+  Anthropic Message Batches API call (~50% cost vs per-call
+  pricing). Detaches; results are spliced back into the help
+  corpus by a follow-up `--resume` invocation.
+  - Companion flags: `--resume` (poll + splice + write),
+    `--status` (one-shot query, supports `--json`),
+    `--cancel` (call SDK cancel + remove state file),
+    `--force` (with `--batch`: overwrite an existing pending
+    state file).
+  - Argparse mutex enforces "exactly one batch-mode flag at a
+    time"; `--force` and `--json` are modifiers.
+  - Bare `regenerate` (no batch flags) prints a one-liner hint
+    when a state file exists; never auto-resumes.
+- **`attune_author.maintenance_batch`** — new module containing
+  `submit_maintenance_batch`, `resume_maintenance_batch`,
+  `status_maintenance_batch`, `cancel_maintenance_batch` plus
+  the `BatchState` schema and `.help/.batch-state.json`
+  read/write/delete helpers. Includes 29-day stale-state
+  detection (Anthropic's batch retention window).
+- **`attune_author.doc_gen._anthropic_batch`** — SDK wrapper
+  module exposing `submit_batch` / `poll_batch` plus typed
+  `BatchPolishRequest` / `BatchPolishResult` records and an
+  adaptive `timeout_secs` helper. SIGINT during polling cancels
+  the batch and re-raises.
+- **`attune_author.polish.build_polish_prompt`** — extracted
+  prompt-building helper. Both the synchronous path and the
+  batch path call it so the wire-level prompts are byte-identical.
+- **`attune_author.generator.prepare_polish_phase`** /
+  **`apply_polish_results`** — extracted Phase 1 (render) and
+  Phase 3 (write) helpers. The synchronous
+  `generate_feature_templates` now calls them; the batch path
+  uses them too. Single source of truth for rendering.
+- **Docs**: `docs/regenerate-batch.md` covers when to use which
+  path, fallback behavior, env-var overrides, cancel semantics,
+  and stale-state recovery.
+- Live integration test at `tests/integration/test_batch_live.py`,
+  gated on both `ANTHROPIC_API_KEY` and `RUN_LIVE_BATCH=1`. Tagged
+  `@pytest.mark.live`. Default-skipped; ~$0.02 per run.
+
+### Changed
+
+- **`generate_feature_templates`** internal layout: refactored
+  to call the new `prepare_polish_phase` and `apply_polish_results`
+  helpers. **No behavior change** for existing callers — same
+  inputs produce byte-identical on-disk templates. Verified by
+  the existing 152 polish tests + the new parity test in
+  `tests/test_maintenance_batch.py`.
+
 ## [0.10.0] - 2026-05-08
 
 ### Added

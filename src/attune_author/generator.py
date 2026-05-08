@@ -179,6 +179,52 @@ class GeneratedTemplate:
     source_hash: str
 
 
+@dataclass(frozen=True)
+class _PendingPolish:
+    """One depth pre-polish state.
+
+    Returned by :func:`prepare_polish_phase` so the batch path
+    can submit polish requests for many features at once and
+    splice results back via :func:`apply_polish_results`.
+    """
+
+    depth: str
+    rendered_content: str
+    out_path: Path
+
+
+@dataclass(frozen=True)
+class PolishPreparation:
+    """Per-feature pre-polish state for the batch path.
+
+    Encapsulates everything :func:`generate_feature_templates`
+    computes BEFORE the polish pass so a sibling caller (the
+    batch maintenance flow) can collect prompts across many
+    features, submit one batch, and later splice polished
+    results back without re-doing the expensive Phase 1 work.
+
+    The synchronous path does not use this — it stays inside
+    ``generate_feature_templates`` as today.
+    """
+
+    feature: object  # Feature; kept loosely-typed to avoid import cycle
+    source_hash: str
+    matched_files: list[str]
+    source_info: object  # _SourceInfo; ditto
+    pending: tuple[_PendingPolish, ...]
+    use_rag: bool
+
+    def pending_legacy_tuples(self) -> tuple[tuple[str, str, Path], ...]:
+        """Adapt ``pending`` to the legacy 3-tuple shape for ``_parallel_polish``.
+
+        ``_parallel_polish`` predates this dataclass and expects
+        ``(depth, content, out_path)``. We keep the legacy shape
+        local to this conversion so the rest of the code can use
+        the more readable :class:`_PendingPolish`.
+        """
+        return tuple((p.depth, p.rendered_content, p.out_path) for p in self.pending)
+
+
 @dataclass
 class GenerationResult:
     """Result of generating templates for a feature.
@@ -245,6 +291,47 @@ def generate_feature_templates(
     Returns:
         GenerationResult with paths and metadata.
     """
+    prep = prepare_polish_phase(
+        feature=feature,
+        help_dir=help_dir,
+        project_root=project_root,
+        depths=depths,
+        overwrite=overwrite,
+        use_rag=use_rag,
+    )
+
+    # Phase 2: LLM polish — run all depths concurrently.
+    polished = _parallel_polish(
+        list(prep.pending_legacy_tuples()),
+        prep.feature,
+        prep.source_info,
+        prep.use_rag,
+    )
+    polished_text: dict[str, str] = {depth: text for depth, (text, _path) in polished.items()}
+
+    return apply_polish_results(prep, polished_text)
+
+
+def prepare_polish_phase(
+    feature: Feature,
+    help_dir: str | Path,
+    project_root: str | Path,
+    depths: list[str] | None = None,
+    overwrite: bool = False,
+    use_rag: bool = True,
+) -> PolishPreparation:
+    """Run the pre-polish (Phase 1) work for one feature.
+
+    Computes the source hash, extracts source info, builds the
+    Jinja environment, renders all active templates, and returns
+    a :class:`PolishPreparation` carrying everything the polish
+    phase (and later the write phase) need.
+
+    Pure of LLM calls. Both the synchronous path
+    (:func:`generate_feature_templates`) and the batched path
+    (:mod:`attune_author.maintenance_batch`) call this so they
+    render identically — the parity guard against drift.
+    """
     help_path = Path(help_dir)
     root = Path(project_root)
     target_depths = depths or list(_CORE_DEPTH_NAMES)
@@ -252,22 +339,12 @@ def generate_feature_templates(
     if not is_safe_feature_name(feature.name):
         raise ValueError(f"Invalid feature name: {feature.name!r}")
 
-    # Compute source hash
     source_hash, matched_files = compute_source_hash(feature, root)
-
-    # Extract info from source files
     source_info = _extract_source_info(matched_files, root)
-
-    result = GenerationResult(
-        feature=feature.name,
-        source_hash=source_hash,
-        matched_files=matched_files,
-    )
 
     template_dir = help_path / "templates" / feature.name
     template_dir.mkdir(parents=True, exist_ok=True)
 
-    # Build Jinja2 environment with project-first resolution
     env = _build_jinja_env(help_path)
 
     if (
@@ -284,9 +361,7 @@ def generate_feature_templates(
             ", ".join(feature.doc_paths[1:]),
         )
 
-    # Phase 1: render all templates (fast Jinja2, sequential).
-    # Determines which depths are active and builds the rendered skeleton.
-    pending: list[tuple[str, str, Path]] = []
+    pending: list[_PendingPolish] = []
     for depth in target_depths:
         if depth not in _ALL_TEMPLATE_NAMES:
             logger.warning("Unknown template kind '%s', skipping", depth)
@@ -331,24 +406,48 @@ def generate_feature_templates(
                 source_hash=source_hash,
                 source_info=source_info,
             )
-        pending.append((depth, content, out_path))
+        pending.append(_PendingPolish(depth=depth, rendered_content=content, out_path=out_path))
 
-    # Phase 2: LLM polish — run all depths concurrently.
-    polished = _parallel_polish(pending, feature, source_info, use_rag)
+    return PolishPreparation(
+        feature=feature,
+        source_hash=source_hash,
+        matched_files=matched_files,
+        source_info=source_info,
+        pending=tuple(pending),
+        use_rag=use_rag,
+    )
 
-    # Phase 3: write results in original depth order.
-    for depth, content, out_path in pending:
-        final_content, _ = polished[depth]
-        out_path.write_text(final_content, encoding="utf-8")
+
+def apply_polish_results(
+    prep: PolishPreparation,
+    polished_by_depth: dict[str, str],
+) -> GenerationResult:
+    """Write polished content for each pending template (Phase 3).
+
+    ``polished_by_depth`` maps depth → polished markdown. Any
+    depth missing from the map falls back to the original
+    rendered content — used by the batch path when a per-request
+    failure means we couldn't get a polished version, mirroring
+    the synchronous path's "use raw template on lenient-mode
+    failure" behavior.
+    """
+    feature = prep.feature
+    result = GenerationResult(
+        feature=feature.name,
+        source_hash=prep.source_hash,
+        matched_files=list(prep.matched_files),
+    )
+    for entry in prep.pending:
+        final_content = polished_by_depth.get(entry.depth, entry.rendered_content)
+        entry.out_path.write_text(final_content, encoding="utf-8")
         result.templates.append(
             GeneratedTemplate(
                 feature=feature.name,
-                depth=depth,
-                path=out_path,
-                source_hash=source_hash,
+                depth=entry.depth,
+                path=entry.out_path,
+                source_hash=prep.source_hash,
             )
         )
-
     return result
 
 

@@ -174,6 +174,47 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Report stale features without regenerating.",
     )
+    # --- batch-mode flags (mutually exclusive) -----------------------------
+    # Sub-group enforces "exactly one of these (or none) at a time" so the
+    # user can't ask the CLI to both submit and resume in one invocation.
+    batch_group = p_regen.add_mutually_exclusive_group()
+    batch_group.add_argument(
+        "--batch",
+        action="store_true",
+        help=(
+            "Submit polish requests as one Anthropic batch (~50%% cost). "
+            "Detaches; run --resume later to splice results."
+        ),
+    )
+    batch_group.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume a previously submitted batch and write its templates.",
+    )
+    batch_group.add_argument(
+        "--status",
+        action="store_true",
+        help="One-shot status of the pending batch. No polling.",
+    )
+    batch_group.add_argument(
+        "--cancel",
+        action="store_true",
+        help="Cancel the pending batch and remove its state file.",
+    )
+    p_regen.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "With --batch: overwrite an existing pending state file "
+            "(cancels the previous batch from the local view; the "
+            "still-running Anthropic batch is left to finish on its own)."
+        ),
+    )
+    p_regen.add_argument(
+        "--json",
+        action="store_true",
+        help="With --status: emit JSON instead of human-readable output.",
+    )
 
     p_cache = sub.add_parser(
         "cache",
@@ -464,10 +505,37 @@ def _cmd_generate(args: argparse.Namespace) -> int:
 
 def _cmd_regenerate(args: argparse.Namespace) -> int:
     """Handle the regenerate command."""
-    from attune_author.maintenance import run_maintenance
-
     root = validate_file_path(args.project_root)
     help_dir = validate_file_path(args.help_dir)
+
+    if getattr(args, "batch", False):
+        return _cmd_regenerate_batch_submit(args, help_dir, root)
+    if getattr(args, "resume", False):
+        return _cmd_regenerate_batch_resume(args, help_dir, root)
+    if getattr(args, "status", False):
+        return _cmd_regenerate_batch_status(args, help_dir)
+    if getattr(args, "cancel", False):
+        return _cmd_regenerate_batch_cancel(args, help_dir)
+
+    return _cmd_regenerate_synchronous(args, help_dir, root)
+
+
+def _cmd_regenerate_synchronous(
+    args: argparse.Namespace,
+    help_dir: Path,
+    root: Path,
+) -> int:
+    """Default synchronous path. Also surfaces the pending-batch hint."""
+    from attune_author.maintenance import run_maintenance
+    from attune_author.maintenance_batch import has_pending_batch
+
+    if has_pending_batch(help_dir):
+        print(
+            "note: a pending batch was previously submitted from this corpus.\n"
+            "      run `attune-author regenerate --resume`  to splice its results,\n"
+            "      or  `attune-author regenerate --status`  to see progress.",
+            file=sys.stderr,
+        )
 
     try:
         result = run_maintenance(
@@ -489,6 +557,159 @@ def _cmd_regenerate(args: argparse.Namespace) -> int:
             print(f"Failed: {', '.join(result.failed)}")
 
     return 0
+
+
+def _cmd_regenerate_batch_submit(
+    args: argparse.Namespace,
+    help_dir: Path,
+    root: Path,
+) -> int:
+    from attune_author.maintenance_batch import (
+        BatchAlreadyPending,
+        submit_maintenance_batch,
+    )
+
+    try:
+        state = submit_maintenance_batch(
+            help_dir=help_dir,
+            project_root=root,
+            force=args.force,
+        )
+    except BatchAlreadyPending as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    except FileNotFoundError:
+        _print_missing_manifest_hint(help_dir)
+        return 1
+    except ValueError as exc:
+        # No stale features / nothing to do — surface gracefully.
+        print(f"note: {exc}")
+        return 0
+
+    print(
+        f"Submitted batch {state.batch_id} ({len(state.requests)} requests, model {state.model}).\n"
+        f"Estimated completion: ~{_format_eta(state)} (Anthropic 24h SLA)."
+    )
+    print()
+    print("Run  attune-author regenerate --resume   to splice results when ready.")
+    return 0
+
+
+def _cmd_regenerate_batch_resume(
+    args: argparse.Namespace,
+    help_dir: Path,
+    root: Path,
+) -> int:
+    from attune_author.maintenance_batch import (
+        BatchStateExpired,
+        BatchStateNotFound,
+        resume_maintenance_batch,
+    )
+
+    _ = args
+    try:
+        outcome = resume_maintenance_batch(
+            help_dir=help_dir,
+            project_root=root,
+        )
+    except BatchStateNotFound:
+        print("no pending batch found. Nothing to resume.", file=sys.stderr)
+        return 1
+    except BatchStateExpired as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    if outcome.final_status == "timed_out":
+        print(
+            f"Batch {outcome.batch_id} still running. State file kept; run "
+            "`attune-author regenerate --resume` again later."
+        )
+    else:
+        print(
+            f"Batch {outcome.batch_id} {outcome.final_status}. "
+            f"Regenerated {outcome.regenerated_count} feature(s)."
+        )
+        if outcome.failed:
+            print(f"Failed: {', '.join(outcome.failed)}")
+    return 0
+
+
+def _cmd_regenerate_batch_status(
+    args: argparse.Namespace,
+    help_dir: Path,
+) -> int:
+    from attune_author.maintenance_batch import (
+        BatchStateExpired,
+        BatchStateNotFound,
+        status_maintenance_batch,
+    )
+
+    try:
+        info = status_maintenance_batch(help_dir=help_dir)
+    except BatchStateNotFound:
+        print("no pending batch.", file=sys.stderr)
+        return 1
+    except BatchStateExpired as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    if args.json:
+        import json as _json
+
+        print(_json.dumps(info, indent=2, sort_keys=True))
+        return 0
+
+    print("Pending batch:")
+    print(f"  id:                    {info['batch_id']}")
+    print(f"  submitted:             {info['submitted_at']}")
+    print(f"  expected completion:   {info['expected_completion_at']}")
+    print(f"  model:                 {info['model']}")
+    print(f"  request count:         {info['request_count']}")
+    print(f"  state (Anthropic):     {info.get('processing_status')}")
+    rc = info.get("request_counts") or {}
+    if rc:
+        print(
+            f"  succeeded={rc.get('succeeded', 0)}  "
+            f"errored={rc.get('errored', 0)}  "
+            f"expired={rc.get('expired', 0)}  "
+            f"canceled={rc.get('canceled', 0)}  "
+            f"processing={rc.get('processing', 0)}"
+        )
+    return 0
+
+
+def _cmd_regenerate_batch_cancel(
+    args: argparse.Namespace,
+    help_dir: Path,
+) -> int:
+    from attune_author.maintenance_batch import (
+        BatchStateExpired,
+        BatchStateNotFound,
+        cancel_maintenance_batch,
+    )
+
+    _ = args
+    try:
+        batch_id = cancel_maintenance_batch(help_dir=help_dir)
+    except BatchStateNotFound:
+        print("no pending batch to cancel.", file=sys.stderr)
+        return 1
+    except BatchStateExpired as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(f"Canceled batch {batch_id}.")
+    return 0
+
+
+def _format_eta(state: object) -> str:
+    """Human-readable ETA for a batch state."""
+    submitted = getattr(state, "submitted_at")
+    eta = getattr(state, "expected_completion_at")
+    delta = eta - submitted
+    minutes = int(delta.total_seconds() // 60)
+    if minutes < 1:
+        return "<1 min"
+    return f"{minutes} min"
 
 
 def _cmd_cache(args: argparse.Namespace) -> int:
@@ -747,8 +968,7 @@ def _print_generate_usage(help_dir: Path) -> None:
         manifest = load_manifest(help_dir)
     except Exception:  # noqa: BLE001
         print(
-            f"\nNo manifest found at {help_dir / 'features.yaml'}. "
-            "Run `attune-author init` first.",
+            f"\nNo manifest found at {help_dir / 'features.yaml'}. Run `attune-author init` first.",
             file=sys.stderr,
         )
         return
