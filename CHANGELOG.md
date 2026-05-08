@@ -13,6 +13,41 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.10.0] - 2026-05-08
+
+### Added
+
+- **`attune_author.skill_export`** — exporter that writes one
+  Claude Code `SKILL.md` per concept template in an
+  attune-help-compatible corpus. Frontmatter `name` is the
+  canonical feature slug (with `tool-` / `task-` prefixes
+  stripped for parity with `summaries.json`); `description`
+  resolves through summaries.json → frontmatter → first-paragraph
+  extraction → generic stub. Body is the concept template
+  content. Per-feature output goes to
+  `<output>/<feature>/SKILL.md`.
+- **`attune-author export-skills`** CLI subcommand. Defaults
+  to attune-help's bundled corpus (resolved via
+  `attune_help.adapters.rag.AttuneHelpAdapter`); `--source`
+  overrides for project-local templates. `--overwrite` replaces
+  existing SKILL.md files; absent it skips them with a recorded
+  reason.
+- 18 new tests in `tests/test_skill_export.py` covering canonical
+  slug stripping, first-paragraph extraction, summary lookup,
+  fallback chain, edge cases (missing summaries.json, empty
+  body, unsafe slug, overwrite semantics).
+
+### Notes
+
+- Exporting the bundled attune-help corpus today produces 43
+  skills covering the documented attune-ai workflows. Skill
+  consumers (Claude Code, the marketplace) can load these as
+  native skills with description-driven triggering — the
+  attune-help corpus becomes a *generator* for skills rather
+  than a runtime competitor. Phase one of the
+  attune-help-as-skill recommendation from the 2026-05-08
+  enhancements briefing.
+
 ## [0.9.1] - 2026-05-08
 
 ### Added
