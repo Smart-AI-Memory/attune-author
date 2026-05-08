@@ -13,6 +13,36 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.9.0] - 2026-05-08
+
+### Added
+
+- **`attune_author.orchestration.commands.author`** — owns all six
+  `author.*` commands: `init`, `status`, `maintain`, `lookup`,
+  `regen`, `setup`. Phase D2 of the architecture-realignment spec;
+  each executor previously lived inline in `attune_gui.commands`.
+  Importing the module registers all six specs on the global
+  registry.
+- **`attune_author.orchestration._helpers.resolve_project_paths`** —
+  shared helper used by `status`, `maintain`, `regen`, `setup` for
+  resolving `(project_root, help_dir)` from args. Drops the
+  workspace fallback the gui copy used to have — that fallback is
+  a host concern, not the orchestration runtime's. Hosts that want
+  workspace-driven defaults preprocess args before calling
+  `run_command`.
+- `author.maintain`, `author.regen`, `author.setup` now return
+  `project_root` in their output so the host can invalidate any
+  cached pipelines tied to it. The previous gui-internal call to
+  `attune_gui.routes.rag.invalidate(project_root)` moves into the
+  gui's specialized proxy dispatcher (attune-gui 0.6.1).
+
+### Notes
+
+- Version bumped 0.8.1 → 0.9.0 because the public registry surface
+  changes meaningfully (six new registered commands) and the
+  effective contract for some commands tightened (no implicit
+  workspace fallback for path-taking commands).
+
 ## [0.8.1] - 2026-05-08
 
 ### Added
