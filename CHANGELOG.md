@@ -13,6 +13,28 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.7.0] - 2026-05-08
+
+### Changed
+
+- **`attune_author.manifest` / `attune_author.staleness` /
+  `attune_author.freshness` are now the source of truth.** These
+  modules previously re-exported from `attune-help`; with PR #14
+  they ship natively in attune-author. Existing imports from
+  `attune_author.*` continue to work; downstream code using
+  `attune_help.*` now goes through deprecation shims (see
+  `attune-help` 0.11.0 CHANGELOG).
+
+### Removed (dependency)
+
+- **`attune-help>=0.10.0` runtime dependency dropped.** It was a
+  leftover from when `manifest`/`staleness`/`freshness` lived in
+  attune-help and this package re-exported them. After PR #14
+  inverted the direction, no `from attune_help` imports remain in
+  `src/attune_author/`. Removing the dep also breaks the circular
+  package-metadata edge that would otherwise form once
+  `attune-help` 0.11.0 declares `attune-author>=0.7.0`.
+
 ## [0.5.1] - 2026-04-30
 
 ### Changed

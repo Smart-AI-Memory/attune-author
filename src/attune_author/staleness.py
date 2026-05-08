@@ -194,19 +194,13 @@ def compute_semantic_hash(
             if abs_path.suffix == ".py":
                 try:
                     for record in extractor.extract(abs_path):
-                        hash_parts.append(
-                            f"{rel_path}::{record.qualname}::{record.signature_hash}"
-                        )
+                        hash_parts.append(f"{rel_path}::{record.qualname}::{record.signature_hash}")
                 except SyntaxError:
                     content = abs_path.read_bytes()
-                    hash_parts.append(
-                        f"{rel_path}::{hashlib.sha256(content).hexdigest()}"
-                    )
+                    hash_parts.append(f"{rel_path}::{hashlib.sha256(content).hexdigest()}")
             else:
                 content = abs_path.read_bytes()
-                hash_parts.append(
-                    f"{rel_path}::{hashlib.sha256(content).hexdigest()}"
-                )
+                hash_parts.append(f"{rel_path}::{hashlib.sha256(content).hexdigest()}")
         except OSError as e:
             logger.warning("Cannot read %s: %s", rel_path, e)
 
@@ -311,7 +305,8 @@ def parse_doc_footer(text: str) -> dict[str, str]:
 
     The footer format is::
 
-        <!-- attune-generated: source_hash=abc123 feature=foo kind=how-to generated_at=2026-04-23 -->
+        <!-- attune-generated: source_hash=abc123 feature=foo
+             kind=how-to generated_at=2026-04-23 -->
 
     The comment may appear anywhere in the file but is conventionally
     the last line.
