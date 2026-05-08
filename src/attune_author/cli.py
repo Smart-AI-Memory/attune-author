@@ -247,6 +247,36 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Target audience (default: %(default)s).",
     )
 
+    p_skills = sub.add_parser(
+        "export-skills",
+        help="Export an attune-help corpus as Claude Code skill bundles",
+        description=(
+            "Walk an attune-help-compatible templates/ directory and write "
+            "one Claude Code SKILL.md per concept template. Each output "
+            "directory becomes a loadable skill: SKILL.md frontmatter "
+            "carries the name and description (sourced from "
+            "summaries.json) and the body is the concept template."
+        ),
+    )
+    p_skills.add_argument(
+        "--source",
+        default=None,
+        help=(
+            "Path to a templates/ directory (must contain concepts/ and "
+            "summaries.json). Defaults to attune-help's bundled corpus."
+        ),
+    )
+    p_skills.add_argument(
+        "--output",
+        default="./skills",
+        help="Directory to write SKILL.md files into (default: %(default)s).",
+    )
+    p_skills.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace any existing SKILL.md instead of skipping it.",
+    )
+
     return parser
 
 
@@ -277,6 +307,7 @@ def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         "docs": _cmd_docs,
         "cache": _cmd_cache,
         "edit": _cmd_edit,
+        "export-skills": _cmd_export_skills,
     }
     handler = handlers.get(args.command)
     if handler is None:
@@ -769,6 +800,56 @@ def _load_feature_names_for_welcome() -> list[str] | None:
 
     names = sorted(manifest.features.keys())
     return names or None
+
+
+def _cmd_export_skills(args: argparse.Namespace) -> int:
+    """Handle the ``export-skills`` command.
+
+    Resolves ``--source`` (defaulting to attune-help's bundled
+    templates dir via the rag adapter), runs :func:`export_skills`,
+    and prints a written/skipped summary.
+
+    Returns:
+        ``0`` on success — even when some features were skipped.
+        ``1`` if the source directory can't be resolved or doesn't
+        contain a ``concepts/`` subtree.
+    """
+    from attune_author.skill_export import export_skills
+
+    source: Path
+    if args.source:
+        source = Path(args.source).expanduser().resolve()
+    else:
+        try:
+            from attune_help.adapters.rag import AttuneHelpAdapter
+        except ImportError:
+            print(
+                "Could not import attune_help; pass --source <templates-dir> "
+                "or install attune-help.",
+                file=sys.stderr,
+            )
+            return 1
+        source = AttuneHelpAdapter().templates_root
+
+    if not (source / "concepts").is_dir():
+        print(
+            f"Source has no concepts/ subdirectory: {source}\n"
+            f"  Hint: pass a templates/ root, not the project or .help/ dir.",
+            file=sys.stderr,
+        )
+        return 1
+
+    output = Path(args.output).expanduser().resolve()
+    result = export_skills(source, output, overwrite=args.overwrite)
+
+    print(f"Exported {len(result.written)} skill(s) to {output}")
+    for record in result.written:
+        print(f"  + {record.feature:<32} {record.body_chars} chars")
+    if result.skipped:
+        print(f"\nSkipped {len(result.skipped)}:")
+        for feature, reason in result.skipped:
+            print(f"  - {feature:<32} {reason}")
+    return 0
 
 
 if __name__ == "__main__":
