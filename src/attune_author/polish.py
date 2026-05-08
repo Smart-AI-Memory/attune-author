@@ -333,7 +333,7 @@ def polish_template(
         # type to catch.
         if effective_strict:
             raise PolishError(
-                f"Polish pass failed for {feature_name!r} " f"(type={template_type!r}): {exc}"
+                f"Polish pass failed for {feature_name!r} (type={template_type!r}): {exc}"
             ) from exc
         # Lenient mode is the explicit opt-out from strict, so a
         # failure here is the user-visible degradation we promised
@@ -374,6 +374,49 @@ def _sanitize_output(content: str) -> str:
     return body
 
 
+def build_polish_prompt(
+    content: str,
+    feature_name: str,
+    source_summary: str,
+    template_type: str,
+    augmented_context: str | None = None,
+) -> tuple[str, str]:
+    """Build the (system_prompt, user_message) pair for a polish call.
+
+    Extracted so the batch-API code path
+    (:mod:`attune_author.doc_gen._anthropic_batch`) can build
+    byte-identical prompts to the synchronous path. Pure: no
+    side effects, no I/O.
+
+    Returns:
+        ``(system_prompt, user_message)`` ready to pass to
+        either :func:`call_anthropic` (synchronous) or
+        :class:`BatchPolishRequest` construction (batch).
+    """
+    system_prompt = get_system_prompt(template_type)
+    grounding = augmented_context or ""
+    user_message = (
+        f"Polish this auto-generated {template_type} template "
+        f"for the '{feature_name}' feature.\n\n"
+        f"{grounding}"
+        f"## Source info (for accuracy checking)\n\n"
+        f"{source_summary}\n\n"
+        f"## Template to polish\n\n"
+        f"{content}"
+    )
+    return system_prompt, user_message
+
+
+#: Polish-call defaults. Exposed as constants so the batch path
+#: can build identical ``BatchPolishRequest`` envelopes without
+#: hard-coding values that the synchronous path might drift away
+#: from. ``cache_system=True`` because the polish system prompt is
+#: ~6000 tokens — well over the 1024-token sonnet caching threshold;
+#: cache hits cut input cost ~90% on repeated polish passes.
+POLISH_MAX_TOKENS = 4096
+POLISH_CACHE_SYSTEM = True
+
+
 def _call_llm(
     content: str,
     feature_name: str,
@@ -403,17 +446,12 @@ def _call_llm(
             the SDK call fails.
     """
     client = get_client()
-    system_prompt = get_system_prompt(template_type)
-
-    grounding = augmented_context or ""
-    user_message = (
-        f"Polish this auto-generated {template_type} template "
-        f"for the '{feature_name}' feature.\n\n"
-        f"{grounding}"
-        f"## Source info (for accuracy checking)\n\n"
-        f"{source_summary}\n\n"
-        f"## Template to polish\n\n"
-        f"{content}"
+    system_prompt, user_message = build_polish_prompt(
+        content,
+        feature_name,
+        source_summary,
+        template_type,
+        augmented_context=augmented_context,
     )
 
     polished = call_anthropic(
@@ -421,11 +459,8 @@ def _call_llm(
         system=system_prompt,
         user_message=user_message,
         model=_POLISH_MODEL,
-        max_tokens=4096,
-        # Polish system prompt is ~6000 tokens — well over the 1024-token
-        # threshold for sonnet caching. Cache hits cut input cost ~90% on
-        # repeated polish passes (template regen, retries, etc.).
-        cache_system=True,
+        max_tokens=POLISH_MAX_TOKENS,
+        cache_system=POLISH_CACHE_SYSTEM,
     )
     return polished or content
 

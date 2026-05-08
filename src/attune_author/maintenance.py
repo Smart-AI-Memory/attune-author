@@ -46,6 +46,30 @@ class MaintenanceResult:
         return len(self.regenerated)
 
 
+def _resolve_stale_features(
+    help_dir: str | Path,
+    project_root: str | Path,
+    features: list[str] | None = None,
+) -> list:
+    """Return a list of stale ``Feature`` objects.
+
+    Used by both the synchronous path and the batch path so they
+    pick up the exact same set of features to regenerate. Returns
+    an empty list when nothing is stale.
+    """
+    manifest = load_manifest(help_dir)
+    report = check_staleness(manifest, help_dir, project_root, features)
+    out = []
+    for entry in report.help_entries:
+        if not entry.is_stale:
+            continue
+        feat = manifest.features.get(entry.feature)
+        if feat is None:
+            continue
+        out.append(feat)
+    return out
+
+
 def run_maintenance(
     help_dir: str | Path,
     project_root: str | Path,
