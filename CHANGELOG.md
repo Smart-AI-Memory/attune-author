@@ -13,6 +13,24 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.8.1] - 2026-05-08
+
+### Added
+
+- **`attune_author.orchestration.commands.rag`** — owns the
+  `rag.corpus-info` command. Phase D1 of the
+  architecture-realignment spec; the executor previously lived
+  inline in `attune_gui.commands` (closes the first leg of finding
+  #2 / ADR-003). Importing the module registers the spec on the
+  global registry. The executor builds its own
+  :class:`attune_rag.RagPipeline` from a `project_path` arg rather
+  than reaching into attune-gui's private pipeline cache, keeping
+  the dependency edge running rag → author cleanly.
+- Establishes the canonical layout for Phases D2 (`author.*`) and
+  D3 (`help.*`) command moves: one file per namespace under
+  `attune_author/orchestration/commands/`, register at import time,
+  tests in `tests/test_orchestration_commands_<ns>.py`.
+
 ## [0.8.0] - 2026-05-08
 
 ### Added
