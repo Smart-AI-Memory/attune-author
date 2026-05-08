@@ -23,14 +23,22 @@ logger = logging.getLogger(__name__)
 def _require_absolute(field: str, raw: str) -> None:
     """Reject relative paths so callers see a clear error.
 
+    Accepts ``~``-prefixed paths (expanded later) and any path
+    :meth:`pathlib.Path.is_absolute` recognises. The latter handles
+    Windows drive-letter paths (``C:\\foo``) and POSIX absolutes
+    (``/foo``) without us hand-rolling platform branches.
+
     Without this, ``Path('foo').resolve()`` joins ``foo`` to the
     runtime cwd and produces confusing paths in downstream errors.
     """
 
-    if raw.startswith("/") or raw.startswith("~"):
+    if raw.startswith("~"):
+        return
+    if Path(raw).is_absolute():
         return
     raise ValidationError(
-        f"{field} must be an absolute path (e.g. /Users/you/project) "
+        f"{field} must be an absolute path "
+        f"(e.g. /Users/you/project, C:\\Users\\you\\project) "
         f"or start with ~ (e.g. ~/project), got: {raw!r}"
     )
 
