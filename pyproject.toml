@@ -60,6 +60,7 @@ rich = ["rich>=13.0.0"]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "syrupy>=4.0",
     "ruff>=0.4.0",
     "black>=24.0",
     "mcp>=0.9.0",
@@ -102,9 +103,23 @@ select = ["E", "F", "W", "I", "UP", "BLE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-ra"
 markers = [
     "live: opt-in tests that hit the live Anthropic API. Skipped by default; require ANTHROPIC_API_KEY and any test-specific env flags.",
 ]
 
 [tool.coverage.run]
 source = ["attune_author"]
+branch = true
+omit = ["*/tests/*", "*/conftest.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 85
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]

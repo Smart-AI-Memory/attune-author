@@ -1,0 +1,126 @@
+# serializer version: 1
+# name: test_concept_template_matches_snapshot
+  '''
+  ---
+  type: concept
+  name: auth-concept
+  feature: auth
+  depth: concept
+  generated_at: <TIMESTAMP>
+  source_hash: <HASH>
+  status: generated
+  ---
+  
+  # Auth
+  
+  ## How it works
+  
+  Authentication and authorization.
+  
+  The main entry points are:
+  
+  - **`authenticate()`** — Authenticate a user.
+  
+  Under the hood, this feature spans 2 source
+  files covering:
+  
+  - Login handler.
+  
+  ## What connects to it
+  
+  This feature relates to: security.
+  
+  Other parts of the codebase call into
+  auth through these functions:
+  
+  | Function | Purpose | File |
+  |----------|---------|------|
+  | `authenticate()` | Authenticate a user. | `src/auth/login.py` |
+  
+  '''
+# ---
+# name: test_reference_template_matches_snapshot
+  '''
+  ---
+  type: reference
+  name: auth-reference
+  feature: auth
+  depth: reference
+  generated_at: <TIMESTAMP>
+  source_hash: <HASH>
+  status: generated
+  ---
+  
+  # Auth reference
+  
+  
+  ## Functions
+  
+  | Function | Description | File |
+  |----------|-------------|------|
+  | `authenticate()` | Authenticate a user. | `src/auth/login.py` |
+  
+  
+  ## Source files
+  
+  - `src/auth/**`
+  
+  ## Tags
+  
+  `security`
+  
+  '''
+# ---
+# name: test_task_template_matches_snapshot
+  '''
+  ---
+  type: task
+  name: auth-task
+  feature: auth
+  depth: task
+  generated_at: <TIMESTAMP>
+  source_hash: <HASH>
+  status: generated
+  ---
+  
+  # Work with auth
+  
+  Use auth when you need to authentication and authorization.
+  
+  ## Prerequisites
+  
+  - Access to the project source code
+  - Familiarity with the files under src/auth/**
+  
+  ## Steps
+  
+  1. **Understand the current behavior.**
+     Read the entry points to see what auth
+     does today before making changes.
+     The primary functions are:
+     - `authenticate()` in `src/auth/login.py` — Authenticate a user.
+  2. **Locate the right function to change.**
+     Each function has a single responsibility. Read its
+     docstring, parameters, and return type to confirm it
+     owns the behavior you need to modify.
+  
+  3. **Make your change.**
+     Follow existing patterns in the file — naming
+     conventions, error handling style, and logging.
+  
+  4. **Run the related tests.**
+     This catches regressions before they reach other
+     developers. Target with `pytest -k "auth"`.
+  
+  ## Key files
+  
+  - `src/auth/**`
+  
+  ## Common modifications
+  
+  Functions you are most likely to modify:
+  
+  - `authenticate()` in `src/auth/login.py`
+  
+  '''
+# ---
