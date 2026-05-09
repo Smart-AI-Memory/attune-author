@@ -13,6 +13,43 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.11.1] - 2026-05-08
+
+### Changed
+
+- **Polish model rename: `claude-sonnet-4-20250514` →
+  `claude-sonnet-4-6`.** Anthropic deprecated the dated alias
+  with EOL 2026-06-15; the V2/V3 verification probes on
+  2026-05-08 surfaced the deprecation warning. Migrating to
+  the family alias matches attune-rag's existing
+  `ClaudeProvider.DEFAULT_MODEL` and tracks Anthropic's
+  recommended migration path. Affected:
+  - [`polish.py:_POLISH_MODEL`](src/attune_author/polish.py)
+    — drives every polish call (synchronous + batch).
+  - [`doc_gen/config.py:DocGenConfig.model`](src/attune_author/doc_gen/config.py)
+    — drives `attune-author docs` generation.
+- **One-time cold cache after upgrade.** `_POLISH_MODEL`
+  participates in the polish cache key, so existing cached
+  entries become orphaned (they remain on disk but never
+  match the new key namespace). The first regen after
+  upgrade is a cold-cache miss for every feature; subsequent
+  regens behave normally. Existing 30-day TTL prune
+  ([polish._cache_prune](src/attune_author/polish.py))
+  reaps orphaned entries automatically.
+
+### Added
+
+- **Mocked smoke test** at `tests/test_polish_smoke.py`
+  pinning the wire-level model name. Catches the next
+  model-rename failure immediately, no API spend.
+
+### Notes
+
+- Users who want to reclaim disk space immediately rather
+  than waiting for the TTL prune can run
+  `attune-author cache clear` post-upgrade. **Optional** —
+  the cache shrinks automatically over 30 days.
+
 ## [0.11.0] - 2026-05-08
 
 ### Added

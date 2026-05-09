@@ -58,7 +58,7 @@ def _state(submitted_at: datetime | None = None) -> BatchState:
         batch_id="msgbatch_test",
         submitted_at=submitted_at or datetime(2026, 5, 8, 18, 35, tzinfo=timezone.utc),
         expected_completion_at=datetime(2026, 5, 8, 18, 41, tzinfo=timezone.utc),
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         requests=(
             BatchStateRequest("feat__auth__concept", "auth", "concept"),
             BatchStateRequest("feat__auth__task", "auth", "task"),

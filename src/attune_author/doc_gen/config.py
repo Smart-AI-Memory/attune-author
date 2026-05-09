@@ -24,7 +24,7 @@ class DocGenConfig:
 
     doc_type: str = "api-reference"
     audience: str = "developers"
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-sonnet-4-6"
     max_outline_tokens: int = 1000
     max_write_tokens: int = 8000
     max_review_tokens: int = 8000
