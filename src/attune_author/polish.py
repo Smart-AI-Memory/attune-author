@@ -51,7 +51,7 @@ from attune_author.polish_prompts import get_system_prompt
 #: Anthropic model used for the polish pass. Hoisted to a
 #: module-level constant so it participates in the cache key —
 #: bumping the model invalidates cache entries automatically.
-_POLISH_MODEL = "claude-sonnet-4-20250514"
+_POLISH_MODEL = "claude-sonnet-4-6"
 
 #: Env var that overrides the default polish cache directory.
 _CACHE_DIR_ENV = "ATTUNE_AUTHOR_POLISH_CACHE"

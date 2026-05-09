@@ -255,7 +255,7 @@ class TestStrictMode:
                 fake_client,
                 system="s",
                 user_message="u",
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6",
                 max_tokens=32,
             )
 
