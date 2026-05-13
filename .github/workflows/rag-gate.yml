@@ -18,6 +18,15 @@ name: RAG Gate
 #   No workflow-level sleep needed.
 #
 # Cost: ~10 answer calls + ~10 judge calls (~$0.10–0.30 per run).
+# Hard cap: ATTUNE_CI_EVAL_KEY has $20/month limit in the Anthropic
+# console — calls beyond that are rejected by the API, not by us.
+#
+# Triggers:
+#   - workflow_dispatch — manual run (e.g. pre-publish check).
+#   - schedule (weekly Mon 13:00 UTC) — drift detection between releases.
+#   - pull_request with label "live-eval" — opt-in PR gate so contributors
+#     can validate eval-affecting changes before merge without paying for
+#     every push. See specs/test-strategy-pass-2/ for the rationale.
 
 on:
   workflow_dispatch:
@@ -32,9 +41,11 @@ on:
   schedule:
     - cron: "0 13 * * 1"
 
-  # Uncomment to gate every push to main (adds ~$0.20/push to API costs):
-  # push:
-  #   branches: [main]
+  # Opt-in PR gate: only runs when the "live-eval" label is applied.
+  # Adds ~$0.20 per labeled push; the cap is the Anthropic console
+  # monthly limit on ATTUNE_CI_EVAL_KEY ($20/month hard).
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read
@@ -44,6 +55,11 @@ jobs:
     name: RAG smoke eval
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Gate the pull_request trigger: only the "live-eval" label fires us.
+    # workflow_dispatch and schedule always run.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.label.name == 'live-eval'
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -65,10 +81,23 @@ jobs:
 
       - name: Run smoke eval
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Prefer the dedicated CI eval key (capped at $20/month in the
+          # Anthropic console). Falls back to the legacy ANTHROPIC_API_KEY
+          # secret while the rotation is in flight; remove the fallback
+          # once ATTUNE_CI_EVAL_KEY is provisioned.
+          ANTHROPIC_API_KEY: ${{ secrets.ATTUNE_CI_EVAL_KEY || secrets.ANTHROPIC_API_KEY }}
           NO_COLOR: "1"
         run: |
           python benchmarks/smoke_eval.py --out smoke_results.json
+
+      - name: Estimate cost
+        if: always()
+        run: |
+          # Approximate per-run cost: ~10 answer calls + ~10 judge calls.
+          # Refine when smoke_eval.py emits token counts in its output.
+          # v1: emit a fixed range as a CI notice so future spend reviews
+          # have a stdout breadcrumb.
+          echo "::notice::Estimated cost for this run: \$0.10–0.30 (10 answer + 10 judge calls)."
 
       - name: Upload eval results
         if: always()

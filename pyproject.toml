@@ -104,7 +104,7 @@ select = ["E", "F", "W", "I", "UP", "BLE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra -m 'not live'"
 asyncio_mode = "auto"  # pytest-asyncio: auto-collect @pytest.mark.asyncio functions
 markers = [
     "live: opt-in tests that hit the live Anthropic API. Skipped by default; require ANTHROPIC_API_KEY and any test-specific env flags.",

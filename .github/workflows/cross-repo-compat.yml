@@ -54,6 +54,15 @@ jobs:
         run: |
           python -c "import attune_help; print(f'attune_help {attune_help.__version__} from {attune_help.__file__}')"
 
+      - name: Guard — ANTHROPIC_API_KEY must NOT be set for default suite
+        run: |
+          if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "::error::ANTHROPIC_API_KEY is set in the default test environment."
+            echo "This can cause non-'live'-marked tests to leak real API calls."
+            exit 1
+          fi
+        shell: bash
+
       - name: Run tests
         run: |
           python -m pytest tests/ -v

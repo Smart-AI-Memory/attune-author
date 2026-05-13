@@ -23,21 +23,23 @@ pytest tests/test_generated_templates_golden.py --snapshot-update
 pytest -m live
 ```
 
-## LLM mocking standard
+## LLM mocking standard, `live` marker, CI guard, cost policy
 
-Three autouse fixtures in `conftest.py` form the reference pattern:
+See **`testing-conventions.md`** in the attune workspace umbrella for
+the canonical reference. attune-author is the **reference
+implementation** the workspace doc describes — the three autouse
+fixtures live in this layer's `conftest.py`:
 
-1. `_lenient_polish_by_default` — sets
-   `ATTUNE_AUTHOR_STRICT_POLISH=false` and strips `ANTHROPIC_API_KEY`
-   so a misconfigured test never reaches the network.
-2. `_reset_rag_pipeline` — clears the module-level RagPipeline singleton
-   between tests, so a leaked patch from one test doesn't poison
-   subsequent tests.
-3. Per-test patches use `unittest.mock.patch("anthropic.Anthropic")` at
-   the **import boundary**, never at the call site.
+- `_lenient_polish_by_default` — sets `ATTUNE_AUTHOR_STRICT_POLISH=false`
+  and strips `ANTHROPIC_API_KEY`.
+- `_reset_rag_pipeline` — clears the module-level `RagPipeline`
+  singleton between tests.
+- Per-test patches use `unittest.mock.patch("anthropic.Anthropic")` at
+  the **import boundary**.
 
-The `live` marker gates real-API tests (`pytest -m live`), so they
-never run by default.
+The `live` marker gates real-API tests (`pytest -m live`); they never
+run by default. CI's real-API path is `rag-gate.yml` — gated weekly
+plus opt-in via the `live-eval` PR label.
 
 ## Test layout
 
