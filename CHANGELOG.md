@@ -37,15 +37,28 @@ changes land, not at tag time.
   [`generator.apply_polish_results`](src/attune_author/generator.py).
   Defaults to **soft-fail**: findings are appended to the
   polished file as an `## Unresolved references` block.
-  Strict mode raises `FactCheckError`. Control via
-  `ATTUNE_AUTHOR_FACT_CHECK` env var
-  (`off | soft | strict`, default `soft`) or the
-  `[tool.attune-author.fact-check]` table in
-  `pyproject.toml` (per-check toggles + per-file skip
-  list). Motivated by attune-ai PR #351, where one
-  feature regen produced six factual errors that needed
-  a manual editorial pass — five of six are now caught
-  automatically.
+  Strict mode raises `FactCheckError`. Control via three
+  layers (each overriding the next):
+  1. `ATTUNE_AUTHOR_FACT_CHECK` env var
+     (`off | soft | strict`, default `soft`) — shell-level
+     intent, wins over per-invocation flags.
+  2. `--fact-check` / `--no-fact-check` flags on
+     `generate` and `regenerate` — per-invocation
+     override.
+  3. `[tool.attune-author.fact-check]` table in
+     `pyproject.toml` — project-level defaults, per-check
+     toggles, per-file skip list.
+
+  Regression fixture frozen at
+  `tests/fixtures/fact_check_ops_dashboard/` (pre-fix
+  and post-fix versions of the four ops-dashboard docs
+  from attune-ai PR #351). The Phase 1 exit gate is
+  "5/6 errors caught" — Python refs ×2, MD links ×4+,
+  numeric ×1; the 6th (insecure-example detection) is
+  Phase 3 scope. Motivated by attune-ai PR #351, where
+  one feature regen produced six factual errors that
+  needed a manual editorial pass — five of six are now
+  caught automatically.
 
 ## [0.11.1] - 2026-05-08
 

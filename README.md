@@ -85,8 +85,19 @@ calling an LLM:
 
 Defaults to **soft-fail** — findings are appended to the
 polished file as an `## Unresolved references` table. Control
-via `ATTUNE_AUTHOR_FACT_CHECK` (`off | soft | strict`, default
-`soft`) or `[tool.attune-author.fact-check]` in `pyproject.toml`:
+via `--fact-check` / `--no-fact-check` on `generate` and
+`regenerate`:
+
+```bash
+attune-author generate ops-dashboard --fact-check strict
+attune-author regenerate --no-fact-check
+```
+
+Or via `ATTUNE_AUTHOR_FACT_CHECK` (`off | soft | strict`,
+default `soft`) — the env var takes precedence over the CLI
+flag so shell-level intent overrides one-off invocations.
+Persistent project-level config lives in
+`[tool.attune-author.fact-check]` in `pyproject.toml`:
 
 ```toml
 [tool.attune-author.fact-check]
