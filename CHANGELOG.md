@@ -13,6 +13,8 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.12.0] - 2026-05-15
+
 ### Added
 
 - **Polish fact-check (Phase 1 of [polish-fact-check
