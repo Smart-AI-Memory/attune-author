@@ -13,6 +13,40 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+### Added
+
+- **Polish fact-check (Phase 1 of [polish-fact-check
+  spec](docs/specs/polish-fact-check/)).** AST-based
+  post-generation verification of every polished template.
+  Four checks, no LLM cost:
+  - `check_python_refs` — imports + dotted attune-paths
+    resolved against the active venv via
+    `importlib.import_module`. Catches the
+    `attune.ops._readers` class of hallucination.
+  - `check_cli_refs` — `attune <subcommand> --flag`
+    references compared against cached `--help` output.
+    Findings include version-coupling messaging so the
+    operator knows which attune-ai version was probed.
+  - `check_md_links` — relative `[label](target.md)` link
+    targets verified for existence.
+  - `check_numeric_refs` — counts (`N templates`,
+    `N features`, `N kinds`) verified against the project
+    filesystem / manifest.
+
+  Wired into the polish pipeline at
+  [`generator.apply_polish_results`](src/attune_author/generator.py).
+  Defaults to **soft-fail**: findings are appended to the
+  polished file as an `## Unresolved references` block.
+  Strict mode raises `FactCheckError`. Control via
+  `ATTUNE_AUTHOR_FACT_CHECK` env var
+  (`off | soft | strict`, default `soft`) or the
+  `[tool.attune-author.fact-check]` table in
+  `pyproject.toml` (per-check toggles + per-file skip
+  list). Motivated by attune-ai PR #351, where one
+  feature regen produced six factual errors that needed
+  a manual editorial pass — five of six are now caught
+  automatically.
+
 ## [0.11.1] - 2026-05-08
 
 ### Changed

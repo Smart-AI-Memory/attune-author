@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -430,6 +431,15 @@ def apply_polish_results(
     failure means we couldn't get a polished version, mirroring
     the synchronous path's "use raw template on lenient-mode
     failure" behavior.
+
+    After each file write, the Phase 1 fact-check pass runs
+    against the polished file. Default behavior is soft-fail:
+    findings are appended to the file as an
+    ``## Unresolved references`` block. Strict mode raises
+    :class:`attune_author.fact_check.FactCheckError`. Both are
+    gated by the ``ATTUNE_AUTHOR_FACT_CHECK`` env var (``off``,
+    ``soft``, ``strict``) and the ``[tool.attune-author.fact-check]``
+    pyproject table.
     """
     feature = prep.feature
     result = GenerationResult(
@@ -440,6 +450,7 @@ def apply_polish_results(
     for entry in prep.pending:
         final_content = polished_by_depth.get(entry.depth, entry.rendered_content)
         entry.out_path.write_text(final_content, encoding="utf-8")
+        _run_fact_check(entry.out_path)
         result.templates.append(
             GeneratedTemplate(
                 feature=feature.name,
@@ -449,6 +460,50 @@ def apply_polish_results(
             )
         )
     return result
+
+
+def _run_fact_check(polished_path: Path) -> None:
+    """Run the Phase 1 fact-check pass against a freshly-written file.
+
+    The check is opportunistic: any failure inside the fact-check
+    machinery itself is logged and swallowed so the polish pipeline
+    never regresses on a flaky check. Strict mode (raising
+    ``FactCheckError``) only triggers when the check produces real
+    findings AND the operator has explicitly opted in.
+    """
+    mode = os.environ.get("ATTUNE_AUTHOR_FACT_CHECK", "soft").lower()
+    if mode == "off":
+        return
+    try:
+        from attune_author.fact_check import (
+            FactCheckError,
+            apply_soft_fail,
+            check_polished_file,
+        )
+
+        report = check_polished_file(polished_path, project_root=Path.cwd())
+    except Exception as exc:  # noqa: BLE001
+        # INTENTIONAL: opportunistic — never let the fact-check
+        # layer break the polish pipeline. A misconfigured project
+        # or a broken check module should degrade gracefully.
+        logger.warning("Fact-check skipped for %s: %s", polished_path, exc)
+        return
+
+    if not report.findings:
+        return
+
+    if mode == "strict" and report.has_errors():
+        raise FactCheckError(
+            f"Fact-check failed for {polished_path}: "
+            f"{len(report.findings)} unresolved references "
+            f"(set ATTUNE_AUTHOR_FACT_CHECK=soft to append a block instead)"
+        )
+
+    # Soft-fail (default): append the unresolved-references block.
+    try:
+        apply_soft_fail(polished_path, report)
+    except OSError as exc:
+        logger.warning("Could not append fact-check block to %s: %s", polished_path, exc)
 
 
 def _maybe_polish(

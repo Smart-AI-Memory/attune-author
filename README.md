@@ -68,6 +68,44 @@ attune-author generate security-audit
 attune-author regenerate
 ```
 
+## Fact-check (post-polish)
+
+Every polished template runs through an AST-based fact-check
+pass that verifies four classes of LLM-fabricable detail without
+calling an LLM:
+
+- Python imports and `attune.foo.bar` dotted paths resolve in
+  the active venv
+- `attune <cmd> --flag` references appear in the cached
+  `--help` output (findings include version-coupling
+  context so the operator knows which version was probed)
+- Relative `[label](target.md)` link targets exist
+- Counts (`N templates`, `N features`, `N kinds`) match the
+  project filesystem / manifest
+
+Defaults to **soft-fail** — findings are appended to the
+polished file as an `## Unresolved references` table. Control
+via `ATTUNE_AUTHOR_FACT_CHECK` (`off | soft | strict`, default
+`soft`) or `[tool.attune-author.fact-check]` in `pyproject.toml`:
+
+```toml
+[tool.attune-author.fact-check]
+enabled = true
+soft_fail = true
+check_python_refs = true
+check_cli_refs = true
+check_md_links = true
+check_numeric_refs = true
+
+[tool.attune-author.fact-check.skip]
+"docs/architecture/some-feature.md" = ["check_md_links"]
+```
+
+This is Phase 1 of the [polish-fact-check
+spec](docs/specs/polish-fact-check/). Phase 2 (ground-truth
+context injection), Phase 3 (faithfulness judge), and Phase 4
+(tutorial static check) are tracked in `tasks.md`.
+
 ## Polish cache
 
 `attune-author` caches LLM polish responses on disk so re-generating an

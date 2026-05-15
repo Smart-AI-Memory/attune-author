@@ -16,24 +16,24 @@
 
 | # | Task | Layer | Status | Notes |
 |---|------|-------|--------|-------|
-| 1.1 | Decide config-file location (`pyproject.toml` vs new `.attune-author.toml`) | attune-author | todo | Match regen-pipeline convention; document decision in PR |
-| 1.2 | Create `src/attune_author/fact_check/` package skeleton with `__init__.py`, `python_refs.py`, `cli_refs.py`, `md_links.py`, `numeric_refs.py`, `report.py` | attune-author | todo | One module per check + shared `FactCheckReport` dataclass |
-| 1.3 | Implement `python_refs.check(polished_path, source_paths, project_root)` | attune-author | todo | AST parse → resolve via `importlib.import_module` in active venv |
-| 1.4 | Implement `cli_refs.check(polished_path, project_root)` | attune-author | todo | Per-file cache of `attune <cmd> --help` output; regex extract flag names. **Findings must include version-coupling messaging block** (installed attune-ai version + override snippet) — see design.md |
-| 1.5 | Implement `md_links.check(polished_path, project_root)` | attune-author | todo | Resolve relative links; confirm target file exists |
-| 1.5.1 | Implement `numeric_refs.check(polished_path, project_root)` | attune-author | todo | Noun-to-resolver mapping (`templates` → filesystem count, `features` → `features.yaml` key count, etc.). Severity: `error` on mismatch, `warning` on unverifiable nouns |
-| 1.6 | Implement `report.format_unresolved_block(findings)` | attune-author | todo | Markdown table; severity column; appended above `<!-- attune-generated ... -->` |
-| 1.7 | Wire into `attune_author/polish.py` after the polish write | attune-author | todo | Soft-fail: append to file. Strict mode: raise `FactCheckError` |
-| 1.8 | Add `[tool.attune-author.fact-check]` config schema + parser | attune-author | todo | `enabled`, `soft_fail`, per-check toggles, skip-list |
-| 1.9 | Add `--fact-check=strict` / `--no-fact-check` CLI flags to `generate` and `regenerate` | attune-author | todo | Match existing CLI style |
-| 1.10 | Build regression fixture: copy the 6 pre-fix ops-dashboard errors as test inputs | attune-author | todo | `tests/fixtures/ops_dashboard_pre_fix/{how-to,tutorials,reference,architecture}.md` |
-| 1.11 | Test: each check fires on the matching fixture error | attune-author | todo | `test_python_refs_catches_underscore_module`, `test_cli_refs_catches_invented_flag`, `test_md_links_catches_missing_target`, `test_numeric_refs_catches_invented_count` |
-| 1.11.1 | Test: CLI-ref finding contains version-coupling messaging | attune-author | todo | Assert installed version + override snippet appear in finding text |
-| 1.12 | Test: zero findings on post-fix ops-dashboard versions | attune-author | todo | Pull from attune-ai PR #351 head |
-| 1.13 | Test: soft-fail writes the block; strict mode raises | attune-author | todo | Two test cases |
-| 1.14 | Test: config opt-outs work per-check and per-file | attune-author | todo | Toggle each in `pyproject.toml` test fixture |
-| 1.15 | Update CHANGELOG with the four checks and the soft-fail default | attune-author | todo | Reference attune-ai PR #351 as motivation |
-| 1.16 | Update README with a short "Fact-check" section + one example output | attune-author | todo | Keep it scannable; full docs go in attune-author's own help corpus later |
+| 1.1 | Decide config-file location (`pyproject.toml` vs new `.attune-author.toml`) | attune-author | **done** | Match regen-pipeline convention; document decision in PR |
+| 1.2 | Create `src/attune_author/fact_check/` package skeleton with `__init__.py`, `python_refs.py`, `cli_refs.py`, `md_links.py`, `numeric_refs.py`, `report.py` | attune-author | **done** | One module per check + shared `FactCheckReport` dataclass |
+| 1.3 | Implement `python_refs.check(polished_path, source_paths, project_root)` | attune-author | **done** | AST parse → resolve via `importlib.import_module` in active venv |
+| 1.4 | Implement `cli_refs.check(polished_path, project_root)` | attune-author | **done** | Per-file cache of `attune <cmd> --help` output; regex extract flag names. **Findings must include version-coupling messaging block** (installed attune-ai version + override snippet) — see design.md |
+| 1.5 | Implement `md_links.check(polished_path, project_root)` | attune-author | **done** | Resolve relative links; confirm target file exists |
+| 1.5.1 | Implement `numeric_refs.check(polished_path, project_root)` | attune-author | **done** | Noun-to-resolver mapping (`templates` → filesystem count, `features` → `features.yaml` key count, etc.). Severity: `error` on mismatch, `warning` on unverifiable nouns |
+| 1.6 | Implement `report.format_unresolved_block(findings)` | attune-author | **done** | Markdown table; severity column; appended above `<!-- attune-generated ... -->` |
+| 1.7 | Wire into `attune_author/polish.py` after the polish write | attune-author | **done** | Soft-fail: append to file. Strict mode: raise `FactCheckError` |
+| 1.8 | Add `[tool.attune-author.fact-check]` config schema + parser | attune-author | **done** | `enabled`, `soft_fail`, per-check toggles, skip-list |
+| 1.9 | Add `--fact-check=strict` / `--no-fact-check` CLI flags to `generate` and `regenerate` | attune-author | deferred | Match existing CLI style |
+| 1.10 | Build regression fixture: copy the 6 pre-fix ops-dashboard errors as test inputs | attune-author | **done** | `tests/fixtures/fact_check_ops_dashboard/{pre_fix,post_fix}/{architecture,how-to,reference,tutorial}.md` |
+| 1.11 | Test: each check fires on the matching fixture error | attune-author | **done** | `test_python_refs_catches_underscore_module`, `test_cli_refs_catches_invented_flag`, `test_md_links_catches_missing_target`, `test_numeric_refs_catches_invented_count` |
+| 1.11.1 | Test: CLI-ref finding contains version-coupling messaging | attune-author | **done** | Assert installed version + override snippet appear in finding text |
+| 1.12 | Test: zero findings on post-fix ops-dashboard versions | attune-author | **done** | `test_clean_on_post_fix` in `test_checks_against_fixtures.py` per check class |
+| 1.13 | Test: soft-fail writes the block; strict mode raises | attune-author | **done** | Two test cases |
+| 1.14 | Test: config opt-outs work per-check and per-file | attune-author | **done** | Toggle each in `pyproject.toml` test fixture |
+| 1.15 | Update CHANGELOG with the four checks and the soft-fail default | attune-author | **done** | Reference attune-ai PR #351 as motivation |
+| 1.16 | Update README with a short "Fact-check" section + one example output | attune-author | **done** | Keep it scannable; full docs go in attune-author's own help corpus later |
 
 ### Phase 1 testing strategy
 
@@ -51,13 +51,18 @@
 
 ### Phase 1 exit checklist
 
-- [ ] All tasks 1.1–1.16 done
-- [ ] CI green
-- [ ] Regression fixture: **5/6 ops-dashboard errors caught** (Python
+- [x] Core implementation (tasks 1.1–1.8)
+- [x] Test coverage (tasks 1.11, 1.11.1, 1.13, 1.14): 55 new tests
+- [x] CHANGELOG + README (tasks 1.15, 1.16)
+- [x] Regression fixture from attune-ai PR #351 (tasks 1.10, 1.12)
+- [x] Regression fixture: **5/6 ops-dashboard errors caught** (Python
       refs ×2 + CLI refs ×1 + Markdown links ×1 + numeric claims ×1).
       The 6th error (missing-security-callout for `0.0.0.0`) is
       explicitly Phase 3 scope.
-- [ ] Zero findings on post-fix ops-dashboard versions
+- [x] Zero findings on post-fix ops-dashboard versions
+- [ ] CLI flags `--fact-check=strict` / `--no-fact-check` (task 1.9) —
+      deferred to a follow-up; env var `ATTUNE_AUTHOR_FACT_CHECK`
+      ships with Phase 1.
 - [ ] CLI-ref findings include version-coupling messaging (verified by
       test 1.11.1)
 - [ ] CHANGELOG + README updated
