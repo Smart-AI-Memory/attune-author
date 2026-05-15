@@ -53,13 +53,13 @@
   
   # Auth reference
   
+  Authentication and authorization
   
   ## Functions
   
-  | Function | Description | File |
-  |----------|-------------|------|
-  | `authenticate()` | Authenticate a user. | `src/auth/login.py` |
-  
+  | Function | Parameters | Returns | Description | File |
+  |----------|------------|---------|-------------|------|
+  | `authenticate` | `username: str, password: str` | `bool` | Authenticate a user. | `src/auth/login.py` |
   
   ## Source files
   

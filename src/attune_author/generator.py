@@ -1040,11 +1040,15 @@ def _collect_function(
     info: _SourceInfo,
 ) -> None:
     first_line = _docstring_first_line(node)
+    signature = _format_function_signature(node)
+    params, returns = _split_signature(signature, node.name)
     info.public_functions.append({"name": node.name, "doc": first_line, "file": rel_path})
     info.function_signatures.append(
         {
             "name": node.name,
-            "signature": _format_function_signature(node),
+            "signature": signature,
+            "params": params,
+            "returns": returns,
             "doc": first_line,
             "file": rel_path,
             "raises": _extract_raises(node),
@@ -1202,6 +1206,23 @@ def _format_function_signature(
     return sig
 
 
+def _split_signature(signature: str, name: str) -> tuple[str, str]:
+    # Splits ``name(params) -> R`` into ``(params, R)``. Returns
+    # ``("", "")`` if the signature doesn't match the expected
+    # shape — keeps rendering callers defensive.
+    prefix = f"{name}("
+    if not signature.startswith(prefix):
+        return ("", "")
+    rest = signature[len(prefix) :]
+    end = rest.rfind(")")
+    if end == -1:
+        return ("", "")
+    params = rest[:end]
+    tail = rest[end + 1 :].lstrip()
+    returns = tail[3:].strip() if tail.startswith("->") else ""
+    return (params, returns)
+
+
 def _format_class_methods(node: ast.ClassDef) -> str:
     """Format a class's public method signatures.
 
@@ -1307,6 +1328,8 @@ def _render_template(
         tags=feature.tags,
         public_classes=source_info.public_classes,
         public_functions=source_info.public_functions,
+        function_signatures=source_info.function_signatures,
+        class_signatures=source_info.class_signatures,
         module_docstrings=source_info.module_docstrings,
         config_keys=source_info.config_keys,
         file_count=source_info.file_count,
