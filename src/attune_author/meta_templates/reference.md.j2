@@ -1,6 +1,10 @@
 # {{ title }} reference
+{% if description %}
 
+{{ description }}
+{% endif %}
 {% if public_classes %}
+
 ## Classes
 
 | Class | Description | File |
@@ -9,8 +13,17 @@
 | `{{ cls.name }}` | {{ cls.doc if cls.doc else "—" }} | `{{ cls.file }}` |
 {% endfor %}
 {% endif %}
+{% if function_signatures %}
 
-{% if public_functions %}
+## Functions
+
+| Function | Parameters | Returns | Description | File |
+|----------|------------|---------|-------------|------|
+{% for fn in function_signatures %}
+| `{{ fn.name }}` | {{ ("`" ~ fn.params ~ "`") if fn.params else "—" }} | {{ ("`" ~ fn.returns ~ "`") if fn.returns else "—" }} | {{ fn.doc if fn.doc else "—" }} | `{{ fn.file }}` |
+{% endfor %}
+{% elif public_functions %}
+
 ## Functions
 
 | Function | Description | File |
@@ -19,8 +32,8 @@
 | `{{ fn.name }}()` | {{ fn.doc if fn.doc else "—" }} | `{{ fn.file }}` |
 {% endfor %}
 {% endif %}
-
 {% if config_keys %}
+
 ## Configuration
 
 | Key | Description |
@@ -39,8 +52,8 @@
 {% else %}
 No file patterns configured.
 {% endif %}
-
 {% if tags %}
+
 ## Tags
 
 {% for tag in tags %}`{{ tag }}`{{ ", " if not loop.last else "" }}{% endfor %}
