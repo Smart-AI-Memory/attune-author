@@ -13,7 +13,27 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.13.0] - 2026-05-15
+
+> **Note**: skipping `0.12.0`. The internal `release/v0.12.0`
+> branch carried the polish fact-check Phase 1 work but was
+> never published to PyPI. That work now ships in `0.13.0`
+> alongside the reference-template regenerator fixes prompted
+> by attune-rag d39e39d.
+
 ### Added
+
+- **Polish bypass surfaced in YAML frontmatter
+  ([#33](https://github.com/Smart-AI-Memory/attune-author/pull/33)).**
+  When the polish pass falls back to returning raw Jinja
+  content in lenient mode (no API key, swallowed LLM error),
+  the rendered template now carries a `polish: skipped` line in
+  its YAML frontmatter. Without this marker the bypass was
+  structurally invisible — same headings, same frontmatter
+  shape — so degraded output slipped through PR review (see
+  attune-rag commit d39e39d). Helper is idempotent; non-YAML
+  output (project-doc HTML-comment-footer templates) passes
+  through unchanged.
 
 - **Polish fact-check (Phase 1 of [polish-fact-check
   spec](docs/specs/polish-fact-check/)).** AST-based
@@ -59,6 +79,40 @@ changes land, not at tag time.
   one feature regen produced six factual errors that
   needed a manual editorial pass — five of six are now
   caught automatically.
+
+### Changed
+
+- **Reference templates carry typed Parameters/Returns columns
+  without depending on polish
+  ([#31](https://github.com/Smart-AI-Memory/attune-author/pull/31),
+  closes [#30](https://github.com/Smart-AI-Memory/attune-author/issues/30)).**
+  The Jinja meta-template for `reference.md` previously emitted
+  a 3-column table (`Function | Description | File`). The
+  richer 4-column table (`Function | Parameters | Returns |
+  Description | File`) was only produced when the LLM polish
+  pass succeeded and synthesized it. A polish bypass made the
+  structural data vanish. AST-derived parameter and return data
+  now flows through Jinja directly, so the structural ceiling
+  no longer depends on the LLM. The `feature.description` from
+  `features.yaml` also lands directly under the title. Polish
+  keeps its job (rewriting prose, smoothing tone) and is no
+  longer load-bearing for typed data. Legacy callers that pass
+  only `public_functions` (without `function_signatures`)
+  continue to get the 3-column fallback.
+
+- **Test fixture isolates the polish cache per session
+  ([#32](https://github.com/Smart-AI-Memory/attune-author/pull/32)).**
+  The autouse `_lenient_polish_by_default` fixture now redirects
+  `ATTUNE_AUTHOR_POLISH_CACHE` to a per-session `tmp_path_factory`
+  directory. Previously, every test shared the dev machine's real
+  `~/.attune/polish_cache`, so a prior live regenerate run could
+  populate it and cause golden-snapshot tests to silently observe
+  LLM-rewritten content instead of the deterministic Jinja
+  fallback — flaky between machines and between sessions on the
+  same machine. CI was unaffected (no cache present), so the
+  regression hid locally. Also hardens `delenv` with
+  `raising=False` so the fixture doesn't break on hosts without
+  `ANTHROPIC_API_KEY` set.
 
 ## [0.11.1] - 2026-05-08
 
