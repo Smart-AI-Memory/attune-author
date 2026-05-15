@@ -132,6 +132,10 @@ class TestCliRefs:
         )
         # Pin the resolved CLI + its help output deterministically.
         monkeypatch.setattr(cli_refs, "_resolve_cli_name", lambda root: "attune")
+        # `shutil.which("attune")` returns None in CI (attune-ai isn't in
+        # attune-author's dev deps), making the check bail before any
+        # finding can surface. Stub `shutil.which` so the check proceeds.
+        monkeypatch.setattr(cli_refs.shutil, "which", lambda cmd: "/usr/bin/" + cmd)
         monkeypatch.setattr(
             cli_refs,
             "_help_text",
@@ -156,6 +160,10 @@ class TestCliRefs:
         polished = tmp_path / "doc.md"
         polished.write_text("Run `attune ops --nope-not-real`.\n")
         monkeypatch.setattr(cli_refs, "_resolve_cli_name", lambda root: "attune")
+        # `shutil.which("attune")` returns None in CI (attune-ai isn't in
+        # attune-author's dev deps), making the check bail before any
+        # finding can surface. Stub `shutil.which` so the check proceeds.
+        monkeypatch.setattr(cli_refs.shutil, "which", lambda cmd: "/usr/bin/" + cmd)
         monkeypatch.setattr(
             cli_refs,
             "_help_text",
@@ -177,6 +185,10 @@ class TestCliRefs:
         monkeypatch: pytest.MonkeyPatch,
     ):
         monkeypatch.setattr(cli_refs, "_resolve_cli_name", lambda root: "attune")
+        # `shutil.which("attune")` returns None in CI (attune-ai isn't in
+        # attune-author's dev deps), making the check bail before any
+        # finding can surface. Stub `shutil.which` so the check proceeds.
+        monkeypatch.setattr(cli_refs.shutil, "which", lambda cmd: "/usr/bin/" + cmd)
         monkeypatch.setattr(
             cli_refs,
             "_help_text",
@@ -283,6 +295,10 @@ class TestPhase1ExitGate:
         monkeypatch: pytest.MonkeyPatch,
     ):
         monkeypatch.setattr(cli_refs, "_resolve_cli_name", lambda root: "attune")
+        # `shutil.which("attune")` returns None in CI (attune-ai isn't in
+        # attune-author's dev deps), making the check bail before any
+        # finding can surface. Stub `shutil.which` so the check proceeds.
+        monkeypatch.setattr(cli_refs.shutil, "which", lambda cmd: "/usr/bin/" + cmd)
         monkeypatch.setattr(
             cli_refs,
             "_help_text",
