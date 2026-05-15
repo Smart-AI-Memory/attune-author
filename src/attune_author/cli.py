@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -150,6 +151,29 @@ def _build_parser() -> argparse.ArgumentParser:
             "architecture). Use this for full help and docs coverage."
         ),
     )
+    # Fact-check mode per spec docs/specs/polish-fact-check/. Default
+    # is "soft" (append findings to the polished file as an
+    # ``## Unresolved references`` block). "strict" raises
+    # FactCheckError on any error finding; "off" disables.
+    # Internally sets ATTUNE_AUTHOR_FACT_CHECK; the env var path is
+    # the single source of truth read by generator._run_fact_check.
+    fact_check_group = p_gen.add_mutually_exclusive_group()
+    fact_check_group.add_argument(
+        "--fact-check",
+        choices=["off", "soft", "strict"],
+        default=None,
+        help=(
+            "Fact-check mode after polish. ``soft`` (default) appends "
+            "an ``## Unresolved references`` block to the polished "
+            "file; ``strict`` raises on findings; ``off`` disables. "
+            "Overridden by ATTUNE_AUTHOR_FACT_CHECK if set."
+        ),
+    )
+    fact_check_group.add_argument(
+        "--no-fact-check",
+        action="store_true",
+        help="Shortcut for ``--fact-check=off``.",
+    )
 
     p_regen = sub.add_parser(
         "regenerate",
@@ -214,6 +238,24 @@ def _build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="With --status: emit JSON instead of human-readable output.",
+    )
+    # Same fact-check controls as p_gen; see that block for design notes.
+    regen_fact_check_group = p_regen.add_mutually_exclusive_group()
+    regen_fact_check_group.add_argument(
+        "--fact-check",
+        choices=["off", "soft", "strict"],
+        default=None,
+        help=(
+            "Fact-check mode after polish. ``soft`` (default) appends "
+            "an ``## Unresolved references`` block to each polished "
+            "file; ``strict`` raises on findings; ``off`` disables. "
+            "Overridden by ATTUNE_AUTHOR_FACT_CHECK if set."
+        ),
+    )
+    regen_fact_check_group.add_argument(
+        "--no-fact-check",
+        action="store_true",
+        help="Shortcut for ``--fact-check=off``.",
     )
 
     p_cache = sub.add_parser(
@@ -454,11 +496,28 @@ def _cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def _apply_fact_check_args(args: argparse.Namespace) -> None:
+    """Translate ``--fact-check`` / ``--no-fact-check`` to the env var
+    read by :func:`attune_author.generator._run_fact_check`.
+
+    The env var is the single source of truth; the CLI flags are a
+    convenience that maps onto it. An already-set env var wins (the
+    operator's shell-level intent overrides the per-invocation flag).
+    """
+    if os.environ.get("ATTUNE_AUTHOR_FACT_CHECK"):
+        return
+    if getattr(args, "no_fact_check", False):
+        os.environ["ATTUNE_AUTHOR_FACT_CHECK"] = "off"
+    elif getattr(args, "fact_check", None):
+        os.environ["ATTUNE_AUTHOR_FACT_CHECK"] = args.fact_check
+
+
 def _cmd_generate(args: argparse.Namespace) -> int:
     """Handle the generate command."""
     from attune_author.generator import generate_feature_templates
     from attune_author.manifest import load_manifest
 
+    _apply_fact_check_args(args)
     root = validate_file_path(args.project_root)
     help_dir = validate_file_path(args.help_dir)
 
@@ -505,6 +564,7 @@ def _cmd_generate(args: argparse.Namespace) -> int:
 
 def _cmd_regenerate(args: argparse.Namespace) -> int:
     """Handle the regenerate command."""
+    _apply_fact_check_args(args)
     root = validate_file_path(args.project_root)
     help_dir = validate_file_path(args.help_dir)
 

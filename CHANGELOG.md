@@ -13,6 +13,53 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+### Added
+
+- **Polish fact-check (Phase 1 of [polish-fact-check
+  spec](docs/specs/polish-fact-check/)).** AST-based
+  post-generation verification of every polished template.
+  Four checks, no LLM cost:
+  - `check_python_refs` — imports + dotted attune-paths
+    resolved against the active venv via
+    `importlib.import_module`. Catches the
+    `attune.ops._readers` class of hallucination.
+  - `check_cli_refs` — `attune <subcommand> --flag`
+    references compared against cached `--help` output.
+    Findings include version-coupling messaging so the
+    operator knows which attune-ai version was probed.
+  - `check_md_links` — relative `[label](target.md)` link
+    targets verified for existence.
+  - `check_numeric_refs` — counts (`N templates`,
+    `N features`, `N kinds`) verified against the project
+    filesystem / manifest.
+
+  Wired into the polish pipeline at
+  [`generator.apply_polish_results`](src/attune_author/generator.py).
+  Defaults to **soft-fail**: findings are appended to the
+  polished file as an `## Unresolved references` block.
+  Strict mode raises `FactCheckError`. Control via three
+  layers (each overriding the next):
+  1. `ATTUNE_AUTHOR_FACT_CHECK` env var
+     (`off | soft | strict`, default `soft`) — shell-level
+     intent, wins over per-invocation flags.
+  2. `--fact-check` / `--no-fact-check` flags on
+     `generate` and `regenerate` — per-invocation
+     override.
+  3. `[tool.attune-author.fact-check]` table in
+     `pyproject.toml` — project-level defaults, per-check
+     toggles, per-file skip list.
+
+  Regression fixture frozen at
+  `tests/fixtures/fact_check_ops_dashboard/` (pre-fix
+  and post-fix versions of the four ops-dashboard docs
+  from attune-ai PR #351). The Phase 1 exit gate is
+  "5/6 errors caught" — Python refs ×2, MD links ×4+,
+  numeric ×1; the 6th (insecure-example detection) is
+  Phase 3 scope. Motivated by attune-ai PR #351, where
+  one feature regen produced six factual errors that
+  needed a manual editorial pass — five of six are now
+  caught automatically.
+
 ## [0.11.1] - 2026-05-08
 
 ### Changed
