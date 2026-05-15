@@ -345,7 +345,33 @@ def polish_template(
             template_type,
             exc,
         )
+        return _mark_polish_skipped(content)
+
+
+def _mark_polish_skipped(content: str) -> str:
+    # Surface a polish bypass in the rendered YAML frontmatter so
+    # the regression shows up in PR diffs. Without this marker,
+    # raw-Jinja output looks indistinguishable from a normal
+    # generation (same headings, same frontmatter shape) and slips
+    # past review — see attune-author#30 and attune-rag d39e39d.
+    #
+    # Only YAML frontmatter is supported. Non-YAML output (e.g.
+    # project-doc templates with an HTML comment footer) passes
+    # through unchanged; surfacing bypass there would need a
+    # different mechanism.
+    if not content.startswith("---\n"):
         return content
+    end = content.find("\n---\n", 4)
+    if end == -1:
+        return content
+    frontmatter = content[4:end]
+    rest = content[end + 5 :]
+    if "\npolish:" in "\n" + frontmatter:
+        # Idempotent: don't double-write if a previous run already
+        # marked the file.
+        return content
+    new_frontmatter = frontmatter.rstrip("\n") + "\npolish: skipped\n"
+    return f"---\n{new_frontmatter}---\n{rest}"
 
 
 def _sanitize_output(content: str) -> str:

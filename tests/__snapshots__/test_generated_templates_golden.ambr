@@ -9,6 +9,7 @@
   generated_at: <TIMESTAMP>
   source_hash: <HASH>
   status: generated
+  polish: skipped
   ---
   
   # Auth
@@ -49,6 +50,7 @@
   generated_at: <TIMESTAMP>
   source_hash: <HASH>
   status: generated
+  polish: skipped
   ---
   
   # Auth reference
@@ -81,6 +83,7 @@
   generated_at: <TIMESTAMP>
   source_hash: <HASH>
   status: generated
+  polish: skipped
   ---
   
   # Work with auth

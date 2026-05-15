@@ -97,6 +97,51 @@ class TestPolishTemplate:
                 result = polish_template(content, "test", "summary", strict=False)
                 assert result == content
 
+    def test_lenient_bypass_marks_yaml_frontmatter(self) -> None:
+        # A polish bypass injects ``polish: skipped`` into the YAML
+        # frontmatter so the regression is visible in PR diffs —
+        # otherwise raw Jinja output is indistinguishable from a
+        # normal generation. See attune-author#30.
+        with patch.dict("os.environ", {}, clear=True):
+            content = (
+                "---\n"
+                "type: reference\n"
+                "feature: auth\n"
+                "status: generated\n"
+                "---\n"
+                "\n# Auth reference\n"
+            )
+            result = polish_template(content, "auth", "summary", strict=False)
+            assert "polish: skipped" in result
+            # Original body is preserved verbatim — only the
+            # frontmatter is annotated.
+            assert "# Auth reference" in result
+
+    def test_lenient_bypass_is_idempotent_when_already_marked(self) -> None:
+        # Re-running polish on an already-marked file should not
+        # double-write the marker.
+        with patch.dict("os.environ", {}, clear=True):
+            content = (
+                "---\n"
+                "type: reference\n"
+                "status: generated\n"
+                "polish: skipped\n"
+                "---\n"
+                "\n# Body\n"
+            )
+            result = polish_template(content, "auth", "summary", strict=False)
+            assert result.count("polish: skipped") == 1
+
+    def test_lenient_bypass_passes_through_non_frontmatter_content(self) -> None:
+        # Content without YAML frontmatter (e.g., project-doc
+        # templates with an HTML comment footer) is returned
+        # unchanged — surfacing bypass there would need a
+        # different mechanism.
+        with patch.dict("os.environ", {}, clear=True):
+            content = "# Test\nNo frontmatter here.\n"
+            result = polish_template(content, "test", "summary", strict=False)
+            assert result == content
+
     def test_returns_polished_on_success(self) -> None:
         """Test successful polish returns LLM output.
 
