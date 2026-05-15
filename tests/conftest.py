@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -10,7 +9,10 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _lenient_polish_by_default(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+def _lenient_polish_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Iterator[None]:
     """Disable strict polish mode for every test by default.
 
     Polish is strict in production (a missing API key raises),
@@ -21,13 +23,26 @@ def _lenient_polish_by_default(monkeypatch: pytest.MonkeyPatch) -> Iterator[None
     test has mocked ``_call_llm``. Tests that specifically
     exercise strict-mode behavior override it with their own
     ``patch.dict`` block.
+
+    The polish cache directory is also pointed at a per-test
+    tmp directory. Without this, every test would share the
+    dev machine's real ``~/.attune/polish_cache``, so a
+    previous live ``regenerate`` run can populate the cache
+    with polished output and cause golden-snapshot tests to
+    silently observe LLM-rewritten content instead of the
+    deterministic Jinja-only fallback. The behavior is
+    environment-dependent and surfaces as flakes between
+    machines (or between sessions on the same machine).
     """
     monkeypatch.setenv("ATTUNE_AUTHOR_STRICT_POLISH", "false")
+    monkeypatch.setenv(
+        "ATTUNE_AUTHOR_POLISH_CACHE",
+        str(tmp_path_factory.mktemp("polish_cache")),
+    )
     # Also make sure the tests never accidentally call the
     # real Anthropic API with a key picked up from the dev
     # machine's environment — a huge cost/latency hazard.
-    if "ANTHROPIC_API_KEY" in os.environ:
-        monkeypatch.delenv("ANTHROPIC_API_KEY")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     yield
 
 
