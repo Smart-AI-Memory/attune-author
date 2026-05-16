@@ -162,6 +162,37 @@ CLI flags, fabricated private-module imports, wrong route
 paths, hallucinated counts) at the prompt layer, rather than
 relying solely on the post-generation fact-check to catch them.
 
+## Faithfulness review (Phase 3)
+
+The Phase 3 faithfulness judge wraps
+`attune_rag.eval.faithfulness.FaithfulnessJudge` as a
+post-polish step: it scores each polished file's claims against
+the source files it was generated from. When the score falls
+below the configured threshold, a `## Faithfulness review`
+block is appended to the polished file listing the unsupported
+claims and the judge's reasoning.
+
+The judge is **opt-in** because it makes real Anthropic API
+calls. To enable:
+
+```toml
+[tool.attune-author.fact-check.faithfulness]
+enabled = true
+threshold = 0.95            # below this triggers a review block
+budget_per_file_usd = 0.10  # skip if estimated cost exceeds cap
+model = "claude-sonnet-4-6" # haiku is ~1/3 the cost
+```
+
+The judge is best-effort. Missing `attune-rag[claude]`, missing
+`ANTHROPIC_API_KEY`, over-budget cost estimates, and transient
+API failures all degrade silently rather than blocking the
+polish. Set `block_polish_on_unavailable = true` in CI lanes
+where missing deps should fail loudly instead.
+
+End-of-run telemetry (call count, skip count, total estimated
+USD) logs at INFO level after `attune-author regenerate`. Set
+`ATTUNE_AUTHOR_FAITHFULNESS=off` to disable for a single run.
+
 ## Polish cache
 
 `attune-author` caches LLM polish responses on disk so re-generating an

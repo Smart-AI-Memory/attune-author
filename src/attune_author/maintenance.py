@@ -99,6 +99,12 @@ def run_maintenance(
     if dry_run or report.stale_count == 0:
         return result
 
+    # Reset Phase 3 faithfulness telemetry so the end-of-run summary
+    # reflects this regen rather than carrying state across runs.
+    from attune_author.generator import reset_faithfulness_telemetry
+
+    reset_faithfulness_telemetry()
+
     for entry in report.help_entries:
         if not entry.is_stale:
             continue
@@ -126,6 +132,20 @@ def run_maintenance(
                 e,
             )
             result.failed.append(entry.feature)
+
+    # Phase 3 telemetry summary. Logged at INFO so it appears in the
+    # default `attune-author regenerate` output. Silent when the judge
+    # didn't run at all (disabled or never reached).
+    from attune_author.generator import _faithfulness_telemetry
+
+    telemetry = _faithfulness_telemetry()
+    if telemetry["calls"] or telemetry["skipped"]:
+        logger.info(
+            "Faithfulness judge: %d call(s), %d skipped, estimated cost $%.4f",
+            int(telemetry["calls"]),
+            int(telemetry["skipped"]),
+            telemetry["cost_usd"],
+        )
 
     return result
 
