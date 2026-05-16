@@ -466,6 +466,15 @@ def apply_polish_results(
     absolute_sources = [project_root / rel_path for rel_path in prep.matched_files]
     for entry in prep.pending:
         final_content = polished_by_depth.get(entry.depth, entry.rendered_content)
+        # Phase 4: strip `# attune-author: skip-mypy` directives from
+        # tutorial code fences so they don't ship to readers. Other
+        # template kinds are untouched.
+        if entry.depth == "tutorial":
+            from attune_author.fact_check.tutorial_static_check import (
+                strip_skip_directives_in_file,
+            )
+
+            final_content = strip_skip_directives_in_file(final_content)
         entry.out_path.write_text(final_content, encoding="utf-8")
         _run_fact_check(entry.out_path)
         _run_faithfulness_judge(entry.out_path, absolute_sources, project_root)
