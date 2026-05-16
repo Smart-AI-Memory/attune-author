@@ -260,6 +260,7 @@ def polish_template(
     template_type: str = "generic",
     strict: bool | None = None,
     augmented_context: str | None = None,
+    include_ground_truth_anchor: bool = False,
 ) -> str:
     """Polish a generated template using an LLM.
 
@@ -297,6 +298,10 @@ def polish_template(
     effective_strict = _env_strict_default() if strict is None else strict
 
     system_prompt = get_system_prompt(template_type)
+    if include_ground_truth_anchor:
+        from attune_author.ground_truth import ANCHORING_CLAUSE
+
+        system_prompt = system_prompt + ANCHORING_CLAUSE
     key = _cache_key(
         _normalize_for_key(content),
         source_summary,
@@ -317,6 +322,7 @@ def polish_template(
             source_summary,
             template_type,
             augmented_context=augmented_context,
+            include_ground_truth_anchor=include_ground_truth_anchor,
         )
         result = _sanitize_output(polished)
         try:
@@ -406,6 +412,7 @@ def build_polish_prompt(
     source_summary: str,
     template_type: str,
     augmented_context: str | None = None,
+    include_ground_truth_anchor: bool = False,
 ) -> tuple[str, str]:
     """Build the (system_prompt, user_message) pair for a polish call.
 
@@ -414,12 +421,32 @@ def build_polish_prompt(
     byte-identical prompts to the synchronous path. Pure: no
     side effects, no I/O.
 
+    Args:
+        content: Rendered template content to polish.
+        feature_name: Feature identifier (e.g., ``"ops-dashboard"``).
+        source_summary: Source-info text passed to the model as an
+            accuracy anchor.
+        template_type: Template kind — selects the system prompt.
+        augmented_context: Optional grounding text injected into the
+            user message above the source summary. Supplied by the
+            RAG hook and/or :mod:`attune_author.ground_truth`.
+        include_ground_truth_anchor: When ``True`` (only set by
+            callers that injected ground-truth context), append a
+            short anchoring clause to the system prompt instructing
+            the model to use only names that appear verbatim in the
+            ``<cli_help>`` / ``<public_api>`` / ``<dataclasses>``
+            blocks. See polish-fact-check Phase 2.
+
     Returns:
         ``(system_prompt, user_message)`` ready to pass to
         either :func:`call_anthropic` (synchronous) or
         :class:`BatchPolishRequest` construction (batch).
     """
     system_prompt = get_system_prompt(template_type)
+    if include_ground_truth_anchor:
+        from attune_author.ground_truth import ANCHORING_CLAUSE
+
+        system_prompt = system_prompt + ANCHORING_CLAUSE
     grounding = augmented_context or ""
     user_message = (
         f"Polish this auto-generated {template_type} template "
@@ -449,6 +476,7 @@ def _call_llm(
     source_summary: str,
     template_type: str,
     augmented_context: str | None = None,
+    include_ground_truth_anchor: bool = False,
 ) -> str:
     """Make the LLM call for polishing.
 
@@ -478,6 +506,7 @@ def _call_llm(
         source_summary,
         template_type,
         augmented_context=augmented_context,
+        include_ground_truth_anchor=include_ground_truth_anchor,
     )
 
     polished = call_anthropic(

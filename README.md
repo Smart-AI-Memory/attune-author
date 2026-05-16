@@ -114,8 +114,53 @@ check_numeric_refs = true
 
 This is Phase 1 of the [polish-fact-check
 spec](docs/specs/polish-fact-check/). Phase 2 (ground-truth
-context injection), Phase 3 (faithfulness judge), and Phase 4
-(tutorial static check) are tracked in `tasks.md`.
+context injection) shipped alongside it. Phase 3 (faithfulness
+judge) and Phase 4 (tutorial static check) remain on the
+roadmap.
+
+## Ground-truth context (polish-prompt injection)
+
+Phase 2 of the polish-fact-check spec changes what the model
+sees during the polish pass: three sentinel-tagged blocks
+carrying authoritative surface details are injected into the
+user message before the source summary, and a short anchoring
+clause is appended to the system prompt instructing the model
+to only reference names that appear verbatim in those blocks.
+
+The three blocks:
+
+- `<cli_help>`: captured `<cli> <subcommand> --help` output.
+  Driven by an optional `cli_command:` field on each feature in
+  `features.yaml` (e.g., `cli_command: ops` for a feature whose
+  primary UX is `attune ops`). Absence skips this block.
+- `<public_api>`: AST-extracted `__all__` lists plus signatures
+  for every public function and class in the feature's source
+  files.
+- `<dataclasses>`: AST-extracted field names + type annotations
+  for every public `@dataclass` in the feature's source files.
+
+The combined block list is capped at 5 KB by default. When the
+budget is exceeded, blocks drop in this order: dataclasses,
+public_api, cli_help — the most authoritative anchor stays the
+longest.
+
+Configure via `pyproject.toml`:
+
+```toml
+[tool.attune-author.context-injection]
+enabled = true
+inject_cli_help = true
+inject_public_api = true
+inject_dataclasses = true
+budget_bytes = 5120
+cli_executable = "attune"
+```
+
+The goal is to prevent the six hallucination shapes documented
+in attune-ai PR #351's ops-dashboard editorial pass (invented
+CLI flags, fabricated private-module imports, wrong route
+paths, hallucinated counts) at the prompt layer, rather than
+relying solely on the post-generation fact-check to catch them.
 
 ## Polish cache
 

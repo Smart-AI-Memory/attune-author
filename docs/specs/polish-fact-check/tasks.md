@@ -78,26 +78,28 @@ code).
 
 | # | Task | Layer | Status | Notes |
 |---|------|-------|--------|-------|
-| 2.1 | Add `cli_command` field to `Feature` (the manifest model) | attune-author | todo | Optional; absence skips CLI-help injection |
-| 2.2 | Implement `ground_truth.extract_cli_help(cli_cmd, subcommand, project_root)` | attune-author | todo | `subprocess.run(...)` with timeout; cache per (cmd, subcommand) pair |
-| 2.3 | Implement `ground_truth.extract_public_api(source_paths)` | attune-author | todo | AST-walk for `__all__` + non-underscore-prefixed defs |
-| 2.4 | Implement `ground_truth.extract_dataclasses(source_paths)` | attune-author | todo | AST-walk for `@dataclass`; collect field names + type strings |
-| 2.5 | Add `<cli_help>`, `<public_api>`, `<dataclasses>` sentinel blocks to polish prompt builder | attune-author | todo | Match existing context-block format |
-| 2.6 | Add system-prompt anchoring clause | attune-author | todo | "Ground-truth context blocks contain surface details — names you use must appear verbatim" |
-| 2.7 | Implement 5KB context budget enforcement with drop order | attune-author | todo | Log warning on drop; never fail |
-| 2.8 | Add `[tool.attune-author.context-injection]` config + CLI flags | attune-author | todo | Defaults: all three sources on, 5KB budget |
-| 2.9 | Test: ground-truth extractors produce expected output on ops-dashboard source | attune-author | todo | Snapshot tests |
-| 2.10 | Test: polishing ops-dashboard with Phase 2 on, Phase 1 off recurs 0/3 high-severity errors | attune-author | todo | The acceptance gate from `design.md` |
-| 2.11 | Test: budget enforcement drops sources in documented order | attune-author | todo | Artificial 1KB cap forces drops |
-| 2.12 | Cost-delta measurement: 3-feature regression set with vs without Phase 2 | attune-author | todo | Record in CHANGELOG; should be < 10% |
-| 2.13 | Update CHANGELOG + README | attune-author | todo | |
+| 2.1 | Add `cli_command` field to `Feature` (the manifest model) | attune-author | **done** | Optional; load/save preserve; defaults None |
+| 2.2 | Implement `ground_truth.extract_cli_help(cli_cmd, subcommand, project_root)` | attune-author | **done** | `subprocess.run(...)` with 10s timeout; `@lru_cache` per (exe, sub, cwd) |
+| 2.3 | Implement `ground_truth.extract_public_api(source_paths)` | attune-author | **done** | AST walk: `__all__` + public function/class signatures (incl. method bodies) |
+| 2.4 | Implement `ground_truth.extract_dataclasses(source_paths)` | attune-author | **done** | AST walk: `@dataclass` decorator + AnnAssign field collection. Module named `dataclass_refs` to avoid stdlib shadowing |
+| 2.5 | Add `<cli_help>`, `<public_api>`, `<dataclasses>` sentinel blocks to polish prompt builder | attune-author | **done** | Composed in `ground_truth.build_context`; prepended to RAG context when both exist |
+| 2.6 | Add system-prompt anchoring clause | attune-author | **done** | `ANCHORING_CLAUSE` exposed; appended via new `include_ground_truth_anchor` flag on `polish_template`/`build_polish_prompt`. Cache key shifts accordingly. |
+| 2.7 | Implement 5KB context budget enforcement with drop order | attune-author | **done** | `ground_truth.budget.enforce_budget`; drops dataclasses → public_api → cli_help; logs warning per drop |
+| 2.8 | Add `[tool.attune-author.context-injection]` config + CLI flags | attune-author | **done** | Config schema landed (enabled, per-source toggles, budget, executable); CLI flag deferred (env-driven defaults sufficient for first iteration) |
+| 2.9 | Test: ground-truth extractors produce expected output on ops-dashboard source | attune-author | **done** | 25 tests across `test_public_api.py` + `test_dataclass_refs.py` |
+| 2.10 | Test: polishing ops-dashboard with Phase 2 on, Phase 1 off recurs 0/3 high-severity errors | attune-author | **partial** | Unit-level: `test_polish_integration.py` asserts the sentinel blocks reach the user message and the anchor clause reaches the system prompt. Live-LLM acceptance run gated to a follow-up once an `ANTHROPIC_API_KEY` lane is available. |
+| 2.11 | Test: budget enforcement drops sources in documented order | attune-author | **done** | 8 tests in `test_budget.py` covering drop order, fallback, log emission |
+| 2.12 | Cost-delta measurement: 3-feature regression set with vs without Phase 2 | attune-author | deferred | Requires real-LLM run; defer to Phase 3 calibration when judge cost is also measured |
+| 2.13 | Update CHANGELOG + README | attune-author | **done** | CHANGELOG entry under Unreleased. README addition in same PR. |
 
 ### Phase 2 exit checklist
 
-- [ ] Tasks 2.1–2.13 done
-- [ ] 0/3 high-severity ops-dashboard errors recur in Phase-2-only polish
-- [ ] Cost delta < 10%
-- [ ] Spec status updated
+- [x] Tasks 2.1–2.11, 2.13 done (60 new tests)
+- [x] Spec status updated
+- [ ] Live acceptance: 0/3 high-severity ops-dashboard errors recur in
+      Phase-2-only polish (requires real-LLM run — gated to a follow-up
+      task once `ANTHROPIC_API_KEY` is available in a CI lane)
+- [ ] Cost delta < 10% (deferred to Phase 3 calibration run)
 
 ---
 

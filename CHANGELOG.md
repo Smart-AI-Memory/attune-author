@@ -13,6 +13,38 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+### Added
+
+- **Polish fact-check Phase 2 — ground-truth context
+  injection.** Builds three sentinel-tagged blocks
+  (`<cli_help>`, `<public_api>`, `<dataclasses>`) and injects
+  them into the polish prompt above the existing source
+  summary, with a short anchoring clause appended to the
+  system prompt instructing the model to only reference names
+  that appear verbatim in those blocks. Goal: prevent the
+  six hallucination shapes documented in attune-ai PR #351's
+  ops-dashboard editorial pass rather than catching them after
+  the fact (Phase 1's job).
+  - New package: `src/attune_author/ground_truth/` with
+    `cli_help.py` (subprocess + LRU cache), `public_api.py`
+    (AST walk for `__all__` + function/class signatures),
+    `dataclass_refs.py` (AST walk for `@dataclass` field
+    names/types), `budget.py` (5KB cap with documented drop
+    order: dataclasses → public_api → cli_help), and
+    `config.py` (`[tool.attune-author.context-injection]`
+    schema).
+  - New `Feature.cli_command` field on the manifest model;
+    legacy manifests without this field continue to load. Save
+    omits the field when `None`.
+  - `build_polish_prompt` (used by both the synchronous and
+    batch paths) accepts a new `include_ground_truth_anchor`
+    flag; when True, the anchoring clause is appended to the
+    system prompt and the prompt cache key shifts accordingly.
+  - 60 new tests under `tests/unit/ground_truth/`.
+  - Spec: `docs/specs/polish-fact-check/`. Phase 3
+    (faithfulness judge integration) and Phase 4 (tutorial
+    code-fence mypy) remain on the roadmap.
+
 ## [0.13.0] - 2026-05-15
 
 > **Note**: skipping `0.12.0`. The internal `release/v0.12.0`
