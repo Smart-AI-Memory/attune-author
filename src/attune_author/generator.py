@@ -459,10 +459,16 @@ def apply_polish_results(
         source_hash=prep.source_hash,
         matched_files=list(prep.matched_files),
     )
+    # Resolve the project root once so the faithfulness gate can read
+    # source files. cwd is the existing convention used by
+    # _run_fact_check; matched_files are stored relative to it.
+    project_root = Path.cwd()
+    absolute_sources = [project_root / rel_path for rel_path in prep.matched_files]
     for entry in prep.pending:
         final_content = polished_by_depth.get(entry.depth, entry.rendered_content)
         entry.out_path.write_text(final_content, encoding="utf-8")
         _run_fact_check(entry.out_path)
+        _run_faithfulness_judge(entry.out_path, absolute_sources, project_root)
         result.templates.append(
             GeneratedTemplate(
                 feature=feature.name,
@@ -516,6 +522,90 @@ def _run_fact_check(polished_path: Path) -> None:
         apply_soft_fail(polished_path, report)
     except OSError as exc:
         logger.warning("Could not append fact-check block to %s: %s", polished_path, exc)
+
+
+def _faithfulness_telemetry() -> dict[str, float]:
+    """Per-process aggregate of faithfulness cost + call count.
+
+    Stored on the function as a function attribute so the polite
+    "logger.info at end of regen" hook can read totals without
+    introducing module-level state. Reset via
+    :func:`reset_faithfulness_telemetry`.
+    """
+    state = getattr(_faithfulness_telemetry, "_state", None)
+    if state is None:
+        state = {"calls": 0.0, "skipped": 0.0, "cost_usd": 0.0}
+        _faithfulness_telemetry._state = state  # type: ignore[attr-defined]
+    return state
+
+
+def reset_faithfulness_telemetry() -> None:
+    """Reset the per-process faithfulness telemetry counters."""
+    _faithfulness_telemetry._state = {  # type: ignore[attr-defined]
+        "calls": 0.0,
+        "skipped": 0.0,
+        "cost_usd": 0.0,
+    }
+
+
+def _run_faithfulness_judge(
+    polished_path: Path,
+    source_paths: list[Path],
+    project_root: Path,
+) -> None:
+    """Run the Phase 3 faithfulness judge against a freshly-written file.
+
+    Best-effort: any failure inside the judge (missing extra, missing
+    API key, transient network error) degrades silently — the polish
+    pipeline is never blocked. When the judge runs and the score
+    falls below the configured threshold, a ``## Faithfulness review``
+    block is appended to the polished file.
+
+    Mode override via the ``ATTUNE_AUTHOR_FAITHFULNESS`` env var
+    (``off`` disables; any other value defers to pyproject config).
+    """
+    if os.environ.get("ATTUNE_AUTHOR_FAITHFULNESS", "").lower() == "off":
+        return
+
+    try:
+        from attune_author.faithfulness import (
+            apply_review_block,
+            format_review_block,
+            judge_polished_file,
+            load_config,
+        )
+
+        config = load_config(project_root)
+        if not config.enabled:
+            return
+
+        outcome = judge_polished_file(polished_path, source_paths, config=config)
+    except Exception as exc:  # noqa: BLE001
+        # INTENTIONAL: opportunistic — judge layer must never break
+        # the polish pipeline. Same contract as the fact-check gate.
+        logger.warning("Faithfulness judge skipped for %s: %s", polished_path, exc)
+        return
+
+    telemetry = _faithfulness_telemetry()
+    if outcome.score is None:
+        telemetry["skipped"] += 1
+        return
+
+    telemetry["calls"] += 1
+    telemetry["cost_usd"] += outcome.cost_estimate_usd
+
+    if outcome.threshold_met:
+        return
+
+    block = format_review_block(outcome, config.threshold)
+    try:
+        apply_review_block(polished_path, block)
+    except OSError as exc:
+        logger.warning(
+            "Could not append faithfulness review block to %s: %s",
+            polished_path,
+            exc,
+        )
 
 
 def _maybe_polish(

@@ -110,23 +110,22 @@ the `FactCheckReport` plumbing.
 
 | # | Task | Layer | Status | Notes |
 |---|------|-------|--------|-------|
-| 3.1 | Add faithfulness-threshold + budget-cap config to `[tool.attune-author.fact-check]` | attune-author | todo | Default threshold `0.95`; default cap `$0.10/feature` |
-| 3.2 | Implement `faithfulness.judge_polished_file(polished_path, source_paths, config)` wrapper | attune-author | todo | Wraps `attune_rag.eval.faithfulness.FaithfulnessJudge` |
-| 3.3 | Calibrate threshold against ops-dashboard fixture | attune-author | todo | Pre-fix should score < 0.9 mean; post-fix ≥ 0.95 |
-| 3.4 | Document calibration result in `decisions.md` (or design doc) | attune-author | todo | Pre-committed matrix entry; concrete numbers |
-| 3.5 | Wire judge into post-polish pipeline (after Phase 1 fact-check) | attune-author | todo | Append `## Faithfulness review` block when below threshold |
-| 3.6 | Cost telemetry: aggregate per-feature judge cost; report at end of `regenerate` | attune-author | todo | Use existing telemetry hooks if any; otherwise log |
-| 3.7 | Test: judge runs and writes review block on a deliberately unfaithful synthetic input | attune-author | todo | Construct a polished file that contradicts the source |
-| 3.8 | Test: budget cap skips judge call when estimated cost exceeds threshold | attune-author | todo | |
-| 3.9 | Update CHANGELOG + README | attune-author | todo | |
+| 3.1 | Add faithfulness-threshold + budget-cap config to `[tool.attune-author.fact-check]` | attune-author | **done** | `[tool.attune-author.fact-check.faithfulness]` sub-table; defaults threshold=0.95, budget=$0.10, model=Sonnet 4.6, enabled=False (opt-in) |
+| 3.2 | Implement `faithfulness.judge_polished_file(polished_path, source_paths, config)` wrapper | attune-author | **done** | Wraps `FaithfulnessJudge` via `asyncio.run`; best-effort: missing extra / missing API key / over-budget all return `JudgeOutcome(score=None, skipped_reason=…)` rather than raising. `block_polish_on_unavailable=True` opt-in for strict CI. |
+| 3.3 | Calibrate threshold against ops-dashboard fixture | attune-author | deferred | Requires real-LLM run; placeholder default `0.95` documented in decisions.md as pre-calibration. Calibration scheduled alongside live-LLM Phase 2 acceptance run. |
+| 3.4 | Document calibration result in `decisions.md` (or design doc) | attune-author | deferred | Empty calibration record retained; will populate when 3.3 runs. |
+| 3.5 | Wire judge into post-polish pipeline (after Phase 1 fact-check) | attune-author | **done** | `generator._run_faithfulness_judge` called after `_run_fact_check`; appends `## Faithfulness review` block when below threshold. `ATTUNE_AUTHOR_FAITHFULNESS=off` env override. |
+| 3.6 | Cost telemetry: aggregate per-feature judge cost; report at end of `regenerate` | attune-author | **done** | Per-process telemetry state on `_faithfulness_telemetry`; `run_maintenance` resets at start and logs INFO summary at end (calls, skipped, total estimated $). |
+| 3.7 | Test: judge runs and writes review block on a deliberately unfaithful synthetic input | attune-author | **done** | `test_pipeline_wiring.py::test_run_faithfulness_judge_appends_review_block_when_below_threshold` + `test_judge.py::test_judge_below_threshold_flags_threshold_not_met` |
+| 3.8 | Test: budget cap skips judge call when estimated cost exceeds threshold | attune-author | **done** | `test_judge.py::test_judge_skipped_when_over_budget` |
+| 3.9 | Update CHANGELOG + README | attune-author | **done** | CHANGELOG under Unreleased; README adds a "Faithfulness review (Phase 3)" subsection. |
 
 ### Phase 3 exit checklist
 
-- [ ] Tasks 3.1–3.9 done
-- [ ] Calibration shows clean separation between pre-fix and post-fix
-      fixture scores
-- [ ] Threshold + cap configurable
-- [ ] Spec status updated
+- [x] Tasks 3.1, 3.2, 3.5–3.9 done (30 new tests)
+- [x] Threshold + cap configurable
+- [x] Spec status updated
+- [ ] Calibration (tasks 3.3, 3.4) — deferred until real-LLM run lands; placeholder default `threshold=0.95` documented in `decisions.md`
 
 ---
 

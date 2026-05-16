@@ -15,6 +15,42 @@ changes land, not at tag time.
 
 ### Added
 
+- **Polish fact-check Phase 3 — faithfulness judge.** Wraps
+  `attune_rag.eval.faithfulness.FaithfulnessJudge` as a
+  post-polish step: scores each polished file's claims against
+  the source files it was generated from. When the score falls
+  below the configured threshold, appends a
+  `## Faithfulness review` block listing the unsupported claims
+  and the judge's reasoning. Best-effort: missing
+  `attune-rag[claude]`, missing `ANTHROPIC_API_KEY`, over-budget
+  estimates, and transient API failures all degrade silently
+  rather than blocking the polish.
+  - New package: `src/attune_author/faithfulness/` with the
+    judge wrapper, `FaithfulnessConfig`, `JudgeOutcome`,
+    `estimate_cost_usd` budget-gate helper, and a
+    `format_review_block` / `apply_review_block` soft-fail pair
+    that mirrors the Phase 1 `## Unresolved references` shape.
+  - Config schema:
+    `[tool.attune-author.fact-check.faithfulness]` with
+    `enabled`, `threshold` (default 0.95, pre-calibration), `budget_per_file_usd`
+    (default $0.10), `model` (default Sonnet 4.6 — Haiku 4.5 is
+    cheaper for high-volume runs), and
+    `block_polish_on_unavailable` (default False — flip to True
+    in CI where missing deps should be loud).
+  - Cost telemetry: per-process counters on the generator
+    module; `run_maintenance` resets them at start and logs an
+    INFO summary at end with call count, skip count, and total
+    estimated USD spent.
+  - `ATTUNE_AUTHOR_FAITHFULNESS=off` env-var override for one-off
+    disable without editing pyproject.
+  - 30 new tests under `tests/unit/faithfulness/`.
+  - Threshold calibration against the ops-dashboard fixture
+    (tasks 3.3, 3.4) is **deferred** until the live-LLM Phase 2
+    acceptance run; today's default of 0.95 is documented as
+    pre-calibration in `decisions.md`.
+  - Spec: `docs/specs/polish-fact-check/`. Phase 4 (tutorial
+    code-fence mypy) remains on the roadmap.
+
 - **Polish fact-check Phase 2 — ground-truth context
   injection.** Builds three sentinel-tagged blocks
   (`<cli_help>`, `<public_api>`, `<dataclasses>`) and injects

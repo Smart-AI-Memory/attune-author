@@ -73,3 +73,38 @@ To be filled in during Phase 3 implementation:
     faithfulness judge ships, it will require its own real-LLM
     calibration run. Folding the cost-delta measurement into that
     run avoids two separate real-LLM cycles.
+- 2026-05-16 — Phase 3 shipped. New decisions captured during
+  implementation:
+  - **Opt-in default**: `enabled=False` ships in
+    `FaithfulnessConfig` and the pyproject loader, because the
+    judge makes real Anthropic API calls and we shouldn't bill
+    users for it silently on the first run after install. The
+    Phase 1 fact-check is enabled by default (no API calls); the
+    Phase 3 judge is not.
+  - **Synchronous wrapper via `asyncio.run`**: the existing
+    polish pipeline is synchronous, so the async
+    `FaithfulnessJudge.score` coroutine is bridged with
+    `asyncio.run`. This precludes calling the judge from inside
+    a running event loop (we don't, today), but keeps the
+    surface aligned with the rest of attune-author.
+  - **Best-effort vs strict**: missing extras / missing API key
+    / transient failures all default to `JudgeOutcome(score=None,
+    skipped_reason=…)` rather than raising. CI lanes that need
+    loud failures opt in via `block_polish_on_unavailable = true`.
+  - **Budget gate uses character-count heuristic, not tokenizer**:
+    `estimate_cost_usd(chars, model)` divides chars by 4 to get
+    a rough token count and multiplies by a per-model price
+    lookup. Accurate to ~20% — well inside what a $0.10 budget
+    cap cares about. A real tokenizer is a future change if
+    drift surfaces.
+  - **Cost telemetry as function attribute, not module global**:
+    `_faithfulness_telemetry()` stores the counter dict on its
+    own `_state` attribute so it's resettable, mockable, and
+    doesn't leak module-level state. Mirrors how the polish
+    cache exposes its store.
+  - **Calibration deferred**: tasks 3.3 and 3.4 require a real
+    LLM run against the ops-dashboard pre-fix and post-fix
+    fixtures. The placeholder threshold of `0.95` ships as the
+    default and the calibration is scheduled to land alongside
+    the live-LLM Phase 2 acceptance run so a single real-API
+    cycle covers both phases' open work.
