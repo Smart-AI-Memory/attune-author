@@ -39,6 +39,8 @@ def _parallel_polish(
     feature: object,
     source_info: object,
     use_rag: bool,
+    matched_files: list[str] | None = None,
+    project_root: Path | None = None,
 ) -> dict[str, tuple[str, Path]]:
     """Polish a batch of rendered templates concurrently.
 
@@ -47,6 +49,12 @@ def _parallel_polish(
         feature: Feature being documented (read-only, thread-safe).
         source_info: Extracted source info (read-only, thread-safe).
         use_rag: Whether to use RAG grounding during polish.
+        matched_files: Source file paths (relative to ``project_root``)
+            for the feature, used by Phase 2 ground-truth context
+            injection. ``None`` skips that injection.
+        project_root: Consumer project root; required when
+            ``matched_files`` is supplied. Used to resolve relative
+            paths and to run the consumer's CLI for ``--help``.
 
     Returns:
         Mapping of depth -> (polished_content, out_path). Raises
@@ -60,6 +68,8 @@ def _parallel_polish(
             source_info,  # type: ignore[arg-type]
             template_type=depth,
             use_rag=use_rag,
+            matched_files=matched_files,
+            project_root=project_root,
         )
         return depth, polished, out_path
 
@@ -307,6 +317,8 @@ def generate_feature_templates(
         prep.feature,
         prep.source_info,
         prep.use_rag,
+        matched_files=list(prep.matched_files),
+        project_root=Path(project_root),
     )
     polished_text: dict[str, str] = {depth: text for depth, (text, _path) in polished.items()}
 
@@ -512,6 +524,8 @@ def _maybe_polish(
     source_info: _SourceInfo,
     template_type: str = "generic",
     use_rag: bool = True,
+    matched_files: list[str] | None = None,
+    project_root: Path | None = None,
 ) -> str:
     """Run the LLM polish pass on rendered template content.
 
@@ -564,12 +578,34 @@ def _maybe_polish(
             template_type,
         )
 
+    # Phase 2 ground-truth context injection. The block carries
+    # authoritative surface details (CLI --help, public API, dataclass
+    # fields). Composed BEFORE the RAG block so the model reads the
+    # ground truth first; the anchor clause is added to the system
+    # prompt only when this block is actually present.
+    ground_truth_text: str | None = None
+    if matched_files and project_root is not None:
+        from attune_author.ground_truth import build_context as build_ground_truth
+
+        absolute_sources = [project_root / rel_path for rel_path in matched_files]
+        ground_truth_text = build_ground_truth(
+            feature,
+            absolute_sources,
+            project_root=project_root,
+        )
+
+    if ground_truth_text and augmented_context:
+        augmented_context = ground_truth_text + "\n" + augmented_context
+    elif ground_truth_text:
+        augmented_context = ground_truth_text
+
     return polish_template(
         content,
         feature.name,
         summary,
         template_type=template_type,
         augmented_context=augmented_context,
+        include_ground_truth_anchor=ground_truth_text is not None,
     )
 
 

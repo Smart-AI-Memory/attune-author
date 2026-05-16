@@ -298,6 +298,7 @@ def _build_polish_request(
     rendered_content: str,
     source_summary: str,
     augmented_context: str | None,
+    include_ground_truth_anchor: bool = False,
 ) -> BatchPolishRequest:
     """Build a :class:`BatchPolishRequest` for one polish call.
 
@@ -317,6 +318,7 @@ def _build_polish_request(
         source_summary,
         depth,
         augmented_context=augmented_context,
+        include_ground_truth_anchor=include_ground_truth_anchor,
     )
     return BatchPolishRequest(
         custom_id=custom_id_for(feature_name, depth),
@@ -383,12 +385,32 @@ def _collect_polish_prompts(
             module_constants=source_info.module_constants or None,
         )
 
+        # Phase 2 ground-truth context — built once per feature so the
+        # batch path matches the synchronous path's prompt shape.
+        ground_truth_text: str | None = None
+        if prep.matched_files:
+            from attune_author.ground_truth import build_context as build_ground_truth
+
+            root_path = Path(project_root)
+            absolute_sources = [root_path / rel_path for rel_path in prep.matched_files]
+            ground_truth_text = build_ground_truth(
+                feature,
+                absolute_sources,
+                project_root=root_path,
+            )
+
         for entry in prep.pending:
             augmented: str | None = None
             if use_rag:
                 from attune_author.rag_hook import ground_polish_context
 
                 augmented = ground_polish_context(feature.name, entry.depth)
+
+            if ground_truth_text and augmented:
+                augmented = ground_truth_text + "\n" + augmented
+            elif ground_truth_text:
+                augmented = ground_truth_text
+
             requests.append(
                 _build_polish_request(
                     feature_name=feature.name,
@@ -396,6 +418,7 @@ def _collect_polish_prompts(
                     rendered_content=entry.rendered_content,
                     source_summary=summary,
                     augmented_context=augmented,
+                    include_ground_truth_anchor=ground_truth_text is not None,
                 )
             )
 

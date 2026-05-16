@@ -73,6 +73,10 @@ class Feature:
             readers that have not yet moved to the list form.
         arch_path: Output path for the architecture doc under docs/.
         doc_nav_section: mkdocs.yml nav section to insert under.
+        cli_command: Consumer-CLI subcommand that exposes this
+            feature (e.g., ``"ops"`` for ``attune ops``). Optional;
+            absence skips the CLI-help block during ground-truth
+            context injection. See polish-fact-check Phase 2.
     """
 
     name: str
@@ -84,6 +88,7 @@ class Feature:
     doc_path: str | None = None
     arch_path: str | None = None
     doc_nav_section: str | None = None
+    cli_command: str | None = None
 
     def __post_init__(self) -> None:
         """Keep ``doc_paths`` and ``doc_path`` in sync.
@@ -194,6 +199,7 @@ def load_manifest(help_dir: str | Path) -> FeatureManifest:
             doc_path=doc_paths[0] if doc_paths else None,
             arch_path=spec.get("arch_path"),
             doc_nav_section=spec.get("doc_nav_section"),
+            cli_command=spec.get("cli_command"),
         )
 
     # Top-level _docs bucket (hand-written narrative docs).
@@ -248,6 +254,8 @@ def save_manifest(manifest: FeatureManifest, help_dir: str | Path) -> Path:
             entry["arch_path"] = feat.arch_path
         if feat.doc_nav_section:
             entry["doc_nav_section"] = feat.doc_nav_section
+        if feat.cli_command:
+            entry["cli_command"] = feat.cli_command
         data["features"][name] = entry
 
     out.write_text(

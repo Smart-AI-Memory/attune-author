@@ -41,3 +41,35 @@ To be filled in during Phase 3 implementation:
 
 - 2026-05-14 — Initial decisions captured during spec draft. Patrick
   approved.
+- 2026-05-16 — Phase 2 shipped. New decisions captured during
+  implementation:
+  - **Composition with RAG context**: ground-truth context is
+    prepended to the RAG hook's existing `augmented_context` rather
+    than replacing it. Rationale: the two carry orthogonal information
+    (RAG retrieves similar templates; ground-truth pins names) so
+    keeping both maximizes prompt utility within the budget.
+  - **Anchor clause as system-prompt suffix**: the
+    `ANCHORING_CLAUSE` appends to the existing per-template-type
+    system prompt rather than replacing or wrapping it. Rationale:
+    minimises drift from the existing polish system prompts, which are
+    already large (~6KB) and cache-friendly; the suffix is short and
+    behaviorally additive.
+  - **Cache-key participation**: when the anchor clause is added,
+    the system prompt changes — and the polish-cache key already
+    includes the system prompt, so existing cached entries are
+    invalidated cleanly without bespoke cache-key plumbing.
+  - **CLI flags deferred (task 2.8)**: env-driven defaults via
+    `[tool.attune-author.context-injection]` in `pyproject.toml`
+    were sufficient for the first iteration. CLI flags can be added
+    in a follow-up alongside Phase 3's `--faithfulness-threshold`
+    flag.
+  - **Live-LLM acceptance gate deferred**: task 2.10 splits into
+    a unit-level part (assert sentinel blocks reach the user
+    message + anchor clause reaches the system prompt — done) and
+    a live-LLM part (actually polish ops-dashboard with Phase 2 on
+    + Phase 1 off and observe 0/3 high-severity errors). The
+    live-LLM part stays gated behind real-API-key availability.
+  - **Cost-delta measurement deferred to Phase 3**: when the
+    faithfulness judge ships, it will require its own real-LLM
+    calibration run. Folding the cost-delta measurement into that
+    run avoids two separate real-LLM cycles.
