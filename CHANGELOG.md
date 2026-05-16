@@ -15,6 +15,31 @@ changes land, not at tag time.
 
 ### Added
 
+- **Polish fact-check Phase 4 — tutorial code-fence static
+  check.** Polished tutorials (`docs/tutorials/*.md`) now have
+  their ```python code fences extracted, syntax-checked with
+  `ast.parse`, and type-checked with `mypy --strict` as a
+  subprocess per fence. Failures land in the same
+  `## Unresolved references` block as Phase 1 findings. The
+  static check only runs on the tutorial doc kind — other kinds
+  (how-to, reference, architecture) are skipped.
+  - New module: `src/attune_author/fact_check/tutorial_static_check.py`.
+  - `# attune-author: skip-mypy` as the first line of a fence
+    opts that fence out of the mypy pass and is stripped from
+    the published tutorial. Trailing directives are preserved
+    (only first-line is recognized).
+  - Subprocess robustness: missing `mypy`, 10-second timeout,
+    and unexpected exit codes all degrade silently. The check
+    never blocks the polish pipeline.
+  - Config: `check_tutorial_static` toggle on
+    `FactCheckConfig` (defaults `True`); routes only when the
+    polished path lives under `tutorials/`.
+  - 16 new tests under `tests/unit/fact_check/test_tutorial_static_check.py`.
+  - Phase 4.2 (sample *execution* — running the code, not just
+    type-checking it) is explicitly **out of scope** for this
+    PR. Static check ships now; execution-tier design is
+    deferred per the spec.
+
 - **Polish fact-check Phase 3 — faithfulness judge.** Wraps
   `attune_rag.eval.faithfulness.FaithfulnessJudge` as a
   post-polish step: scores each polished file's claims against

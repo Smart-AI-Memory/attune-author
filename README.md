@@ -193,6 +193,43 @@ End-of-run telemetry (call count, skip count, total estimated
 USD) logs at INFO level after `attune-author regenerate`. Set
 `ATTUNE_AUTHOR_FAITHFULNESS=off` to disable for a single run.
 
+## Tutorial static check (Phase 4)
+
+Polished tutorials get an additional pass that targets their
+embedded code samples. Every ```python fence is extracted, parsed
+with `ast.parse` for syntax errors, and type-checked with `mypy
+--strict` as a subprocess. Findings land in the same
+`## Unresolved references` block as the Phase 1 fact-check
+findings.
+
+The check only runs on tutorials (`docs/tutorials/<feature>.md`).
+Other doc kinds (how-to, reference, architecture) may carry code
+samples, but the reader-follow-along expectation is highest for
+tutorials, so they're the highest-value target.
+
+For samples that intentionally use unresolved types
+(illustrative pseudocode, packages that don't exist yet), add a
+directive as the **first line** of the fence:
+
+````markdown
+```python
+# attune-author: skip-mypy
+some_function_we_havent_built_yet()
+```
+````
+
+The directive is stripped from the published tutorial before it
+reaches readers. Trailing directives (later lines) are
+intentionally preserved — only first-line directives opt the
+fence out.
+
+Subprocess robustness: a missing `mypy`, a 10-second timeout, or
+any unexpected exit code degrades silently. The check never
+blocks the polish pipeline.
+
+Phase 4.2 — actual *execution* of code samples — is explicitly
+out of scope for this release. Static analysis only.
+
 ## Polish cache
 
 `attune-author` caches LLM polish responses on disk so re-generating an

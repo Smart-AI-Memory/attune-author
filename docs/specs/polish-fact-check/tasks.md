@@ -136,26 +136,28 @@ plumbing.
 
 | # | Task | Layer | Status | Notes |
 |---|------|-------|--------|-------|
-| 4.1 | Add `tutorial_static_check.check(polished_path, project_root)` to `fact_check/` package | attune-author | todo | Operates only on `docs/tutorials/*.md` |
-| 4.2 | Code-fence extractor: pull all ```python fences with line numbers | attune-author | todo | Skip fences with `# attune-author: skip-mypy` first line |
-| 4.3 | `ast.parse` each fence; collect syntax errors as findings | attune-author | todo | Cheap pre-check before invoking mypy |
-| 4.4 | Run `mypy --strict --no-error-summary` per fence | attune-author | todo | Subprocess; timeout 10s; capture stderr |
-| 4.5 | Parse mypy output into findings | attune-author | todo | Map line numbers back to original fence position |
-| 4.6 | Strip `# attune-author: skip-mypy` directives before publication | attune-author | todo | Apply only to the file written; preserve in source if any |
-| 4.7 | Add `[tool.attune-author.fact-check.tutorial_static]` config | attune-author | todo | `enabled`, `mypy_args`, `timeout_seconds` |
-| 4.8 | Test: pre-fix `tutorials/ops-dashboard.md` flags `_readers` + `_models` imports | attune-author | todo | The headline acceptance gate |
-| 4.9 | Test: post-fix version produces zero errors | attune-author | todo | |
-| 4.10 | Test: `skip-mypy` directive is honored and stripped from output | attune-author | todo | |
-| 4.11 | Test: total static-check time per tutorial < 10s | attune-author | todo | Bench against the ops-dashboard tutorial |
-| 4.12 | Update CHANGELOG + README | attune-author | todo | Note Phase 4.2 (execution) explicitly deferred |
-| 4.13 | Add design.md follow-up section on Phase 4.2 execution tiers | attune-author | todo | Reference the security + perf walkthrough from spec discussion |
+| 4.1 | Add `tutorial_static_check.check(polished_path, project_root)` to `fact_check/` package | attune-author | **done** | `is_tutorial_path(...)` heuristic gates routing in `check_polished_file` so only `docs/tutorials/` files run the static check |
+| 4.2 | Code-fence extractor: pull all ```python fences with line numbers | attune-author | **done** | `_FENCE_PATTERN` regex; line numbers derived from `_line_of_offset` |
+| 4.3 | `ast.parse` each fence; collect syntax errors as findings | attune-author | **done** | SyntaxError caught with the `exc.lineno` mapped back to absolute file line |
+| 4.4 | Run `mypy --strict --no-error-summary` per fence | attune-author | **done** | `_run_mypy` via temp file + subprocess; 10s timeout; handles TimeoutExpired + FileNotFoundError + unexpected exit codes by returning `[]` |
+| 4.5 | Parse mypy output into findings | attune-author | **done** | `_parse_mypy_output` regex; line numbers rewritten to absolute file position via `base_line + mypy_line - 1` |
+| 4.6 | Strip `# attune-author: skip-mypy` directives before publication | attune-author | **done** | `strip_skip_directives_in_file` invoked in `apply_polish_results` for `tutorial` depth only; first-line directive only, trailing directives intentionally preserved |
+| 4.7 | Add `[tool.attune-author.fact-check.tutorial_static]` config | attune-author | **partial** | Top-level `check_tutorial_static` toggle on `FactCheckConfig` (defaults True). Sub-table for `mypy_args` / `timeout_seconds` deferred — current constants match the spec; expose only when a real consumer needs the knob. |
+| 4.8 | Test: pre-fix `tutorials/ops-dashboard.md` flags `_readers` + `_models` imports | attune-author | deferred | Requires the ops-dashboard regression fixture + real mypy run. Unit-level coverage via mocked mypy + syntax-error path is in place; the integration test lands alongside the live-LLM acceptance run. |
+| 4.9 | Test: post-fix version produces zero errors | attune-author | deferred | Same gate as 4.8 |
+| 4.10 | Test: `skip-mypy` directive is honored and stripped from output | attune-author | **done** | `test_check_skips_fence_with_directive` + `test_strip_skip_directive_first_line` |
+| 4.11 | Test: total static-check time per tutorial < 10s | attune-author | deferred | Enforced indirectly via the 10s mypy subprocess timeout; a real bench lands with 4.8 |
+| 4.12 | Update CHANGELOG + README | attune-author | **done** | CHANGELOG under Unreleased; README adds "Tutorial static check (Phase 4)" subsection. 4.2 execution explicitly noted as out of scope. |
+| 4.13 | Add design.md follow-up section on Phase 4.2 execution tiers | attune-author | deferred | Tracked separately; not gating Phase 4.1 ship |
 
 ### Phase 4 exit checklist
 
-- [ ] Tasks 4.1–4.13 done
-- [ ] Pre-fix fixture flagged correctly; post-fix clean
-- [ ] Per-tutorial check time < 10s
-- [ ] Spec status updated; full umbrella spec marked `complete`
+- [x] Tasks 4.1–4.7, 4.10, 4.12 done (16 new tests)
+- [x] Spec status updated
+- [ ] Tasks 4.8, 4.9, 4.11 (real-fixture mypy runs) — deferred to the
+      same live-LLM cycle that closes Phase 2/3's open items
+- [ ] Task 4.13 (Phase 4.2 execution-tier design follow-up) — tracked
+      separately; Phase 4.1 ships without it
 
 ---
 

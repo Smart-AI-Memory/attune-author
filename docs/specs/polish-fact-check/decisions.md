@@ -108,3 +108,44 @@ To be filled in during Phase 3 implementation:
     default and the calibration is scheduled to land alongside
     the live-LLM Phase 2 acceptance run so a single real-API
     cycle covers both phases' open work.
+- 2026-05-16 — Phase 4 shipped. New decisions captured during
+  implementation:
+  - **Scope limited to tutorials**: `is_tutorial_path` gates the
+    routing in `check_polished_file` so only `docs/tutorials/`
+    files invoke the static check. Other doc kinds may carry
+    code samples but the reader-follow-along expectation is
+    highest for tutorials.
+  - **Subprocess robustness over feature richness**: a missing
+    `mypy`, a TimeoutExpired, or any unexpected exit code returns
+    an empty findings list rather than raising. The static check
+    must never block the polish pipeline — matches the Phase 1
+    fact-check and Phase 3 judge contracts.
+  - **First-line skip directive only**: `# attune-author:
+    skip-mypy` is recognized as the first non-blank line of a
+    fence and ignored elsewhere. Trailing directives are
+    intentionally preserved so authors can document the policy
+    without changing it.
+  - **Strip directives at write time, not read time**: the
+    polish writer calls `strip_skip_directives_in_file` on the
+    final content before writing tutorials only. The directive
+    therefore appears in the source corpus (visible in PR
+    review) but not in the published tutorial (readers don't
+    see it).
+  - **Sub-table config deferred**: the spec called for
+    `[tool.attune-author.fact-check.tutorial_static]` with
+    `enabled`, `mypy_args`, `timeout_seconds`. Only the top-level
+    `check_tutorial_static` toggle landed for v1; the
+    `mypy_args`/`timeout_seconds` knobs ship when a real consumer
+    asks for them. The default 10s timeout + `--strict
+    --no-error-summary --no-color-output` works for the test
+    suite and the ops-dashboard fixture.
+  - **No execution (Phase 4.2 deferred)**: this PR ships static
+    analysis only — `ast.parse` + `mypy --strict`. Executing
+    LLM-generated code samples is a separate design question
+    (security + perf) tracked for a follow-up. Tracked in
+    tasks.md as task 4.13.
+  - **Real-fixture acceptance deferred**: tasks 4.8, 4.9, 4.11
+    require the ops-dashboard tutorial fixture + a real `mypy`
+    installation. Unit-level coverage with mocked subprocess +
+    syntax-error path is in place; the integration test lands
+    alongside Phase 2/3's live-LLM run.
