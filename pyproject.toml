@@ -115,6 +115,14 @@ source = ["attune_author"]
 branch = true
 omit = ["*/tests/*", "*/conftest.py"]
 
+# Faithfulness judge (Phase 3) — opt-in. Scores polished docs
+# against source. See docs/specs/polish-fact-check/.
+[tool.attune-author.fact-check.faithfulness]
+enabled = true
+threshold = 0.95
+budget_per_file_usd = 0.10
+model = "claude-haiku-4-5-20251001"
+
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
