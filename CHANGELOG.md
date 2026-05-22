@@ -13,6 +13,8 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.14.0] - 2026-05-22
+
 ### Added
 
 - **`check_workspace_staleness` public helper.** New convenience
