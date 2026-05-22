@@ -5,10 +5,15 @@ ecosystem. Works standalone or as the authoring layer between
 attune-help (reader) and attune-ai (full dev workflows).
 """
 
-__version__ = "0.11.1"
+__version__ = "0.14.0"
 
 from attune_author.manifest import Feature, Manifest, load_manifest
-from attune_author.staleness import StalenessReport, check_staleness, compute_source_hash
+from attune_author.staleness import (
+    StalenessReport,
+    check_staleness,
+    check_workspace_staleness,
+    compute_source_hash,
+)
 
 __all__ = [
     # Manifest
@@ -18,5 +23,6 @@ __all__ = [
     # Staleness
     "StalenessReport",
     "check_staleness",
+    "check_workspace_staleness",
     "compute_source_hash",
 ]

@@ -12,6 +12,7 @@ from attune_author.staleness import (
     StalenessReport,
     _read_frontmatter_value,
     check_staleness,
+    check_workspace_staleness,
     compute_source_hash,
     parse_doc_footer,
 )
@@ -113,6 +114,38 @@ class TestCheckStaleness:
         """Test filtering staleness check by feature name."""
         manifest = load_manifest(help_dir)
         report = check_staleness(manifest, help_dir, project_root, features=["auth"])
+
+        assert len(report.help_entries) == 1
+        assert report.help_entries[0].feature == "auth"
+
+
+class TestCheckWorkspaceStaleness:
+    """Tests for check_workspace_staleness() convenience helper."""
+
+    def test_matches_direct_call(self, help_dir: Path, project_root: Path) -> None:
+        """Helper produces the same report as the explicit-args API."""
+        # help_dir fixture creates .help/ under tmp_path; project_root == tmp_path.
+        manifest = load_manifest(help_dir)
+        direct = check_staleness(manifest, help_dir, project_root)
+        via_helper = check_workspace_staleness(project_root)
+
+        assert via_helper.stale_count == direct.stale_count
+        assert sorted(e.feature for e in via_helper.help_entries) == sorted(
+            e.feature for e in direct.help_entries
+        )
+
+    def test_empty_report_when_no_manifest(self, tmp_path: Path) -> None:
+        """A workspace without .help/features.yaml yields an empty report, not a raise."""
+        report = check_workspace_staleness(tmp_path)
+
+        assert isinstance(report, StalenessReport)
+        assert report.help_entries == []
+        assert report.doc_entries == []
+        assert report.stale_count == 0
+
+    def test_propagates_feature_filter(self, help_dir: Path, project_root: Path) -> None:
+        """features= filter narrows the report just like the underlying API."""
+        report = check_workspace_staleness(project_root, features=["auth"])
 
         assert len(report.help_entries) == 1
         assert report.help_entries[0].feature == "auth"

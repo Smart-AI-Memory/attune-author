@@ -15,6 +15,18 @@ changes land, not at tag time.
 
 ### Added
 
+- **`check_workspace_staleness` public helper.** New convenience
+  wrapper that takes a workspace path, locates `.help/` under it,
+  loads the manifest, and runs `check_staleness` — returning an
+  empty `StalenessReport` when no manifest is present. Lets
+  downstream tools (attune-gui, future CLIs) ask "is this
+  workspace's templates stale?" without duplicating the
+  manifest-load + `.help/` convention. The underlying
+  `check_staleness` API is unchanged. Exported from
+  `attune_author` top-level. Also fixes the stale
+  `__version__` string in `__init__.py` (was pinned at `0.11.1`
+  through the 0.12/0.13 releases).
+
 - **Polish fact-check Phase 4 — tutorial code-fence static
   check.** Polished tutorials (`docs/tutorials/*.md`) now have
   their ```python code fences extracted, syntax-checked with
