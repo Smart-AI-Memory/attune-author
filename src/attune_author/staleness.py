@@ -22,7 +22,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from attune_author.manifest import Feature, FeatureManifest, is_safe_feature_name
+from attune_author.manifest import Feature, FeatureManifest, is_safe_feature_name, load_manifest
 
 logger = logging.getLogger(__name__)
 
@@ -454,6 +454,40 @@ def check_staleness(
             )
 
     return StalenessReport(help_entries=help_entries, doc_entries=doc_entries)
+
+
+def check_workspace_staleness(
+    workspace: str | Path,
+    features: list[str] | None = None,
+) -> StalenessReport:
+    """Check staleness for a workspace using the conventional ``.help/`` layout.
+
+    Convenience wrapper for callers that just have a project root and
+    want the answer to "are any templates/docs out of date?" without
+    knowing the manifest loader or where ``.help/`` lives. The workspace
+    serves as both the project root (for resolving source globs) and
+    the parent of ``.help/`` (for the manifest and template hashes).
+
+    If ``<workspace>/.help/features.yaml`` is absent, returns an empty
+    report rather than raising — a workspace without a manifest has no
+    templates to be stale about.
+
+    Args:
+        workspace: Project root containing ``.help/`` (typically a git
+            repo root).
+        features: Optional list of feature names to check. Defaults to
+            all features in the manifest.
+
+    Returns:
+        StalenessReport (empty if no manifest is present).
+    """
+    root = Path(workspace)
+    help_dir = root / ".help"
+    try:
+        manifest = load_manifest(help_dir)
+    except FileNotFoundError:
+        return StalenessReport()
+    return check_staleness(manifest, help_dir, root, features=features)
 
 
 def _infer_kind(feat: Feature, path_field: str) -> str:
