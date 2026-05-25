@@ -7,7 +7,7 @@
 
 ## Phase 1: Requirements
 
-**Status**: draft
+**Status**: complete (shipped in v0.14.0)
 
 ### Problem statement
 
