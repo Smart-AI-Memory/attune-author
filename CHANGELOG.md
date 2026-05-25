@@ -10,8 +10,21 @@ and this project adheres to
 
 ## [Unreleased]
 
-Work in progress for the next release. Add entries here as
-changes land, not at tag time.
+### Changed
+
+- **`publish.yml` trigger swapped from `release: [published]` to
+  `push: tags: 'v*.*.*'`.** Aligns with the `publish-pypi.yml`
+  pattern in attune-ai (synced 2026-05-25; original swap in
+  attune-ai PR #459). Releases created by `GITHUB_TOKEN` (i.e.
+  by another workflow) do NOT fire the `release:[published]`
+  event — a documented GitHub Actions limitation that bit
+  attune-ai's v7.1.0 ship. Tag-push fires unconditionally, so
+  the publish workflow runs whether the release object was
+  created by `gh release create` (human flow we use today), a
+  release-automation workflow (future), or just `git push origin
+  <tag>` without any release object at all. `workflow_dispatch`
+  retained as fallback. No public API or package surface
+  affected — this is CI hygiene.
 
 ## [0.14.1] - 2026-05-25
 
