@@ -1,9 +1,19 @@
 name: Publish to PyPI
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:  # Allow manual trigger
+  # Trigger on tag push rather than release:[published]. Releases
+  # created by GITHUB_TOKEN (i.e. by another workflow) do NOT fire
+  # the `release:[published]` event — a documented GitHub Actions
+  # limitation that bit attune-ai's v7.1.0 ship. Tag-push fires
+  # unconditionally regardless of the actor, so the workflow runs
+  # whether the release was created by `gh release create` (human),
+  # a release-automation workflow, or just `git push origin <tag>`
+  # without any release object at all. Matches the publish-pypi.yml
+  # pattern in attune-ai (synced 2026-05-25).
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:  # Manual fallback / re-run on demand
 
 permissions:
   contents: read
