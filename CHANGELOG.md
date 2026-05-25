@@ -13,6 +13,24 @@ and this project adheres to
 Work in progress for the next release. Add entries here as
 changes land, not at tag time.
 
+## [0.14.1] - 2026-05-25
+
+### Changed
+
+- **Widen `attune-rag` pin in the `[rag]` extra: `>=0.1.0,<0.2`
+  → `>=0.1.0,<0.3`.** Unblocks installs of `attune-author[rag]`
+  alongside the freshly-released
+  [attune-rag 0.2.0](https://pypi.org/project/attune-rag/0.2.0/),
+  which is the first SemVer-binding cut. The 0.2.0 release is
+  purely additive (new `attune_rag.measure_corpus` public module,
+  new `load_aliases_from_file` helper, new
+  `DirectoryCorpus(extra_aliases_file=...)` kwarg); the
+  `RagPipeline` / `DirectoryCorpus` / `FaithfulnessJudge` APIs
+  consumed by `attune_author.rag_hook` and `attune_author.faithfulness`
+  are unchanged, so no code adaptation needed. Cap raised one
+  minor (`<0.3`) rather than open-ended so the next breaking
+  attune-rag bump still requires explicit re-validation.
+
 ## [0.14.0] - 2026-05-22
 
 ### Added
