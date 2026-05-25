@@ -2,7 +2,7 @@
 
 ## Phase 2: Design
 
-**Status**: draft
+**Status**: complete (shipped in v0.14.0)
 
 ---
 

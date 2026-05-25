@@ -2,7 +2,7 @@
 
 ## Phase 3: Tasks
 
-**Status**: draft
+**Status**: complete (shipped in v0.14.0)
 
 > Four phases, each shipping as its own PR. Phase 1 is the recommended
 > first commitment; Phases 2–4 build on it. Phase 1 can be approved and
