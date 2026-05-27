@@ -10,6 +10,53 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-05-27
+
+### Fixed
+
+- **Source-hash LLM laundering: features stay stale after a
+  successful regen** ([#48](https://github.com/Smart-AI-Memory/attune-author/pull/48)).
+  The polish LLM was given the rendered template (with
+  frontmatter) as input context and asked to improve the body.
+  Empirically, the LLM also echoed the frontmatter in its
+  output — sometimes with single-character transcription errors
+  in deterministic fields like `source_hash`. That broke
+  staleness detection: the frontmatter `source_hash` written
+  into the polished file didn't match what `compute_source_hash`
+  recomputed on the same source, leaving the feature permanently
+  "stale" after a successful regen.
+
+  Concrete evidence from attune-ai's spec-engine feature
+  (2026-05-27):
+
+  ```
+  frontmatter: f8ced22b02899aa25ff409636e659830c6ba856d70de6ddd1a9bf1cbe37a1337
+  computed:    f8ced22b02899aa25ff709636e659830c6ba856d70de6ddd1a9bf1cbe37a1337
+                                   ^
+                                   position 19: LLM wrote f4 instead of f7
+  ```
+
+  Fix: field-level frontmatter merge in
+  `generator.apply_polish_results`. The canonical value for
+  every DETERMINISTIC field (`type`, `name`, `feature`, `depth`,
+  `generated_at`, `source_hash`, `status`) is re-injected from
+  the rendered template after polish, overriding whatever the
+  LLM emitted. NON-deterministic fields (`polish: skipped`
+  marker from the lenient-mode fallback path, any future
+  polish-layer metadata) are preserved unchanged.
+
+  Unblocks attune-gui Phase 2 (`living-docs-regen-automation`)
+  which needed `attune-author status --dry-run` to reach a fixed
+  point after regen. Once attune-gui pins this release, its CI
+  `fail-if-stale` gate can be turned on. attune-ai's dashboard
+  stale count also stops mis-flagging features that have just
+  been regenerated.
+
+  End-to-end verified: regenerating `spec-engine` on attune-ai
+  with the fix in place produces 11 templates whose frontmatter
+  `source_hash` all match `compute_source_hash`'s recomputed
+  value (vs. 0/11 pre-fix).
+
 ### Changed
 
 - **`publish.yml` trigger swapped from `release: [published]` to
