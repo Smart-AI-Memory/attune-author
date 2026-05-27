@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 import logging
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -431,6 +432,57 @@ def prepare_polish_phase(
     )
 
 
+_FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
+"""Matches a YAML frontmatter block at the start of a markdown
+document, capturing the body between the ``---`` delimiters.
+Includes the closing ``---\\n`` in the match so the body starts
+at the next character after the match end."""
+
+
+def _replace_polished_frontmatter(polished: str, canonical_source: str) -> str:
+    """Strip LLM-emitted frontmatter and prepend the canonical one.
+
+    The polish LLM is given the rendered template (with frontmatter)
+    as input context and asked to improve the body. Empirically, the
+    LLM also echoes the frontmatter in its output — sometimes with
+    single-character transcription errors in deterministic fields
+    like ``source_hash``. That broke staleness detection: the
+    frontmatter ``source_hash`` written into the polished file
+    didn't match what ``compute_source_hash`` recomputed on the same
+    source, leaving the feature permanently "stale" after a
+    successful regen.
+
+    This helper enforces that the LLM polishes the BODY only.
+    Deterministic frontmatter (source_hash, generated_at, feature,
+    depth, name, status, type) is non-negotiable metadata — we
+    re-inject the canonical block from the rendered template
+    regardless of what the LLM emitted.
+
+    If the polished content has no frontmatter (LLM stripped it),
+    we still prepend the canonical block. If the canonical source
+    has no frontmatter (unexpected, but handled), return the
+    polished content untouched.
+
+    See ``docs/specs/regen-staleness-hash-mismatch/decisions.md``
+    for the full diagnosis.
+    """
+    canonical_match = _FRONTMATTER_RE.match(canonical_source)
+    if canonical_match is None:
+        # No canonical frontmatter to inject — return polished as-is.
+        # Shouldn't happen in practice; rendered templates always
+        # have frontmatter.
+        return polished
+
+    canonical_block = canonical_match.group(0)
+    polished_match = _FRONTMATTER_RE.match(polished)
+    if polished_match is not None:
+        polished_body = polished[polished_match.end() :]
+    else:
+        polished_body = polished
+
+    return canonical_block + polished_body
+
+
 def apply_polish_results(
     prep: PolishPreparation,
     polished_by_depth: dict[str, str],
@@ -465,7 +517,21 @@ def apply_polish_results(
     project_root = Path.cwd()
     absolute_sources = [project_root / rel_path for rel_path in prep.matched_files]
     for entry in prep.pending:
-        final_content = polished_by_depth.get(entry.depth, entry.rendered_content)
+        if entry.depth in polished_by_depth:
+            # Polish ran: take the polished body but re-inject the
+            # canonical frontmatter. The LLM occasionally transcribes
+            # deterministic fields (notably source_hash) with single-
+            # character errors, which permanently breaks staleness
+            # detection. See _replace_polished_frontmatter docstring.
+            final_content = _replace_polished_frontmatter(
+                polished=polished_by_depth[entry.depth],
+                canonical_source=entry.rendered_content,
+            )
+        else:
+            # Polish skipped (e.g. lenient-mode failure) — use the
+            # raw rendered template, which already has correct
+            # frontmatter.
+            final_content = entry.rendered_content
         # Phase 4: strip `# attune-author: skip-mypy` directives from
         # tutorial code fences so they don't ship to readers. Other
         # template kinds are untouched.
