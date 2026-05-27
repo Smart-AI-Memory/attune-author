@@ -439,8 +439,49 @@ Includes the closing ``---\\n`` in the match so the body starts
 at the next character after the match end."""
 
 
+#: Frontmatter fields that are DETERMINISTIC — computed from
+#: source and not for the LLM (or polish-layer) to mutate. These
+#: come from the rendered template and override whatever the
+#: polish output contains.
+_DETERMINISTIC_FRONTMATTER_FIELDS = frozenset(
+    {
+        "type",
+        "name",
+        "feature",
+        "depth",
+        "generated_at",
+        "source_hash",
+        "status",
+    }
+)
+
+
+def _parse_frontmatter_lines(block: str) -> list[tuple[str, str]]:
+    """Parse a YAML frontmatter block into (key, line) pairs in order.
+
+    The block is the captured group from ``_FRONTMATTER_RE``,
+    i.e. the YAML body without the ``---`` delimiters. Each line
+    is returned as the (key, whole-line) tuple. Lines that don't
+    match the ``key: ...`` shape (e.g. multi-line YAML values, or
+    structural lines) are returned with key ``""`` so the caller
+    can decide whether to include them.
+    """
+    out: list[tuple[str, str]] = []
+    for line in block.splitlines():
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            out.append(("", line))
+            continue
+        key, sep, _ = stripped.partition(":")
+        if sep and " " not in key and "\t" not in key:
+            out.append((key.strip(), line))
+        else:
+            out.append(("", line))
+    return out
+
+
 def _replace_polished_frontmatter(polished: str, canonical_source: str) -> str:
-    """Strip LLM-emitted frontmatter and prepend the canonical one.
+    """Re-inject deterministic frontmatter fields from canonical source.
 
     The polish LLM is given the rendered template (with frontmatter)
     as input context and asked to improve the body. Empirically, the
@@ -448,39 +489,72 @@ def _replace_polished_frontmatter(polished: str, canonical_source: str) -> str:
     single-character transcription errors in deterministic fields
     like ``source_hash``. That broke staleness detection: the
     frontmatter ``source_hash`` written into the polished file
-    didn't match what ``compute_source_hash`` recomputed on the same
-    source, leaving the feature permanently "stale" after a
+    didn't match what ``compute_source_hash`` recomputed on the
+    same source, leaving the feature permanently "stale" after a
     successful regen.
 
-    This helper enforces that the LLM polishes the BODY only.
-    Deterministic frontmatter (source_hash, generated_at, feature,
-    depth, name, status, type) is non-negotiable metadata — we
-    re-inject the canonical block from the rendered template
-    regardless of what the LLM emitted.
+    Approach: field-level merge. For deterministic fields
+    (:data:`_DETERMINISTIC_FRONTMATTER_FIELDS`), the canonical
+    value from the rendered template wins. For any other field
+    (e.g. ``polish: skipped`` added by the lenient-mode polish
+    failure path in :func:`attune_author.polish._mark_polish_skipped`),
+    the polish output's value is preserved.
 
-    If the polished content has no frontmatter (LLM stripped it),
-    we still prepend the canonical block. If the canonical source
-    has no frontmatter (unexpected, but handled), return the
-    polished content untouched.
+    Edge cases:
+
+    - Polished has no frontmatter (LLM stripped it): prepend the
+      canonical block as-is.
+    - Canonical has no frontmatter (shouldn't happen in practice
+      since rendered templates always have one): return polished
+      untouched.
 
     See ``docs/specs/regen-staleness-hash-mismatch/decisions.md``
     for the full diagnosis.
     """
     canonical_match = _FRONTMATTER_RE.match(canonical_source)
     if canonical_match is None:
-        # No canonical frontmatter to inject — return polished as-is.
-        # Shouldn't happen in practice; rendered templates always
-        # have frontmatter.
+        # Defensive: rendered templates always have frontmatter.
         return polished
 
-    canonical_block = canonical_match.group(0)
     polished_match = _FRONTMATTER_RE.match(polished)
-    if polished_match is not None:
-        polished_body = polished[polished_match.end() :]
-    else:
-        polished_body = polished
+    if polished_match is None:
+        # LLM stripped the frontmatter entirely. Prepend canonical
+        # block and return.
+        return canonical_match.group(0) + polished
 
-    return canonical_block + polished_body
+    canonical_lines = _parse_frontmatter_lines(canonical_match.group(1))
+    polished_lines = _parse_frontmatter_lines(polished_match.group(1))
+
+    canonical_by_key: dict[str, str] = {k: line for k, line in canonical_lines if k}
+
+    merged: list[str] = []
+    seen_deterministic: set[str] = set()
+    for key, line in polished_lines:
+        if key in _DETERMINISTIC_FRONTMATTER_FIELDS:
+            # Override with canonical's line for this deterministic
+            # field. If canonical lacks the key (very unusual),
+            # drop the polished version too — better silence than
+            # propagating a possibly-perturbed value.
+            canonical_line = canonical_by_key.get(key)
+            if canonical_line is not None:
+                merged.append(canonical_line)
+                seen_deterministic.add(key)
+        else:
+            # Non-deterministic field (e.g. polish: skipped marker)
+            # OR a structural / comment line. Preserve as the polish
+            # layer emitted it.
+            merged.append(line)
+
+    # Append any deterministic canonical fields the polish output
+    # was missing (e.g. LLM dropped a line entirely). Preserves the
+    # invariant that the canonical's deterministic fields are
+    # always present in the result.
+    for key, line in canonical_lines:
+        if key and key in _DETERMINISTIC_FRONTMATTER_FIELDS and key not in seen_deterministic:
+            merged.append(line)
+
+    body = polished[polished_match.end() :]
+    return "---\n" + "\n".join(merged) + "\n---\n" + body
 
 
 def apply_polish_results(

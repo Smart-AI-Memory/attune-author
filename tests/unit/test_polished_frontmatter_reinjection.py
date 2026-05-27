@@ -123,6 +123,64 @@ class TestReplacePolishedFrontmatter:
 
         assert result.endswith("Paragraph.\n\n\n")
 
+    def test_polish_skipped_marker_preserved(self) -> None:
+        """Lenient-mode polish failure adds a ``polish: skipped``
+        marker to the frontmatter via
+        :func:`attune_author.polish._mark_polish_skipped`. The
+        re-inject must preserve that marker — it's the regression
+        signal downstream consumers (and snapshot tests) rely on
+        to detect raw-template output."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY
+        # Polish-skipped path adds `polish: skipped` as a non-
+        # deterministic frontmatter field. The deterministic
+        # fields can ALSO be perturbed (LLM transcription) but
+        # in the lenient-fallback path the polish layer just
+        # passes the rendered frontmatter through with the
+        # marker appended — so the only mutation is the new
+        # field. We still exercise both.
+        polished_frontmatter = (
+            _CANONICAL_FRONTMATTER.replace(
+                "f8ced22b02899aa25ff709",
+                "f8ced22b02899aa25ff409",  # f7 → f4 perturbation
+            )
+            .rstrip("\n")
+            .rstrip("-")
+            .rstrip("\n")
+            .rstrip("-")
+            .rstrip("\n")
+            .rstrip("-")
+        )
+        # Reconstruct with the marker before the closing ---
+        polished_frontmatter = _CANONICAL_FRONTMATTER.replace(
+            "f8ced22b02899aa25ff709",
+            "f8ced22b02899aa25ff409",
+        ).replace("status: generated\n---\n", "status: generated\npolish: skipped\n---\n")
+        polished = polished_frontmatter + _POLISHED_BODY
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        # Deterministic field corrected from canonical.
+        assert _hash_field(result) == _hash_field(_CANONICAL_FRONTMATTER)
+        # Non-deterministic polish marker preserved.
+        assert "polish: skipped" in result
+
+    def test_unknown_non_deterministic_field_preserved(self) -> None:
+        """Forward-compatibility: if the polish layer adds a NEW
+        non-deterministic field in the future (e.g.
+        ``polish_attempts: 3``), the re-inject must preserve it.
+        Only the closed set of DETERMINISTIC fields is overridden."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY
+        polished_frontmatter = _CANONICAL_FRONTMATTER.replace(
+            "status: generated\n---\n",
+            "status: generated\npolish_attempts: 3\nmodel: claude-sonnet-4-6\n---\n",
+        )
+        polished = polished_frontmatter + _POLISHED_BODY
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        assert "polish_attempts: 3" in result
+        assert "model: claude-sonnet-4-6" in result
+
 
 class TestApplyPolishResultsReinjectsFrontmatter:
     """Behavioral tests for the wiring in ``apply_polish_results``."""
