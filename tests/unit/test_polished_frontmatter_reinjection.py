@@ -181,6 +181,123 @@ class TestReplacePolishedFrontmatter:
         assert "polish_attempts: 3" in result
         assert "model: claude-sonnet-4-6" in result
 
+    def test_blank_and_comment_lines_in_polished_frontmatter_preserved(self) -> None:
+        """The line-parser handles blank lines and ``# comments``
+        as structural lines (key=``""``). They must pass through
+        as-emitted so YAML hygiene the LLM adds doesn't get lost."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY
+        polished_frontmatter = (
+            "---\n"
+            "type: concept\n"
+            "name: spec-engine-concept\n"
+            "feature: spec-engine\n"
+            "depth: concept\n"
+            "generated_at: 2026-05-27T02:19:54.313049+00:00\n"
+            "source_hash: f8ced22b02899aa25ff409636e659830c6ba856d70de6ddd1a9bf1cbe37a1337\n"
+            "status: generated\n"
+            "\n"  # blank line — structural, key=""
+            "# polish skipped because budget was exceeded\n"  # comment — key=""
+            "polish: skipped\n"
+            "---\n"
+        )
+        polished = polished_frontmatter + _POLISHED_BODY
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        # Comment and blank-line preserved through the merge.
+        assert "# polish skipped because budget was exceeded" in result
+        assert "polish: skipped" in result
+        # Deterministic field still corrected.
+        assert _hash_field(result) == _hash_field(_CANONICAL_FRONTMATTER)
+
+    def test_structural_yaml_lines_preserved(self) -> None:
+        """Lines that don't match ``key: value`` shape (e.g. nested
+        list items, multi-line scalar continuations) must pass
+        through with key=``""`` rather than being dropped."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY
+        polished_frontmatter = (
+            "---\n"
+            "type: concept\n"
+            "name: spec-engine-concept\n"
+            "feature: spec-engine\n"
+            "depth: concept\n"
+            "generated_at: 2026-05-27T02:19:54.313049+00:00\n"
+            "source_hash: f8ced22b02899aa25ff409636e659830c6ba856d70de6ddd1a9bf1cbe37a1337\n"
+            "status: generated\n"
+            "tags:\n"
+            "  - planning\n"  # nested list item — no key:value at start
+            "  - quality\n"
+            "---\n"
+        )
+        polished = polished_frontmatter + _POLISHED_BODY
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        # Nested list items preserved through the merge as
+        # structural lines.
+        assert "  - planning" in result
+        assert "  - quality" in result
+
+    def test_polished_has_deterministic_field_canonical_lacks(self) -> None:
+        """If the polish output has a deterministic key that the
+        canonical frontmatter is missing (very unusual — implies
+        canonical was malformed), drop the polished version too.
+        Better silence than propagating a possibly-perturbed
+        value. Exercises the ``canonical_line is None`` branch."""
+        # Canonical with NO source_hash field (malformed but
+        # parseable).
+        canonical_no_hash = (
+            "---\n"
+            "type: concept\n"
+            "name: spec-engine-concept\n"
+            "feature: spec-engine\n"
+            "depth: concept\n"
+            "generated_at: 2026-05-27T02:19:54.313049+00:00\n"
+            "status: generated\n"
+            "---\n"
+        )
+        canonical = canonical_no_hash + _RENDERED_BODY
+        polished = _CANONICAL_FRONTMATTER + _POLISHED_BODY  # has source_hash
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        # Polished's source_hash is dropped (canonical lacks it,
+        # so we don't propagate the possibly-perturbed value).
+        assert "source_hash:" not in result
+        # Body still came from polished.
+        assert "reads a plan" in result
+
+    def test_polished_missing_deterministic_field_gets_appended_from_canonical(
+        self,
+    ) -> None:
+        """If the polished output dropped a deterministic field
+        (e.g. LLM stripped ``status:`` from its frontmatter), the
+        canonical's value gets appended at the end. Exercises the
+        trailing append loop at the function bottom."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY
+        polished_frontmatter_missing_status = (
+            "---\n"
+            "type: concept\n"
+            "name: spec-engine-concept\n"
+            "feature: spec-engine\n"
+            "depth: concept\n"
+            "generated_at: 2026-05-27T02:19:54.313049+00:00\n"
+            "source_hash: f8ced22b02899aa25ff409636e659830c6ba856d70de6ddd1a9bf1cbe37a1337\n"
+            # `status: generated` removed — LLM dropped it.
+            "polish: skipped\n"
+            "---\n"
+        )
+        polished = polished_frontmatter_missing_status + _POLISHED_BODY
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        # Status came back from canonical (re-appended).
+        assert "status: generated" in result
+        # Other deterministic fields still correct.
+        assert _hash_field(result) == _hash_field(_CANONICAL_FRONTMATTER)
+        # Non-deterministic marker preserved.
+        assert "polish: skipped" in result
+
 
 class TestApplyPolishResultsReinjectsFrontmatter:
     """Behavioral tests for the wiring in ``apply_polish_results``."""
