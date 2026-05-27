@@ -1,8 +1,85 @@
 # Decisions — Regen / staleness hash mismatch
 
-**Status:** draft — bug confirmed externally, fix not yet scoped.
+**Status:** root cause confirmed 2026-05-27 — original hypothesis (budget truncation of hash inputs) was wrong; actual cause is LLM-polished frontmatter laundering. Fix direction concrete. Implementation TBD.
 **Owner:** Patrick
 **Filed:** 2026-05-25 (handoff from attune-gui Phase 2 blockers; see [attune-gui docs/specs/living-docs-regen-automation/decisions.md](https://github.com/Smart-AI-Memory/attune-gui/blob/main/docs/specs/living-docs-regen-automation/decisions.md#phase-2-blockers-discovered-2026-05-23))
+
+## Root cause (verified 2026-05-27)
+
+The original hypothesis (budget-truncated hash input) was wrong.
+`compute_source_hash` is called exactly ONCE at
+`generator.py:355` (inside `prepare_polish_phase`) and produces
+a deterministic value off the FULL source set. Verified by
+calling it twice in a row — idempotent. The `source_hash`
+variable flows through to `_render_template` at line 1452
+which writes it into the rendered template's frontmatter
+correctly.
+
+**The actual bug is in `apply_polish_results` at
+`generator.py:468`:**
+
+```python
+final_content = polished_by_depth.get(entry.depth, entry.rendered_content)
+...
+entry.out_path.write_text(final_content, encoding="utf-8")
+```
+
+When LLM polish ran, the polished content REPLACES the rendered
+template **including the frontmatter the LLM regenerated as part
+of its output**. The LLM is given the rendered template (with
+correct frontmatter) as input context, polishes the body, and
+returns the whole document — but its emitted frontmatter has a
+single-character transcription error in the `source_hash` field.
+
+**Reproducible evidence (attune-ai spec-engine, 2026-05-27):**
+
+```
+frontmatter source_hash: f8ced22b02899aa25ff409636e659830c6ba856d70de6ddd1a9bf1cbe37a1337
+computed source_hash:    f8ced22b02899aa25ff709636e659830c6ba856d70de6ddd1a9bf1cbe37a1337
+                                            ^
+                                            position 19: f4 vs f7
+```
+
+Single-char difference at byte 19 of a 64-char SHA-256 hex
+digest. Pure LLM hallucination of the value it was supposed to
+echo verbatim. Same `compute_source_hash` function called twice
+in the same Python process returns identical values; the
+divergence is solely between "what was hashed and written into
+the prompt" and "what the LLM emitted as its frontmatter copy."
+
+## Confirmed fix direction
+
+Strip frontmatter from `final_content` after polish and
+re-inject the canonical frontmatter from
+`entry.rendered_content`. The LLM polishes the BODY; the
+frontmatter (especially `source_hash`, `generated_at`,
+`feature`, `depth`, `name`) is non-negotiable deterministic
+metadata that must survive the polish step exactly.
+
+**Sketch (in `apply_polish_results` around line 468):**
+
+```python
+final_content = polished_by_depth.get(entry.depth, entry.rendered_content)
+if entry.depth in polished_by_depth:
+    # The LLM may have perturbed the frontmatter — re-inject
+    # the canonical one from the rendered template.
+    final_content = _replace_frontmatter(
+        polished_body=final_content,
+        canonical_frontmatter=_extract_frontmatter(entry.rendered_content),
+    )
+```
+
+Where `_extract_frontmatter` returns the `---\n...\n---\n`
+prefix from `entry.rendered_content`, and `_replace_frontmatter`
+strips whatever frontmatter the LLM produced and prepends the
+canonical one. Both can use `_FRONTMATTER_RE` from
+`staleness.py` (or a local equivalent).
+
+Even better long-term: send the LLM the body only (strip
+frontmatter from its input context), have it return the body
+only, and assemble the final document deterministically. Bigger
+refactor but eliminates the "did the LLM accidentally edit
+metadata" failure mode entirely.
 
 ## Problem
 
