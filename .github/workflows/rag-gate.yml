@@ -9,8 +9,16 @@ name: RAG Gate
 #   Green = candidate installed from source   (this workflow)
 #
 # Gate logic:
-#   Pass → merge to main and publish are unblocked.
-#   Fail → merge is blocked; publish.yml requires this job via `needs:`.
+#   Pass → drift check is clean; a labeled PR's eval gate is satisfied.
+#   Fail → a labeled PR's eval gate is red. (publish.yml does NOT `needs:`
+#          this job today — it gates nothing in the publish path. The gate
+#          is a weekly drift detector plus an opt-in `live-eval` PR check.)
+#
+# No eval key configured:
+#   If neither ATTUNE_CI_EVAL_KEY nor ANTHROPIC_API_KEY is set, the gate
+#   cannot make live calls. It SKIPS (green, with a Step Summary note)
+#   rather than crashing — a missing secret is a config gap, not a
+#   regression. Provision ATTUNE_CI_EVAL_KEY to enable real drift checks.
 #
 # Cooldown (30 min between publish attempts):
 #   Enforced by GitHub Environment protection rule on the `pypi` environment.
@@ -64,13 +72,39 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Check for eval API key
+        id: keycheck
+        # Secrets can't be referenced in `if:` directly, so resolve the key
+        # into env here and expose a plain boolean output the later steps
+        # gate on. When absent, write a Step Summary note and skip the run
+        # so the job ends green-but-skipped instead of crashing on the
+        # first API call (exit 2: "Could not resolve authentication method").
+        env:
+          EVAL_KEY: ${{ secrets.ATTUNE_CI_EVAL_KEY || secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$EVAL_KEY" ]; then
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### ⏭️ RAG Gate skipped — no eval API key configured"
+              echo ""
+              echo "Neither \`ATTUNE_CI_EVAL_KEY\` nor \`ANTHROPIC_API_KEY\` is set, so the"
+              echo "smoke eval cannot make live calls. Provision \`ATTUNE_CI_EVAL_KEY\`"
+              echo "(repo → Settings → Secrets → Actions) to enable live drift detection."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::RAG Gate skipped — no eval API key configured."
+          else
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Python
+        if: steps.keycheck.outputs.has_key == 'true'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install package with eval dependencies
+        if: steps.keycheck.outputs.has_key == 'true'
         # Installs from source (the "Green" candidate) — not from PyPI.
         # python-dotenv is included so smoke_eval.py load_dotenv() is a no-op
         # in CI (ANTHROPIC_API_KEY comes from the secret, not a .env file).
@@ -80,6 +114,7 @@ jobs:
           python -m pip install pyyaml python-dotenv
 
       - name: Run smoke eval
+        if: steps.keycheck.outputs.has_key == 'true'
         env:
           # Prefer the dedicated CI eval key (capped at $20/month in the
           # Anthropic console). Falls back to the legacy ANTHROPIC_API_KEY
@@ -91,7 +126,7 @@ jobs:
           python benchmarks/smoke_eval.py --out smoke_results.json
 
       - name: Estimate cost
-        if: always()
+        if: always() && steps.keycheck.outputs.has_key == 'true'
         run: |
           # Approximate per-run cost: ~10 answer calls + ~10 judge calls.
           # Refine when smoke_eval.py emits token counts in its output.
@@ -100,7 +135,7 @@ jobs:
           echo "::notice::Estimated cost for this run: \$0.10–0.30 (10 answer + 10 judge calls)."
 
       - name: Upload eval results
-        if: always()
+        if: always() && steps.keycheck.outputs.has_key == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: smoke-eval-results
@@ -108,7 +143,7 @@ jobs:
           retention-days: 30
 
       - name: Annotate PR with gate summary
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && steps.keycheck.outputs.has_key == 'true'
         run: |
           python - <<'EOF'
           import json, os, sys
