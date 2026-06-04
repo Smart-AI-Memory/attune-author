@@ -133,6 +133,16 @@ scripts:
   # Subset eval for CI: 5 questions, 1 model (sonnet), 2 conditions
   # Cost: ~10 answer calls + ~10 judge calls (~$0.10–0.30)
   # Questions: 2, 9, 12, 27, 39 (maximally discriminating; see BASELINES.md)
+  #
+  # Gate enforcement differs by eval scope (see
+  # specs/rag-gate-accuracy-baseline/design.md):
+  #   - smoke_eval (5 q): faithfulness is the HARD gate (exit 1 below 0.95);
+  #     strict_accuracy is ADVISORY (printed as ::warning::, no exit effect).
+  #     Rationale: n=5 only scores in 20-point steps, so an 85% bar is
+  #     reachable solely at a perfect 5/5 and reds on single-question judge
+  #     noise.
+  #   - full eval (25 q): BOTH faithfulness and strict_accuracy are HARD
+  #     gates per the thresholds above.
 
 # ---------------------------------------------------------------------------
 # Deployment gate model (PyPI package, not a web app)

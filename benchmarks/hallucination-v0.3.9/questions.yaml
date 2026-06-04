@@ -22,14 +22,14 @@ questions:
     feature: manifest
     question: "Which attune-author module defines the `is_safe_feature_name` function?"
     answer: "src/attune_author/manifest.py"
-    source: "src/attune_author/manifest.py:27"
+    source: "src/attune_author/manifest.py:37"
 
   - id: 3
     category: location
     feature: staleness-and-maintenance
     question: "Which attune-author module contains the `compute_source_hash` function used for staleness detection?"
     answer: "src/attune_author/staleness.py"
-    source: "src/attune_author/staleness.py:105"
+    source: "src/attune_author/staleness.py:211"
 
   - id: 5
     category: location
@@ -45,28 +45,28 @@ questions:
     feature: manifest
     question: "What are the parameters of `attune_author.manifest.load_manifest`, and what does it return?"
     answer: "Takes one parameter: help_dir (str | Path). Returns FeatureManifest."
-    source: "src/attune_author/manifest.py:85"
+    source: "src/attune_author/manifest.py:130"
 
   - id: 9
     category: signature
     feature: template-generation
     question: "What are all the parameters of `attune_author.generator.generate_feature_templates`?"
-    answer: "feature (Feature), help_dir (str | Path), project_root (str | Path), depths (list[str] | None = None), overwrite (bool = False). Returns GenerationResult."
-    source: "src/attune_author/generator.py:135"
+    answer: "feature (Feature), help_dir (str | Path), project_root (str | Path), depths (list[str] | None = None), overwrite (bool = False), use_rag (bool = True). Returns GenerationResult."
+    source: "src/attune_author/generator.py:257"
 
   - id: 10
     category: signature
     feature: staleness-and-maintenance
     question: "What are the parameters of `attune_author.staleness.compute_source_hash`, and what does it return?"
     answer: "feature (Feature), project_root (str | Path). Returns a tuple of (hex digest str, list of matched file path strings)."
-    source: "src/attune_author/staleness.py:105"
+    source: "src/attune_author/staleness.py:211"
 
   - id: 11
     category: signature
     feature: polish
     question: "What are all parameters of `attune_author.polish.polish_template`?"
-    answer: "content (str), feature_name (str), source_summary (str), template_type (str = 'generic'), strict (bool | None = None). Returns str."
-    source: "src/attune_author/polish.py:84"
+    answer: "content (str), feature_name (str), source_summary (str), template_type (str = 'generic'), strict (bool | None = None), augmented_context (str | None = None), include_ground_truth_anchor (bool = False). Returns str."
+    source: "src/attune_author/polish.py:256"
 
   - id: 12
     category: signature
@@ -117,14 +117,14 @@ questions:
     feature: template-generation
     question: "What is the default value of `overwrite` in `generate_feature_templates`?"
     answer: "False"
-    source: "src/attune_author/generator.py:140"
+    source: "src/attune_author/generator.py:262"
 
   - id: 23
     category: default
     feature: polish
     question: "What is the default value of `template_type` in `polish_template`?"
     answer: "generic"
-    source: "src/attune_author/polish.py:88"
+    source: "src/attune_author/polish.py:260"
 
   # -- Enums / constants (4) ------------------------------------------
 
@@ -140,21 +140,21 @@ questions:
     feature: template-generation
     question: "Name at least three additional template kinds (beyond concept/task/reference) that `generate_feature_templates` supports when passed an explicit `depths` list."
     answer: "Any three of: error, warning, troubleshooting, faq, quickstart, tip, note, comparison."
-    source: "src/attune_author/generator.py:166-169"
+    source: "src/attune_author/generator.py:99-116"
 
   - id: 27
     category: enum
     feature: manifest
     question: "What are the tokens that make a feature name unsafe, per the `_UNSAFE_NAME_TOKENS` constant in manifest.py?"
     answer: "'/', '\\\\', '..', '\\x00' (forward slash, backslash, parent-dir token, null byte)"
-    source: "src/attune_author/manifest.py:24"
+    source: "src/attune_author/manifest.py:34"
 
   - id: 30
     category: enum
     feature: polish
     question: "What strings, when set as the value of `ATTUNE_AUTHOR_STRICT_POLISH`, turn OFF strict mode?"
     answer: "0, false, no, off (case-insensitive; the _FALSY frozenset)"
-    source: "src/attune_author/polish.py:55-58"
+    source: "src/attune_author/polish.py:230"
 
   # -- Behavior (3) ---------------------------------------------------
 
@@ -163,7 +163,7 @@ questions:
     feature: manifest
     question: "What does `is_safe_feature_name('../etc')` return, and why?"
     answer: "False. The name contains the '..' token, which is in _UNSAFE_NAME_TOKENS."
-    source: "src/attune_author/manifest.py:27-46"
+    source: "src/attune_author/manifest.py:37-53"
 
   - id: 33
     category: behavior
@@ -177,7 +177,7 @@ questions:
     feature: template-generation
     question: "If `generate_feature_templates` is called and the feature name fails `is_safe_feature_name`, what exception is raised?"
     answer: "ValueError with a message including 'Invalid feature name:'."
-    source: "src/attune_author/generator.py:179-180"
+    source: "src/attune_author/generator.py:353-354"
 
   # -- Dataclass fields (2) -------------------------------------------
 
@@ -186,11 +186,11 @@ questions:
     feature: template-generation
     question: "What fields does `GeneratedTemplate` have?"
     answer: "feature (str), depth (str), path (Path), source_hash (str)."
-    source: "src/attune_author/generator.py:102-115"
+    source: "src/attune_author/generator.py:177-191"
 
   - id: 39
     category: dataclass
     feature: staleness-and-maintenance
-    question: "What properties does the `StalenessReport` class expose (beyond its `entries` field)?"
-    answer: "stale_count (int), current_count (int), stale_features (list[str])."
-    source: "src/attune_author/staleness.py:74-87"
+    question: "What properties does the `StalenessReport` class expose (beyond its `help_entries` and `doc_entries` fields)?"
+    answer: "stale_count (int), current_count (int), stale_features (list[str]), stale_docs (list[DocStaleness])."
+    source: "src/attune_author/staleness.py:98-132"

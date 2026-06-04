@@ -158,8 +158,8 @@ jobs:
               "",
               "| Metric | Value | Gate | Result |",
               "| :----- | ----: | ---: | :----- |",
-              f"| Faithfulness | {m['faithfulness']*100:.1f}% | ≥95% | {'✅' if gates['faithfulness']['passed'] else '❌'} |",
-              f"| Strict Accuracy | {m['strict_accuracy']*100:.1f}% | ≥85% | {'✅' if gates['strict_accuracy']['passed'] else '❌'} |",
+              f"| Faithfulness (hard) | {m['faithfulness']*100:.1f}% | ≥95% | {'✅' if gates['faithfulness']['passed'] else '❌'} |",
+              f"| Strict Accuracy (advisory) | {m['strict_accuracy']*100:.1f}% | ≥85% | {'✅' if gates['strict_accuracy']['passed'] else '⚠️'} |",
               "",
               f"Valid judgments: {m['total_valid']}/5",
           ]

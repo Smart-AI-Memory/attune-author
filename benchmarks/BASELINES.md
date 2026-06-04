@@ -1,5 +1,14 @@
 # RAG Evaluation Baselines — attune-author v0.3.9
 
+> ⚠️ **PENDING RE-MEASURE (2026-06-04).** The question set's ground-truth
+> answers were refreshed against current code (v0.14.2) — see
+> `specs/rag-gate-accuracy-baseline/`. The numbers in this file were measured
+> against the *stale* v0.3.9 ground truth and are **superseded**: a treated
+> answer that is correct against current code was previously graded "partial"
+> against the old ground truth, so the strict-accuracy figures below understate
+> current quality. **Re-run `make eval` (full 25 × 2 models, ~$3–8) to
+> regenerate this table**, then drop this banner and update the header version.
+
 Measured scores from `benchmarks/hallucination-v0.3.9/` used to ground the
 thresholds in `eval_config.yaml`. Run `make eval` to regenerate.
 
