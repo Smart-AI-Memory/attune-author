@@ -257,6 +257,33 @@ volatile frontmatter fields like `generated_at` stripped),
 context, and model name. Changing the model automatically invalidates
 all prior entries.
 
+### Cache hit rate
+
+Separately from the on-disk response cache above, each polish call
+uses Anthropic's **prompt cache** for the ~6000-token system prompt.
+After a regen run, `attune-author` logs a one-line summary at INFO:
+
+```
+Polish cache hit: 87% (1241 read / 1421 total tokens, 6 call(s))
+```
+
+The hit rate is `read / (read + creation)` — the fraction of cacheable
+input tokens served from cache rather than re-billed. Prompt caching
+cuts input cost ~90% on the cached portion, so a healthy multi-template
+run should settle well above 50% once the first call warms the cache.
+
+- **High (>80%)** — expected steady state; the system prompt is being
+  reused across calls.
+- **Low (<50%)** — triggers a `WARNING` in the summary. Usually means
+  the cache boundary broke: the system prompt changed between calls,
+  the model alias drifted, or only a single template was polished (no
+  reuse). Check recent edits to `polish_prompts.py` or `_POLISH_MODEL`.
+- **"no cacheable tokens observed"** — the prompt fell below Anthropic's
+  caching threshold or caching is disabled (`POLISH_CACHE_SYSTEM`).
+
+The metric is per-run (in-process); it is not persisted across
+invocations.
+
 ## Python API
 
 ```python

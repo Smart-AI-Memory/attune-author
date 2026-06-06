@@ -39,6 +39,7 @@ import logging
 import os
 import re
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from attune_author.doc_gen._anthropic import (
@@ -469,6 +470,118 @@ def build_polish_prompt(
 POLISH_MAX_TOKENS = 4096
 POLISH_CACHE_SYSTEM = True
 
+#: Rolling hit rate below which the end-of-run summary appends a
+#: warning. A healthy polish run that re-touches templates should
+#: sit well above this once the system prompt is cached; sustained
+#: lows usually mean the cache boundary broke (prompt edit, model
+#: alias drift) — see the README "Cache hit rate" section.
+_CACHE_HIT_WARN_THRESHOLD = 0.5
+
+
+@dataclass(frozen=True)
+class PolishCacheStats:
+    """Aggregate prompt-cache token usage across polish calls.
+
+    ``creation_tokens`` are input tokens written into Anthropic's
+    prompt cache; ``read_tokens`` are input tokens served from it.
+    The hit rate is ``read / (read + creation)`` — the fraction of
+    cacheable input that came from cache rather than being re-billed.
+    """
+
+    calls: int = 0
+    creation_tokens: int = 0
+    read_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.read_tokens + self.creation_tokens
+
+    @property
+    def hit_rate(self) -> float:
+        """Cache read fraction in ``[0.0, 1.0]``; ``0.0`` when no
+        cacheable tokens were seen (avoids divide-by-zero)."""
+        return self.read_tokens / max(self.total_tokens, 1)
+
+    def summary_line(self) -> str:
+        """One-line human summary for end-of-run output.
+
+        Degrades gracefully when no cacheable tokens were seen (no
+        cache configured, or prompt below the caching threshold).
+        """
+        if self.total_tokens == 0:
+            return "Polish cache: no cacheable tokens observed (cache not configured?)"
+        return (
+            f"Polish cache hit: {self.hit_rate:.0%} "
+            f"({self.read_tokens} read / {self.total_tokens} total tokens, "
+            f"{self.calls} call(s))"
+        )
+
+
+def _polish_cache_telemetry() -> dict[str, int]:
+    """Per-process aggregate of prompt-cache token usage.
+
+    Stored on the function as an attribute so the end-of-run summary
+    can read totals without module-level state — same idiom as
+    ``generator._faithfulness_telemetry``. Reset via
+    :func:`reset_polish_cache_telemetry`.
+    """
+    state = getattr(_polish_cache_telemetry, "_state", None)
+    if state is None:
+        state = {"calls": 0, "creation": 0, "read": 0}
+        _polish_cache_telemetry._state = state  # type: ignore[attr-defined]
+    return state
+
+
+def reset_polish_cache_telemetry() -> None:
+    """Reset the per-process prompt-cache telemetry counters."""
+    _polish_cache_telemetry._state = {  # type: ignore[attr-defined]
+        "calls": 0,
+        "creation": 0,
+        "read": 0,
+    }
+
+
+def _record_cache_usage(creation: int, read: int, model: str) -> None:
+    """Accumulate one polish call's cache token counts.
+
+    Wired into :func:`call_anthropic` via its ``on_cache_usage``
+    hook. ``model`` is accepted to match the callback signature but
+    not aggregated — per-model breakdown is out of scope (decisions.md).
+    """
+    state = _polish_cache_telemetry()
+    state["calls"] += 1
+    state["creation"] += creation
+    state["read"] += read
+
+
+def polish_cache_stats() -> PolishCacheStats:
+    """Snapshot the current per-process prompt-cache aggregate."""
+    state = _polish_cache_telemetry()
+    return PolishCacheStats(
+        calls=state["calls"],
+        creation_tokens=state["creation"],
+        read_tokens=state["read"],
+    )
+
+
+def format_polish_cache_summary() -> str | None:
+    """End-of-run summary line, or ``None`` if polish never ran.
+
+    Appends a low-hit-rate warning when the run's hit rate falls below
+    :data:`_CACHE_HIT_WARN_THRESHOLD` and at least one cacheable token
+    was seen. Scope is the current process: callers reset at run start.
+    """
+    stats = polish_cache_stats()
+    if stats.calls == 0:
+        return None
+    line = stats.summary_line()
+    if stats.total_tokens > 0 and stats.hit_rate < _CACHE_HIT_WARN_THRESHOLD:
+        line += (
+            f" — WARNING: below {_CACHE_HIT_WARN_THRESHOLD:.0%}; "
+            "the prompt cache may have regressed (see README 'Cache hit rate')"
+        )
+    return line
+
 
 def _call_llm(
     content: str,
@@ -516,6 +629,7 @@ def _call_llm(
         model=_POLISH_MODEL,
         max_tokens=POLISH_MAX_TOKENS,
         cache_system=POLISH_CACHE_SYSTEM,
+        on_cache_usage=_record_cache_usage,
     )
     return polished or content
 
@@ -525,12 +639,16 @@ def _call_llm(
 # or from the wrapping polish layer.
 __all__ = [
     "AnthropicCallError",
+    "PolishCacheStats",
     "PolishError",
     "STRICT_ENV_VAR",
     "_env_strict_default",
     "build_source_summary",
     "clear_cache",
+    "format_polish_cache_summary",
+    "polish_cache_stats",
     "polish_template",
+    "reset_polish_cache_telemetry",
 ]
 
 

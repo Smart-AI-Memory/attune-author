@@ -16,6 +16,8 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)
@@ -102,6 +104,7 @@ def call_anthropic(
     model: str,
     max_tokens: int,
     cache_system: bool = False,
+    on_cache_usage: Callable[[int, int, str], None] | None = None,
 ) -> str:
     """Make a single-turn ``messages.create`` call with retry/backoff.
 
@@ -125,6 +128,13 @@ def call_anthropic(
             for sonnet/opus, 2048 for haiku); below that, the call
             still works but no cache is used. Cache token usage is
             emitted at INFO so callers can verify hits.
+        on_cache_usage: Optional callback invoked once per successful
+            call with ``(cache_creation_input_tokens,
+            cache_read_input_tokens, model)``. Lets a caller (e.g. the
+            polish pass) accumulate cache hit-rate telemetry without
+            this module owning that concern. Fired even when both
+            counts are zero so callers can distinguish "no cache
+            configured" from "never called".
 
     Returns:
         The first text block of the response, or the empty
@@ -164,7 +174,9 @@ def call_anthropic(
                 system=system_payload,
                 messages=[{"role": "user", "content": user_message}],
             )
-            _log_cache_usage(response, model)
+            creation, read = _log_cache_usage(response, model)
+            if on_cache_usage is not None:
+                on_cache_usage(creation, read, model)
             if response.content:
                 return response.content[0].text
             return ""
@@ -182,16 +194,20 @@ def call_anthropic(
     raise AnthropicCallError(_redact(str(last_exc))) from None
 
 
-def _log_cache_usage(response: object, model: str) -> None:
+def _log_cache_usage(response: object, model: str) -> tuple[int, int]:
     """Emit cache hit telemetry from an Anthropic response.
 
     Reads ``cache_creation_input_tokens`` and ``cache_read_input_tokens``
     from the response's usage object when present and logs them at INFO.
     Older SDK responses without those fields are silently skipped.
+
+    Returns:
+        ``(creation, read)`` token counts, defaulting to ``(0, 0)`` when
+        the response has no usage block or the SDK omits the fields.
     """
     usage = getattr(response, "usage", None)
     if usage is None:
-        return
+        return (0, 0)
     creation = getattr(usage, "cache_creation_input_tokens", 0) or 0
     read = getattr(usage, "cache_read_input_tokens", 0) or 0
     if creation or read:
@@ -201,3 +217,4 @@ def _log_cache_usage(response: object, model: str) -> None:
             creation,
             read,
         )
+    return (creation, read)
