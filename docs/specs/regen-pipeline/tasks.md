@@ -2,9 +2,29 @@
 
 ## Phase 3: Tasks
 
-**Status**: complete
+**Status**: NOT done as written — reconciled 2026-06-06
 
-> Shipped: `attune-author regenerate` CLI lives in `src/attune_author/cli.py:507` (handler) with the parser registered around line 154. Core logic in `maintenance.py` and `maintenance_batch.py`. CHANGELOG documents the batch variant.
+> ## ⚠️ The task table below is INACCURATE
+>
+> A 2026-06-06 code audit found that **none** of the attune-author symbols in
+> tasks 2–9 ever shipped (`_resolve_corpus_root`, `atomic_write`,
+> `_patch_summaries_json`, `regen_template(corpus_root=…)`, `_regen`) and
+> **none** of the attune-gui pieces in tasks 10–24 exist (`config.py`
+> `ConfigState`, `/api/config`, `/api/templates/refresh-all`,
+> `/api/browse/directory`, `CorpusSetup`, `App.jsx`). The "done" marks below are
+> false. The earlier "Shipped" note conflated this spec with the unrelated
+> hash-mismatch `attune-author regenerate` CLI — a different feature.
+>
+> **What actually satisfies the spec's user stories** (see `requirements.md`
+> banner for the full mapping):
+> - Single-doc regen → `POST /api/living-docs/docs/{id}/regenerate` (Jobs +
+>   `attune_author.generator.generate_feature_templates`).
+> - Corpus config → corpus registry (`editor_corpora.py`,
+>   `/api/corpus/register`) + workspace config (`attune_gui.workspace`).
+> - Bulk → `make regen-all` (Makefile).
+>
+> No code action is required: the product need is met. The table below is left
+> intact only as a record of the original (unbuilt) plan.
 
 ### Implementation order
 

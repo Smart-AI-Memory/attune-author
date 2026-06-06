@@ -5,9 +5,31 @@
 
 ---
 
+> ## ⚠️ RECONCILED — satisfied-by-different-means (2026-06-06)
+>
+> This spec was previously marked "complete" with all tasks ✅, but a code
+> audit found **none** of its named symbols ever shipped (`_regen`,
+> `regen_template(corpus_root=…)`, `_resolve_corpus_root`, `atomic_write`,
+> `_patch_summaries_json`) and the attune-gui pieces (`/api/config`,
+> `refresh-all`, `CorpusSetup`) do not exist. The underlying need was instead
+> met by a **more evolved architecture**. All three user stories are satisfied:
+>
+> | User story | Status | Actual implementation |
+> |---|---|---|
+> | US1 — badge click → regen → saved to disk | ✅ met | `POST /api/living-docs/docs/{id}/regenerate` → Jobs registry → `_regenerate_doc_executor` → `attune_author.generator.generate_feature_templates` (`sidecar/attune_gui/routes/living_docs.py`). Source-driven generation, not polish+Haiku. |
+> | US2 — first-run corpus setup UI | ✅ exceeded | Multi-corpus registry: `editor_corpora.py`, `POST /api/corpus/register`, `editor-frontend/src/corpus-switcher.ts` (dropdown + "Add corpus…" modal). |
+> | US3 — env auto-load on startup | ✅ met | Workspace config (`living_docs.py` `get_config`/`set_config`, `attune_gui.workspace`) + persisted corpus registry, replacing single `ATTUNE_CORPUS_ROOT`. |
+>
+> Bulk regen ships as the build-time `make regen-all` target (Makefile), not a
+> runtime "Regen all stale" button. The frontend is **TypeScript**, not the
+> React/JSX assumed by `design.md`.
+>
+> **No genuine product gaps remain.** This spec is retained for history; the
+> `design.md` below is **obsolete** (see its banner). Do not implement it.
+
 ## Phase 1: Requirements
 
-**Status**: approved
+**Status**: reconciled — satisfied by living-docs regen automation + corpus registry (was falsely marked "approved/complete")
 
 ### Problem statement
 
