@@ -44,8 +44,8 @@ SMOKE_QUESTION_IDS = {2, 9, 12, 27, 39}
 ANSWER_MODEL_ID = "claude-sonnet-4-6"
 JUDGE_MODEL_ID = "claude-opus-4-6"
 
-FAITHFULNESS_GATE = 0.95  # end_user persona
-ACCURACY_GATE = 0.85  # developer persona
+FAITHFULNESS_GATE = 0.95  # end_user persona — HARD gate (drives exit code)
+ACCURACY_GATE = 0.85  # developer persona — ADVISORY on smoke; full-25 enforces
 
 # ---------------------------------------------------------------------------
 # Output helpers
@@ -310,7 +310,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"  Strict Accuracy: {metrics['strict_accuracy']*100:.1f}%  "
-        f"(gate ≥ {ACCURACY_GATE*100:.0f}%)"
+        f"(advisory ≥ {ACCURACY_GATE*100:.0f}%; full-25 eval is the hard gate)"
     )
     print(f"  Valid judgments: {metrics['total_valid']}/{len(SMOKE_QUESTION_IDS)}")
 
@@ -329,6 +329,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {q['id']:<4} {q['category']:<12} {bc(bv):<23} {tc(tv)}")
 
     # -- Threshold checks ----------------------------------------------------
+    # Hard gate (drives exit code): faithfulness + valid-judgment count.
+    # Strict accuracy is ADVISORY on the smoke set — with only 5 questions it
+    # can only score in 20-point steps, so an 85% bar is reachable solely at a
+    # perfect 5/5 and would red on single-question judge noise. The full
+    # 25-question eval owns the strict-accuracy hard gate. See
+    # specs/rag-gate-accuracy-baseline/design.md.
     failures: list[str] = []
     if metrics["total_valid"] < len(SMOKE_QUESTION_IDS):
         failures.append(
@@ -339,12 +345,19 @@ def main(argv: list[str] | None = None) -> int:
         failures.append(
             f"Faithfulness {metrics['faithfulness']*100:.1f}% < gate {FAITHFULNESS_GATE*100:.0f}%"
         )
+
+    advisories: list[str] = []
     if metrics["strict_accuracy"] < ACCURACY_GATE:
-        failures.append(
-            f"Strict accuracy {metrics['strict_accuracy']*100:.1f}% < gate {ACCURACY_GATE*100:.0f}%"
+        advisories.append(
+            f"Strict accuracy {metrics['strict_accuracy']*100:.1f}% < advisory "
+            f"{ACCURACY_GATE*100:.0f}% (full-25 eval is the hard gate)"
         )
 
     print()
+    for a in advisories:
+        # ::warning:: so it surfaces in the GitHub Actions log without failing.
+        print(f"::warning::{a}")
+        print(f"  {yellow('!')} {a}")
     if failures:
         print(bold(red("GATE FAILED — deploy blocked:")))
         for f in failures:
@@ -363,11 +376,13 @@ def main(argv: list[str] | None = None) -> int:
                 "value": metrics["faithfulness"],
                 "threshold": FAITHFULNESS_GATE,
                 "passed": metrics["faithfulness"] >= FAITHFULNESS_GATE,
+                "enforced": True,
             },
             "strict_accuracy": {
                 "value": metrics["strict_accuracy"],
                 "threshold": ACCURACY_GATE,
                 "passed": metrics["strict_accuracy"] >= ACCURACY_GATE,
+                "enforced": False,  # advisory on the smoke set; full-25 enforces
             },
         },
         "judgments": judgments,
