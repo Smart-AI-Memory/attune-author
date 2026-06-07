@@ -1,8 +1,9 @@
 ---
+type: concept
 feature: staleness-and-maintenance
 depth: concept
-generated_at: 2026-06-06T23:19:48.572962+00:00
-source_hash: a32e9d9904602f0f282f0bf02f119e350efd6c8b4ecb73c04564917b6ae65f69
+generated_at: 2026-04-26T19:47:57.095143+00:00
+source_hash: 196e1038a7194fe466fe8c96559cc4197bb18833f5afc123452ec132dd9007b6
 status: generated
 ---
 
@@ -10,31 +11,30 @@ status: generated
 
 ## How it works
 
-Detect when generated templates are out of date with their source files and regenerate stale ones
-.
+Staleness detection identifies when generated help templates are out of sync with their source code. When you modify functions, classes, or files that generated templates reference, those templates become stale and need regeneration to reflect current behavior.
 
-The main building blocks are:
+The system tracks this through source hashes — cryptographic fingerprints of the code that generated each template. When source files change, their hashes change, marking dependent templates as stale.
 
-- **`FeatureStaleness`** — Staleness status for one feature's ``.help/`` templates.
-- **`DocStaleness`** — Staleness status for one project doc file in ``docs/``.
-- **`StalenessReport`** — Combined staleness report across help templates and project docs.
-- **`MaintenanceResult`** — Result of a help maintenance run.
+## Core components
 
-Under the hood, this feature spans 2 source
-files covering:
+**MaintenanceResult** captures what happened during a maintenance run. It tracks which features were stale, which got regenerated successfully, which were skipped because they require manual updates, and which failed during regeneration.
 
-- Help maintenance logic for commit hooks and manual refresh.
+**Staleness detection** compares current source hashes against the hashes stored in template frontmatter. Templates with mismatched hashes are marked stale and queued for regeneration.
 
-## What connects to it
+**Automated maintenance** runs either manually through `run_maintenance()` or automatically via the post-commit hook. The hook examines recent git changes and regenerates only templates affected by those changes.
 
-This feature relates to: freshness, hashing, regeneration.
+## When staleness matters
 
-Other parts of the codebase interact with
-staleness and maintenance through these interfaces:
+Templates become stale in three scenarios:
 
-| Interface | Purpose | File |
-|-----------|---------|------|
-| `FeatureStaleness` | Staleness status for one feature's ``.help/`` templates. | `src/attune_author/staleness.py` |
-| `DocStaleness` | Staleness status for one project doc file in ``docs/``. | `src/attune_author/staleness.py` |
-| `StalenessReport` | Combined staleness report across help templates and project docs. | `src/attune_author/staleness.py` |
-| `MaintenanceResult` | Result of a help maintenance run. | `src/attune_author/maintenance.py` |
+1. **Function signatures change** — adding parameters, changing return types, or modifying docstrings
+2. **Class structure evolves** — new methods, field additions, or inheritance changes
+3. **Module organization shifts** — moving files, renaming modules, or changing import paths
+
+The maintenance system prevents documentation drift by catching these changes before templates mislead users.
+
+## Hook integration
+
+The post-commit hook automatically runs maintenance after each commit. It examines `get_changed_files()` to identify what changed, then regenerates only the templates that depend on those files. This keeps help content fresh without manual intervention.
+
+For manual maintenance, `run_maintenance()` can target specific features or scan the entire help directory. The `dry_run` option shows what would be regenerated without making changes.

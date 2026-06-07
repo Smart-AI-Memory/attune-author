@@ -1,38 +1,43 @@
 ---
+type: reference
 feature: polish
 depth: reference
-generated_at: 2026-06-06T23:19:48.567369+00:00
-source_hash: 79da77a01c4b4a11716e33f5673ee64882fe6354c51b6cf999aee80d9dbe4b7e
+generated_at: 2026-04-26T19:47:19.826246+00:00
+source_hash: c3c5a14decb406edb1b2d8ca09a6adb5d3bf68908f60cdaf9a9ea6ba0df1471d
 status: generated
 ---
 
 # Polish reference
 
+Polish generated help templates using an LLM to improve readability, structure, and adherence to Google's developer documentation style guide.
+
 ## Classes
 
-| Class | Description | File |
-|-------|-------------|------|
-| `PolishError` | Raised when the polish pass fails in strict mode. | `src/attune_author/polish.py` |
-| `PolishCacheStats` | Aggregate prompt-cache token usage across polish calls. | `src/attune_author/polish.py` |
+| Class | Description |
+|-------|-------------|
+| `PolishError` | Raised when the polish pass fails in strict mode |
 
 ## Functions
 
-| Function | Description | File |
-|----------|-------------|------|
-| `clear_cache()` | Delete every entry in the polish cache directory. | `src/attune_author/polish.py` |
-| `polish_template()` | Polish a generated template using an LLM. | `src/attune_author/polish.py` |
-| `build_polish_prompt()` | Build the (system_prompt, user_message) pair for a polish call. | `src/attune_author/polish.py` |
-| `reset_polish_cache_telemetry()` | Reset the per-process prompt-cache telemetry counters. | `src/attune_author/polish.py` |
-| `polish_cache_stats()` | Snapshot the current per-process prompt-cache aggregate. | `src/attune_author/polish.py` |
-| `format_polish_cache_summary()` | End-of-run summary line, or ``None`` if polish never ran. | `src/attune_author/polish.py` |
-| `build_source_summary()` | Build a concise source summary for the polish prompt. | `src/attune_author/polish.py` |
-| `get_system_prompt()` | Build the system prompt for a given template kind. | `src/attune_author/polish_prompts.py` |
+| Function | Parameters | Returns | Description |
+|----------|------------|---------|-------------|
+| `polish_template()` | `content: str, feature_name: str, source_summary: str, template_type: str = "generic", strict: bool \| None = None, augmented_context: str \| None = None` | `str` | Polish a generated template using an LLM |
+| `build_source_summary()` | `public_classes: list[dict[str, str]], public_functions: list[dict[str, str]], module_docstrings: list[str], file_count: int, function_signatures: list[dict[str, str]] \| None = None, class_signatures: list[dict[str, str]] \| None = None, module_constants: list[dict[str, object]] \| None = None` | `str` | Build a concise source summary for the polish prompt |
+| `get_system_prompt()` | `template_type: str` | `str` | Build the system prompt for a given template kind |
 
+### Raises
 
-## Source files
+| Function | Exception | Message |
+|----------|-----------|---------|
+| `polish_template()` | `PolishError` | `'Polish pass failed for {...} (type={...}): {...}'` |
 
-- `src/attune_author/polish.py`
-- `src/attune_author/polish_prompts.py`
+## Constants
+
+| Constant | Values | Description |
+|----------|--------|-------------|
+| `STRICT_ENV_VAR` | `'ATTUNE_AUTHOR_STRICT_POLISH'` | Environment variable name for enabling strict mode |
+| `_FALSY` | `{'0', 'false', 'no', 'off'}` | String values that disable strict mode |
+| `_BASE_RULES` | System prompt base rules | Core polishing instructions applied to all template types |
 
 ## Tags
 
