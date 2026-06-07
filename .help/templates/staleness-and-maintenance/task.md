@@ -1,108 +1,59 @@
 ---
-type: task
 feature: staleness-and-maintenance
 depth: task
-generated_at: 2026-04-26T19:48:08.669237+00:00
-source_hash: 196e1038a7194fe466fe8c96559cc4197bb18833f5afc123452ec132dd9007b6
+generated_at: 2026-06-06T23:19:48.577723+00:00
+source_hash: a32e9d9904602f0f282f0bf02f119e350efd6c8b4ecb73c04564917b6ae65f69
 status: generated
 ---
 
 # Work with staleness and maintenance
 
-Use staleness and maintenance when you need to detect outdated generated templates and regenerate them automatically to keep your help system current with source code changes.
+Use staleness and maintenance when you need to detect when generated templates are out of date with their source files and regenerate stale ones
+.
 
 ## Prerequisites
 
 - Access to the project source code
-- Understanding of how templates are generated from source files
+- Familiarity with the files under src/attune_author/staleness.py
 
-## Check for stale templates
+## Steps
 
-1. **Import the maintenance module**
-   ```python
-   from attune_author.maintenance import run_maintenance
-   ```
+1. **Understand the current behavior.**
+   Read the entry points to see what staleness and maintenance
+   does today before making changes.
+   The primary functions are:
+   - `compute_semantic_hash()` in `src/attune_author/staleness.py` — Compute a semantic SHA-256 hash of a feature's Python source files.
+   - `compute_source_hash()` in `src/attune_author/staleness.py` — Compute SHA-256 hash of a feature's source files.
+   - `parse_doc_footer()` in `src/attune_author/staleness.py` — Parse an attune-generated HTML comment footer.
+   - `build_doc_footer()` in `src/attune_author/staleness.py` — Build an attune-generated HTML comment footer line.
+   - `check_staleness()` in `src/attune_author/staleness.py` — Check staleness across help templates and project docs.
+2. **Locate the right function to change.**
+   Each function has a single responsibility. Read its
+   docstring, parameters, and return type to confirm it
+   owns the behavior you need to modify.
 
-2. **Run staleness detection**
-   ```python
-   result = run_maintenance(
-       help_dir="docs/help",
-       project_root=".",
-       dry_run=True  # Check only, don't regenerate
-   )
-   ```
+3. **Make your change.**
+   Follow existing patterns in the file — naming
+   conventions, error handling style, and logging.
 
-3. **Review the staleness report**
-   ```python
-   print(f"Found {result.stale_count} stale templates")
-   print(result.staleness)  # Detailed report
-   ```
+4. **Run the related tests.**
+   This catches regressions before they reach other
+   developers. Target with `pytest -k "staleness-and-maintenance"`.
 
-## Regenerate outdated templates
+## Key files
 
-1. **Run maintenance with regeneration enabled**
-   ```python
-   result = run_maintenance(
-       help_dir="docs/help",
-       project_root=".",
-       dry_run=False  # Actually regenerate
-   )
-   ```
+- `src/attune_author/staleness.py`
+- `src/attune_author/maintenance.py`
 
-2. **Target specific features** (optional)
-   ```python
-   result = run_maintenance(
-       help_dir="docs/help",
-       project_root=".",
-       features=["authentication", "error-handling"]
-   )
-   ```
+## Common modifications
 
-## Set up automatic maintenance
+Functions you are most likely to modify:
 
-1. **Configure the post-commit hook**
-   ```python
-   from attune_author.maintenance import run_hook
-
-   # In your .git/hooks/post-commit script
-   result = run_hook(
-       help_dir="docs/help",
-       project_root="."
-   )
-   ```
-
-2. **Handle hook results**
-   ```python
-   if result and result.stale_count > 0:
-       print(f"Regenerated {result.regenerated_count} templates")
-   ```
-
-## Format status reports
-
-1. **Generate a readable status report**
-   ```python
-   from attune_author.maintenance import format_status_report
-
-   report = format_status_report(
-       result.staleness,
-       help_dir="docs/help"
-   )
-   print(report)
-   ```
-
-2. **Check what files changed recently**
-   ```python
-   from attune_author.maintenance import get_changed_files
-
-   changed = get_changed_files(".")
-   print(f"Changed files: {changed}")
-   ```
-
-## Verification
-
-You've successfully set up staleness and maintenance when:
-
-- `run_maintenance()` returns a `MaintenanceResult` with accurate stale counts
-- Dry runs identify stale templates without modifying files
-- Regeneration updates only the templates that need refreshing
-- Status reports clearly show which templates were updated and why
+- `compute_semantic_hash()` in `src/attune_author/staleness.py`
+- `compute_source_hash()` in `src/attune_author/staleness.py`
+- `parse_doc_footer()` in `src/attune_author/staleness.py`
+- `build_doc_footer()` in `src/attune_author/staleness.py`
+- `check_staleness()` in `src/attune_author/staleness.py`
+- `check_workspace_staleness()` in `src/attune_author/staleness.py`
+- `run_maintenance()` in `src/attune_author/maintenance.py`
+- `get_changed_files()` in `src/attune_author/maintenance.py`
