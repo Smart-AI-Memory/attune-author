@@ -1,8 +1,27 @@
 # Spec: Regen Pipeline — Design
 
+> ## ⚠️ OBSOLETE — do not implement (reconciled 2026-06-06)
+>
+> This design was never built and conflicts with the shipped architecture. It
+> assumes a single `corpus_root`, a React/JSX frontend (`App.jsx`,
+> `CorpusSetup`), a polish+Haiku `_regen` pipeline, and WS-badge wiring — none
+> of which exist. The shipped reality instead uses:
+>
+> - **Regen:** `sidecar/attune_gui/routes/living_docs.py` →
+>   `POST /api/living-docs/docs/{id}/regenerate` → Jobs registry
+>   (`attune_gui.jobs`) → `_regenerate_doc_executor` →
+>   `attune_author.generator.generate_feature_templates` + `load_manifest`.
+> - **Corpus config:** multi-corpus registry (`attune_gui.editor_corpora`,
+>   `POST /api/corpus/register`) + workspace config (`attune_gui.workspace`,
+>   `living_docs.py` `get_config`/`set_config`).
+> - **Frontend:** TypeScript (`editor-frontend/src/corpus-switcher.ts`), not React.
+> - **Bulk:** `make regen-all` (Makefile), not `POST /api/templates/refresh-all`.
+>
+> Kept verbatim below for historical context only. See `requirements.md` banner.
+
 ## Phase 2: Design
 
-**Status**: in-review
+**Status**: obsolete — superseded by living-docs regen automation (was "in-review", never built)
 
 ---
 

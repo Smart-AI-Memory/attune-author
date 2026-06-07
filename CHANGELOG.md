@@ -10,6 +10,26 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Polish prompt-cache hit-rate telemetry.** Each polish run now
+  tracks Anthropic prompt-cache token usage and logs a one-line
+  summary at the end of `attune-author regenerate`:
+  `Polish cache hit: 87% (1241 read / 1421 total tokens, 6 call(s))`.
+  A `WARNING` is appended when the run's hit rate falls below 50%,
+  surfacing silent cache regressions (prompt edits, model alias
+  drift). Hit rate is `read / (read + creation)` cacheable input
+  tokens.
+  - `attune_author.doc_gen._anthropic.call_anthropic` gains an optional
+    `on_cache_usage(creation, read, model)` callback; backward
+    compatible (the doc-gen path passes nothing).
+  - New in `attune_author.polish`: `PolishCacheStats`,
+    `polish_cache_stats()`, `format_polish_cache_summary()`,
+    `reset_polish_cache_telemetry()`. Telemetry follows the existing
+    in-process faithfulness-counter pattern (no new on-disk format).
+  - README: new "Cache hit rate" subsection under Polish cache.
+  - 16 new tests in `tests/unit/test_polish_cache_metrics.py`.
+
 ## [0.14.2] - 2026-05-27
 
 ### Fixed

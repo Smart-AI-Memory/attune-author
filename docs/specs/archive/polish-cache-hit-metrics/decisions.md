@@ -1,6 +1,12 @@
 # Decisions — Polish prompt-cache hit-rate telemetry
 
-**Status:** Draft (2026-05-11) — gated on briefing-followup batch
+**Status:** ✅ DONE (2026-06-06) — shipped to [Unreleased]. The Draft
+"gated on briefing-followup batch" note was superseded by this file's
+own "Execution gate" ("Not blocking"). One deviation: attune-author has
+no telemetry JSONL, so the metric uses the existing in-process
+faithfulness-counter pattern (INFO summary at end of run) rather than a
+new JSONL file; the threshold warning is current-run, not cross-run.
+See `tasks.md` for the per-phase record.
 **Owner:** Patrick
 
 ---

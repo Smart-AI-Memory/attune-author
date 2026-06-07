@@ -102,8 +102,10 @@ def run_maintenance(
     # Reset Phase 3 faithfulness telemetry so the end-of-run summary
     # reflects this regen rather than carrying state across runs.
     from attune_author.generator import reset_faithfulness_telemetry
+    from attune_author.polish import reset_polish_cache_telemetry
 
     reset_faithfulness_telemetry()
+    reset_polish_cache_telemetry()
 
     for entry in report.help_entries:
         if not entry.is_stale:
@@ -146,6 +148,15 @@ def run_maintenance(
             int(telemetry["skipped"]),
             telemetry["cost_usd"],
         )
+
+    # Prompt-cache hit-rate summary. Logged at INFO so it rides the
+    # same default `attune-author regenerate` output as the
+    # faithfulness line; silent when polish never ran this regen.
+    from attune_author.polish import format_polish_cache_summary
+
+    cache_summary = format_polish_cache_summary()
+    if cache_summary is not None:
+        logger.info("%s", cache_summary)
 
     return result
 

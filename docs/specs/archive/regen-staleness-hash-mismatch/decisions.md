@@ -1,6 +1,6 @@
 # Decisions — Regen / staleness hash mismatch
 
-**Status:** root cause confirmed 2026-05-27 — original hypothesis (budget truncation of hash inputs) was wrong; actual cause is LLM-polished frontmatter laundering. Fix direction concrete. Implementation TBD.
+**Status:** ✅ DONE — shipped in PR #48 (commit 1b1c7c5) / v0.14.2. Root cause was LLM-polished frontmatter laundering (not the original budget-truncation hypothesis). Fix: `apply_polish_results` re-injects deterministic frontmatter fields via `_replace_polished_frontmatter` (`generator.py:483`, `_DETERMINISTIC_FRONTMATTER_FIELDS`). Regression test: `tests/unit/test_polished_frontmatter_reinjection.py`. CHANGELOG documents it under [0.14.2]. Phase 3 release shipped; attune-gui can pin ≥0.14.2 to unblock its Phase 2.
 **Owner:** Patrick
 **Filed:** 2026-05-25 (handoff from attune-gui Phase 2 blockers; see [attune-gui docs/specs/living-docs-regen-automation/decisions.md](https://github.com/Smart-AI-Memory/attune-gui/blob/main/docs/specs/living-docs-regen-automation/decisions.md#phase-2-blockers-discovered-2026-05-23))
 

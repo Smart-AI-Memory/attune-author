@@ -19,7 +19,7 @@ poll_batch}`` boundary so no live calls leave the test process.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -53,11 +53,16 @@ from attune_author.maintenance_batch import (
 
 
 def _state(submitted_at: datetime | None = None) -> BatchState:
+    # Default to "recently submitted" relative to now so the fixture stays
+    # inside the 29-day retention window for status/cancel paths that read
+    # without an injected ``now=``. (A hardcoded date silently expires and
+    # breaks these tests once it ages past the window.)
+    submitted_at = submitted_at or (datetime.now(timezone.utc) - timedelta(days=1))
     return BatchState(
         schema_version=1,
         batch_id="msgbatch_test",
-        submitted_at=submitted_at or datetime(2026, 5, 8, 18, 35, tzinfo=timezone.utc),
-        expected_completion_at=datetime(2026, 5, 8, 18, 41, tzinfo=timezone.utc),
+        submitted_at=submitted_at,
+        expected_completion_at=submitted_at + timedelta(minutes=6),
         model="claude-sonnet-4-6",
         requests=(
             BatchStateRequest("feat__auth__concept", "auth", "concept"),
