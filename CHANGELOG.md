@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-06-10
+
+Per-kind incremental polish: regeneration now skips template kinds whose
+deterministic pre-polish content is unchanged — no LLM call, polished body
+kept, metadata refreshed. Cuts regen cost to only genuinely-changed kinds.
+
 ### Added
 
 - **Per-kind incremental polish skip (`scaffold_hash`).** Each generated
