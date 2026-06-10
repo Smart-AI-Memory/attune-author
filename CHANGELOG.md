@@ -12,6 +12,21 @@ and this project adheres to
 
 ### Added
 
+- **Per-kind incremental polish skip (`scaffold_hash`).** Each generated
+  template now carries a `scaffold_hash` — the SHA-256 of its
+  deterministic pre-polish render with metadata lines (`generated_at`,
+  `source_hash`, `scaffold_hash`) normalized out. On regeneration, a kind
+  whose scaffold hash matches the on-disk file is skipped entirely: no
+  polish LLM call, the polished body is kept verbatim, and only the
+  deterministic metadata (`source_hash`/`generated_at`) is refreshed in
+  place so feature-level staleness clears. A feature where 2 of 11 kinds'
+  content actually changed now makes exactly 2 polish calls instead of
+  11. `--overwrite` bypasses the skip (explicit full-regen escape hatch);
+  pre-existing files without the field regenerate once, then carry it.
+  Help templates store the hash in YAML frontmatter; project docs in the
+  `attune-generated` HTML footer. Spec: attune-ai
+  `docs/specs/polish-cost-reduction/` (lever 2, D3).
+
 - **Polish prompt-cache hit-rate telemetry.** Each polish run now
   tracks Anthropic prompt-cache token usage and logs a one-line
   summary at the end of `attune-author regenerate`:

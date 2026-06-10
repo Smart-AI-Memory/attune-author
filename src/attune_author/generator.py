@@ -13,6 +13,7 @@ Meta template resolution order:
 from __future__ import annotations
 
 import ast
+import hashlib
 import logging
 import os
 import re
@@ -326,6 +327,100 @@ def generate_feature_templates(
     return apply_polish_results(prep, polished_text)
 
 
+#: Substrings marking metadata lines EXCLUDED from the scaffold hash.
+#: ``generated_at``/``scaffold_hash`` are volatile; ``source_hash``
+#: changes on any semantic source change even when the rendered body
+#: is identical — including it would defeat the skip (lever 2).
+_SCAFFOLD_HASH_EXCLUDE = ("generated_at", "scaffold_hash", "source_hash")
+
+
+def compute_scaffold_hash(content: str) -> str:
+    """SHA-256 of a rendered scaffold with metadata lines normalized.
+
+    The scaffold is the deterministic pre-polish render. Two renders
+    with equal scaffold hash would feed the polish LLM equivalent
+    content — so if the on-disk file was produced from an
+    equal-hash scaffold, re-polishing it is pure spend with no
+    content change (polish-cost-reduction lever 2; see attune-ai
+    docs/specs/polish-cost-reduction/ D3).
+    """
+    lines = [
+        ln
+        for ln in content.splitlines()
+        if not any(marker in ln for marker in _SCAFFOLD_HASH_EXCLUDE)
+    ]
+    return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
+
+
+def _inject_scaffold_hash(content: str, scaffold_hash: str, is_project_doc: bool) -> str:
+    """Add the scaffold hash to rendered content's metadata.
+
+    Help templates get a ``scaffold_hash:`` frontmatter field;
+    project docs get a ``scaffold_hash=`` attr in the
+    ``attune-generated`` HTML footer. The hash itself excludes
+    these lines (see :func:`compute_scaffold_hash`), so injection
+    after hashing is stable.
+    """
+    if is_project_doc:
+        idx = content.rfind(" generated_at=")
+        if idx == -1:
+            return content
+        return content[:idx] + f" scaffold_hash={scaffold_hash}" + content[idx:]
+    match = _FRONTMATTER_RE.match(content)
+    if not match:
+        return content
+    end = match.end(1)
+    return content[:end] + f"\nscaffold_hash: {scaffold_hash}" + content[end:]
+
+
+def _read_scaffold_hash(path: Path) -> str | None:
+    """Read the stored scaffold hash from an on-disk generated file."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = _FRONTMATTER_RE.match(text)
+    if match:
+        for line in match.group(1).splitlines():
+            if line.startswith("scaffold_hash:"):
+                return line.split(":", 1)[1].strip() or None
+        return None
+    from attune_author.staleness import parse_doc_footer
+
+    return parse_doc_footer(text).get("scaffold_hash") or None
+
+
+def _refresh_metadata_in_place(out_path: Path, canonical: str, is_project_doc: bool) -> None:
+    """Refresh deterministic metadata on a skipped (unchanged) file.
+
+    A scaffold-hash skip must still update ``source_hash`` /
+    ``generated_at`` so feature-level staleness clears — otherwise a
+    skipped feature reports stale forever and regen loops on it.
+    Zero LLM calls: the polished body is kept verbatim.
+    """
+    try:
+        existing = out_path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    if is_project_doc:
+        from attune_author.staleness import _DOC_FOOTER_RE
+
+        canonical_footer = _DOC_FOOTER_RE.search(canonical)
+        if canonical_footer is None:
+            return
+        refreshed, n = _DOC_FOOTER_RE.subn(
+            lambda _m: canonical_footer.group(0), existing, count=1
+        )
+        if n == 0:
+            return
+    else:
+        refreshed = _replace_polished_frontmatter(
+            polished=existing, canonical_source=canonical
+        )
+    if refreshed != existing:
+        out_path.write_text(refreshed, encoding="utf-8")
+
+
 def prepare_polish_phase(
     feature: Feature,
     help_dir: str | Path,
@@ -420,6 +515,23 @@ def prepare_polish_phase(
                 source_hash=source_hash,
                 source_info=source_info,
             )
+        scaffold_hash = compute_scaffold_hash(content)
+        content = _inject_scaffold_hash(content, scaffold_hash, is_project_doc)
+
+        # Per-kind incremental skip (polish-cost-reduction lever 2):
+        # if the deterministic scaffold is unchanged vs. what produced
+        # the on-disk file, the polished content cannot meaningfully
+        # change — skip the LLM call and keep the file, refreshing
+        # only its deterministic metadata.
+        if out_path.exists() and not overwrite and _read_scaffold_hash(out_path) == scaffold_hash:
+            _refresh_metadata_in_place(out_path, content, is_project_doc)
+            logger.info(
+                "Skipping %s/%s (scaffold unchanged; metadata refreshed, no polish)",
+                feature.name,
+                depth,
+            )
+            continue
+
         pending.append(_PendingPolish(depth=depth, rendered_content=content, out_path=out_path))
 
     return PolishPreparation(
@@ -451,6 +563,7 @@ _DETERMINISTIC_FRONTMATTER_FIELDS = frozenset(
         "depth",
         "generated_at",
         "source_hash",
+        "scaffold_hash",
         "status",
     }
 )
