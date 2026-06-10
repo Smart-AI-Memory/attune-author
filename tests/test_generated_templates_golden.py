@@ -32,7 +32,7 @@ from attune_author.manifest import Feature
 _TIMESTAMP_RE = re.compile(
     r"(\w+_at: )\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}:?\d{2}|Z)?"
 )
-_HASH_RE = re.compile(r"(source_hash: )[0-9a-f]+")
+_HASH_RE = re.compile(r"((?:source|scaffold)_hash: )[0-9a-f]+")
 
 
 def _stable(text: str) -> str:
