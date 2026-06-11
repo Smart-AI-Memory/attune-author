@@ -101,9 +101,11 @@ def run_maintenance(
 
     # Reset Phase 3 faithfulness telemetry so the end-of-run summary
     # reflects this regen rather than carrying state across runs.
+    from attune_author.auth import reset_auth_telemetry
     from attune_author.generator import reset_faithfulness_telemetry
     from attune_author.polish import reset_polish_cache_telemetry
 
+    reset_auth_telemetry()
     reset_faithfulness_telemetry()
     reset_polish_cache_telemetry()
 
@@ -157,6 +159,19 @@ def run_maintenance(
     cache_summary = format_polish_cache_summary()
     if cache_summary is not None:
         logger.info("%s", cache_summary)
+
+    # Auth-route summary (sibling-subscription-auth Phase 1). Tells
+    # the operator whether polish calls were subscription-covered or
+    # billed to the API key. Silent when no LLM call ran this regen.
+    from attune_author.auth import auth_telemetry
+
+    auth_counts = auth_telemetry()
+    if auth_counts["sub_calls"] or auth_counts["api_calls"]:
+        logger.info(
+            "Polish LLM calls: %d (subscription), %d (API)",
+            int(auth_counts["sub_calls"]),
+            int(auth_counts["api_calls"]),
+        )
 
     return result
 

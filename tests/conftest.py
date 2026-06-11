@@ -43,6 +43,14 @@ def _lenient_polish_by_default(
     # real Anthropic API with a key picked up from the dev
     # machine's environment — a huge cost/latency hazard.
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # Pin LLM auth routing to the API path and hide any ambient
+    # Claude Code session. Without this, running the suite inside
+    # Claude Code (CLAUDECODE=1) would auto-route un-mocked polish
+    # calls to REAL subscription calls via the Agent SDK — the
+    # subscription twin of the API-key hazard above. Auth-routing
+    # tests override these per-test.
+    monkeypatch.setenv("ATTUNE_AUTHOR_AUTH_MODE", "api")
+    monkeypatch.delenv("CLAUDECODE", raising=False)
     yield
 
 

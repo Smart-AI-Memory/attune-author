@@ -48,9 +48,9 @@ def test_polish_template_calls_sdk_with_expected_model() -> None:
     """
     with patch("attune_author.polish._cache_get", return_value=None):
         with patch(
-            "attune_author.polish.call_anthropic", return_value="polished body"
+            "attune_author.doc_gen._anthropic.call_anthropic", return_value="polished body"
         ) as mock_call:
-            with patch("attune_author.polish.get_client") as mock_client:
+            with patch("attune_author.doc_gen._anthropic.get_client") as mock_client:
                 mock_client.return_value = object()
                 result = polish_template(
                     content="# Sample\n\nBody.\n",
@@ -84,8 +84,10 @@ def test_polish_template_uses_constant_not_hardcoded() -> None:
     sentinel = "claude-test-sentinel-9"
     with patch("attune_author.polish._cache_get", return_value=None):
         with patch("attune_author.polish._POLISH_MODEL", sentinel):
-            with patch("attune_author.polish.call_anthropic", return_value="ok") as mock_call:
-                with patch("attune_author.polish.get_client") as mock_client:
+            with patch(
+                "attune_author.doc_gen._anthropic.call_anthropic", return_value="ok"
+            ) as mock_call:
+                with patch("attune_author.doc_gen._anthropic.get_client") as mock_client:
                     mock_client.return_value = object()
                     polish_template(
                         content="# X\n\nY\n",

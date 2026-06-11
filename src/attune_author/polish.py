@@ -42,11 +42,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from attune_author.doc_gen._anthropic import (
-    AnthropicCallError,
-    call_anthropic,
-    get_client,
-)
+from attune_author import auth
+from attune_author.doc_gen._anthropic import AnthropicCallError
 from attune_author.polish_prompts import get_system_prompt
 
 #: Anthropic model used for the polish pass. Hoisted to a
@@ -593,10 +590,11 @@ def _call_llm(
 ) -> str:
     """Make the LLM call for polishing.
 
-    Delegates client creation and the SDK invocation to the
-    shared helper in :mod:`attune_author.doc_gen._anthropic`
-    so that credential handling and error redaction stay in
-    one place.
+    Routes through :func:`attune_author.auth.call_llm`, which
+    prefers the Claude subscription (Agent SDK) when running
+    under Claude Code and falls back to the direct Anthropic
+    SDK otherwise. Credential handling and error redaction
+    stay in one place.
 
     Args:
         content: Template content to polish.
@@ -609,10 +607,10 @@ def _call_llm(
         when the LLM returned an empty response.
 
     Raises:
-        AnthropicCallError: If no API key is available or
-            the SDK call fails.
+        AnthropicCallError: If no credentials are available
+            (neither subscription session nor API key) or the
+            LLM call fails on the resolved route.
     """
-    client = get_client()
     system_prompt, user_message = build_polish_prompt(
         content,
         feature_name,
@@ -622,8 +620,7 @@ def _call_llm(
         include_ground_truth_anchor=include_ground_truth_anchor,
     )
 
-    polished = call_anthropic(
-        client,
+    polished = auth.call_llm(
         system=system_prompt,
         user_message=user_message,
         model=_POLISH_MODEL,

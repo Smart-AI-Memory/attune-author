@@ -175,6 +175,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Shortcut for ``--fact-check=off``.",
     )
 
+    _add_auth_mode_flag(p_gen)
+
     p_regen = sub.add_parser(
         "regenerate",
         help="Regenerate all stale templates",
@@ -258,6 +260,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Shortcut for ``--fact-check=off``.",
     )
 
+    _add_auth_mode_flag(p_regen)
+
     p_cache = sub.add_parser(
         "cache",
         help="Manage the on-disk polish cache",
@@ -277,6 +281,22 @@ def _build_parser() -> argparse.ArgumentParser:
             "after a prompt change in attune-author itself, or to reclaim "
             "disk space without waiting for the TTL sweep."
         ),
+    )
+
+    p_auth = sub.add_parser(
+        "auth",
+        help="Authentication diagnostics",
+        description=(
+            "Inspect how attune-author authenticates LLM calls. "
+            "'status' reports which auth mode a call would use right "
+            "now (Claude subscription via the Agent SDK, or "
+            "ANTHROPIC_API_KEY via the Anthropic SDK)."
+        ),
+    )
+    auth_sub = p_auth.add_subparsers(dest="auth_command", help="Auth subcommands")
+    auth_sub.add_parser(
+        "status",
+        help="Report the auth mode a call would use right now",
     )
 
     p_edit = sub.add_parser(
@@ -389,6 +409,7 @@ def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         "regenerate": _cmd_regenerate,
         "docs": _cmd_docs,
         "cache": _cmd_cache,
+        "auth": _cmd_auth,
         "edit": _cmd_edit,
         "export-skills": _cmd_export_skills,
     }
@@ -496,6 +517,72 @@ def _cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_auth_mode_flag(parser: argparse.ArgumentParser) -> None:
+    """Attach the shared ``--auth-mode`` flag (sibling-subscription-auth).
+
+    Defined once so ``generate`` and ``regenerate`` stay in sync.
+    """
+    parser.add_argument(
+        "--auth-mode",
+        choices=["auto", "api", "sub"],
+        default=None,
+        help=(
+            "LLM auth routing for polish calls: 'auto' (default) prefers "
+            "the Claude subscription when running under Claude Code and "
+            "falls back to ANTHROPIC_API_KEY; 'api' forces the API key; "
+            "'sub' forces subscription. Overridden by "
+            "ATTUNE_AUTHOR_AUTH_MODE if set. Batch mode (--batch) always "
+            "uses the API."
+        ),
+    )
+
+
+def _apply_auth_mode_args(args: argparse.Namespace) -> None:
+    """Translate ``--auth-mode`` to the env var read by
+    :mod:`attune_author.auth`.
+
+    Mirrors :func:`_apply_fact_check_args`: the env var is the single
+    source of truth; an already-set env var wins (the operator's
+    shell-level intent overrides the per-invocation flag).
+    """
+    from attune_author.auth import AUTH_MODE_ENV
+
+    if os.environ.get(AUTH_MODE_ENV):
+        return
+    if getattr(args, "auth_mode", None):
+        os.environ[AUTH_MODE_ENV] = args.auth_mode
+
+
+def _cmd_auth(args: argparse.Namespace) -> int:
+    """Handle the auth command (``status``)."""
+    from attune_author.auth import AUTH_MODE_ENV, auth_status
+
+    status = auth_status()
+
+    def _yn(value: object) -> str:
+        return "yes" if value else "no"
+
+    print("Auth status (attune-author)")
+    print(f"  Claude Code session (CLAUDECODE=1): {_yn(status['claudecode'])}")
+    print(f"  claude-agent-sdk importable:        {_yn(status['sdk_importable'])}")
+    print(f"  ANTHROPIC_API_KEY set:              {_yn(status['api_key_available'])}")
+    print(f"  {AUTH_MODE_ENV}:             {status['env_mode'] or '(unset; auto)'}")
+    if status["error"]:
+        print(f"  Resolved mode: ERROR — {status['error']}", file=sys.stderr)
+        return 1
+    if status["resolved_mode"] == "sub":
+        print("  Resolved mode: subscription (Agent SDK)")
+    else:
+        print("  Resolved mode: API key (Anthropic SDK)")
+        if not status["api_key_available"]:
+            print(
+                "  WARNING: ANTHROPIC_API_KEY is not set — LLM calls will "
+                "fail.\n           Run inside Claude Code for subscription "
+                "routing, or set ANTHROPIC_API_KEY."
+            )
+    return 0
+
+
 def _apply_fact_check_args(args: argparse.Namespace) -> None:
     """Translate ``--fact-check`` / ``--no-fact-check`` to the env var
     read by :func:`attune_author.generator._run_fact_check`.
@@ -518,6 +605,7 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     from attune_author.manifest import load_manifest
 
     _apply_fact_check_args(args)
+    _apply_auth_mode_args(args)
     root = validate_file_path(args.project_root)
     help_dir = validate_file_path(args.help_dir)
 
@@ -565,6 +653,7 @@ def _cmd_generate(args: argparse.Namespace) -> int:
 def _cmd_regenerate(args: argparse.Namespace) -> int:
     """Handle the regenerate command."""
     _apply_fact_check_args(args)
+    _apply_auth_mode_args(args)
     root = validate_file_path(args.project_root)
     help_dir = validate_file_path(args.help_dir)
 

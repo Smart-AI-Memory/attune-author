@@ -10,6 +10,20 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Subscription-first LLM auth** (sibling-subscription-auth
+  Phase 1): when running under Claude Code (`CLAUDECODE=1`) with
+  `claude-agent-sdk` installed, polish LLM calls route through the
+  Claude subscription via the Agent SDK — no `ANTHROPIC_API_KEY`
+  required. Falls back to the API key otherwise. New
+  `--auth-mode={auto,api,sub}` flag on `generate`/`regenerate`,
+  `ATTUNE_AUTHOR_AUTH_MODE` env var, and a new
+  `attune-author auth status` diagnostic command. The regen
+  summary logs `Polish LLM calls: N (subscription), M (API)`.
+  Batch mode (`--batch`) still requires an API key — the Batches
+  API has no subscription path.
+
 ## [0.15.0] — 2026-06-10
 
 Per-kind incremental polish: regeneration now skips template kinds whose

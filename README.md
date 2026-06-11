@@ -52,6 +52,39 @@ ATTUNE_AUTHOR_RAG=0 attune-author generate my-feature
 Without the `[rag]` extra installed, `attune-author`
 proceeds as before — no behavior change.
 
+## Authentication
+
+LLM-powered commands (polish, doc generation) pick credentials
+automatically:
+
+1. **Claude subscription** — when running inside a Claude Code
+   session (the `CLAUDECODE=1` env var Claude Code sets) with
+   `claude-agent-sdk` installed (included in the `[ai]` extra),
+   calls route through your subscription via the Agent SDK. No
+   API key needed, no metered billing.
+2. **API key** — otherwise, calls use `ANTHROPIC_API_KEY` via
+   the Anthropic SDK (the pre-existing behavior).
+
+Check what would fire right now:
+
+```bash
+attune-author auth status
+```
+
+Force a mode per-invocation or per-shell:
+
+```bash
+attune-author regenerate --auth-mode=api   # always bill the API key
+ATTUNE_AUTHOR_AUTH_MODE=api attune-author regenerate
+```
+
+Notes: a subscriber running from a plain terminal (outside
+Claude Code) falls back to the API key — that's expected.
+Batch mode (`regenerate --batch`) always uses the Anthropic
+Batches API and requires an API key. The regen summary line
+`Polish LLM calls: N (subscription), M (API)` is the source of
+truth for which route each run used.
+
 ## Quick Start
 
 ```bash
