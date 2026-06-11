@@ -10,6 +10,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Faithfulness summary auth-route annotation**
+  (sibling-subscription-auth task 2.5): when attune-rag >= 0.7 is
+  installed, the regen summary adds
+  `Faithfulness judge auth: N call(s) subscription, M API` after the
+  existing judge cost line. Subscription-routed calls have no API
+  cost, so the cost estimate prices only the API-routed share.
+  The `[rag]` extra cap widened `<0.3` -> `<0.8` (stale; current
+  attune-rag is 0.7.0).
+
 ## [0.16.0] — 2026-06-11
 
 Subscription-first auth: polish LLM calls route through the Claude

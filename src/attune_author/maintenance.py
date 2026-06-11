@@ -19,6 +19,28 @@ from attune_author.staleness import StalenessReport, check_staleness
 logger = logging.getLogger(__name__)
 
 
+def _log_judge_auth_route_summary() -> None:
+    """Annotate the faithfulness summary with auth-route counts.
+
+    Sibling-subscription-auth task 2.5: attune-rag >= 0.7 exposes
+    per-route counters (``attune_rag.auth.auth_telemetry``); older
+    versions — or attune-rag absent — just skip the line.
+    Subscription-routed judge calls have no API cost, so the cost
+    estimate in the main summary only prices the API-routed share.
+    """
+    try:
+        from attune_rag.auth import auth_telemetry
+    except ImportError:
+        return
+    routes = auth_telemetry()
+    if routes.get("sub_calls") or routes.get("api_calls"):
+        logger.info(
+            "Faithfulness judge auth: %d call(s) subscription, %d API",
+            int(routes.get("sub_calls", 0)),
+            int(routes.get("api_calls", 0)),
+        )
+
+
 @dataclass
 class MaintenanceResult:
     """Result of a help maintenance run.
@@ -150,6 +172,7 @@ def run_maintenance(
             int(telemetry["skipped"]),
             telemetry["cost_usd"],
         )
+        _log_judge_auth_route_summary()
 
     # Prompt-cache hit-rate summary. Logged at INFO so it rides the
     # same default `attune-author regenerate` output as the
