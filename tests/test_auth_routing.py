@@ -271,3 +271,115 @@ class TestCliAuthStatus:
         os.environ[AUTH_MODE_ENV] = "sub"
         _apply_auth_mode_args(argparse.Namespace(auth_mode="api"))
         assert os.environ[AUTH_MODE_ENV] == "sub"
+
+
+def _install_fake_sdk(monkeypatch: pytest.MonkeyPatch, *, result_text: str | None):
+    """Install a duck-shaped ``claude_agent_sdk`` into ``sys.modules``.
+
+    ``_query_subscription`` imports the SDK inside the function, so a
+    ``sys.modules`` entry intercepts it without the real package (or
+    its subprocess) being involved. Returns the capture dict the fake
+    ``query`` fills in.
+    """
+    import sys
+    import types
+
+    fake = types.ModuleType("claude_agent_sdk")
+
+    class TextBlock:
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+    class AssistantMessage:
+        def __init__(self, content: list) -> None:
+            self.content = content
+
+    class ResultMessage:
+        def __init__(self, result: str | None) -> None:
+            self.result = result
+
+    class ClaudeAgentOptions:
+        def __init__(self, **kwargs: object) -> None:
+            self.kwargs = kwargs
+
+    captured: dict[str, object] = {}
+
+    async def query(*, prompt: str, options: object):
+        captured["prompt"] = prompt
+        captured["options"] = options
+        yield AssistantMessage([TextBlock("part one "), TextBlock("part two")])
+        yield ResultMessage(result_text)
+
+    fake.TextBlock = TextBlock
+    fake.AssistantMessage = AssistantMessage
+    fake.ResultMessage = ResultMessage
+    fake.ClaudeAgentOptions = ClaudeAgentOptions
+    fake.query = query
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake)
+    return captured
+
+
+class TestSubscriptionAdapter:
+    """Adapter internals, with the SDK faked at the module boundary."""
+
+    async def test_query_prefers_result_message(self, monkeypatch):
+        _install_fake_sdk(monkeypatch, result_text="final result")
+        text = await auth._query_subscription(system="sys", user_message="msg", model="m-1")
+        assert text == "final result"
+
+    async def test_query_falls_back_to_assistant_text(self, monkeypatch):
+        """ResultMessage.result can be None on some runs — the
+        collected AssistantMessage text is the fallback."""
+        _install_fake_sdk(monkeypatch, result_text=None)
+        text = await auth._query_subscription(system="sys", user_message="msg", model="m-1")
+        assert text == "part one part two"
+
+    async def test_query_options_keep_isolation_invariant(self, monkeypatch):
+        """Drift-guard: the subscription subprocess must run with
+        setting_sources=[] (no user/project hooks or CLAUDE.md — they
+        pollute the stream-json channel), no tools, and one turn."""
+        captured = _install_fake_sdk(monkeypatch, result_text="ok")
+        await auth._query_subscription(
+            system="the system prompt", user_message="the user msg", model="m-1"
+        )
+        kwargs = captured["options"].kwargs
+        assert kwargs["setting_sources"] == []
+        assert kwargs["tools"] == []
+        assert kwargs["max_turns"] == 1
+        assert kwargs["system_prompt"] == "the system prompt"
+        assert kwargs["model"] == "m-1"
+        assert captured["prompt"] == "the user msg"
+
+    def test_call_subscription_without_running_loop(self, monkeypatch):
+        async def fake_query(**kwargs: object) -> str:
+            return "from-coro"
+
+        monkeypatch.setattr(auth, "_query_subscription", fake_query)
+        result = auth._call_subscription(system="s", user_message="u", model="m")
+        assert result == "from-coro"
+
+    async def test_call_subscription_inside_running_loop(self, monkeypatch):
+        """A caller already inside an event loop gets the worker-thread
+        dispatch instead of a nested asyncio.run crash."""
+
+        async def fake_query(**kwargs: object) -> str:
+            return "threaded"
+
+        monkeypatch.setattr(auth, "_query_subscription", fake_query)
+        result = auth._call_subscription(system="s", user_message="u", model="m")
+        assert result == "threaded"
+
+
+class TestDetectionEdgeCases:
+    def test_sdk_importable_swallows_find_spec_errors(self, monkeypatch):
+        import importlib.util
+
+        def boom(name: str):
+            raise ValueError("broken finder")
+
+        monkeypatch.setattr(importlib.util, "find_spec", boom)
+        assert auth._sdk_importable() is False
+
+    def test_telemetry_lazy_init(self, monkeypatch):
+        monkeypatch.delattr(auth.auth_telemetry, "_state", raising=False)
+        assert auth_telemetry() == {"sub_calls": 0.0, "api_calls": 0.0}
