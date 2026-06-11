@@ -44,7 +44,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ai = ["anthropic>=0.40.0"]
+ai = ["anthropic>=0.40.0", "claude-agent-sdk>=0.1.60"]
 # RAG-grounded authoring. When installed, `attune-author
 # generate` consults attune-rag for relevant existing
 # templates before generating new ones (on by default,

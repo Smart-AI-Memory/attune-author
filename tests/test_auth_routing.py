@@ -1,0 +1,273 @@
+"""Tests for subscription-first auth routing (attune_author.auth).
+
+Phase 1 of the sibling-subscription-auth spec. Covers the four
+credential states (subscription / API key / both / neither), the
+explicit-override precedence, and the failure modes (subscription
+dies mid-run, forced modes, no credentials at all).
+
+Mocking happens at the adapter boundary (``_call_subscription``)
+and at the Anthropic-SDK source module — never at the wire.
+"""
+
+from __future__ import annotations
+
+from unittest.mock import patch
+
+import pytest
+
+from attune_author import auth
+from attune_author.auth import (
+    AUTH_MODE_ENV,
+    auth_status,
+    auth_telemetry,
+    call_llm,
+    reset_auth_telemetry,
+    resolve_auth_mode,
+    subscription_available,
+)
+from attune_author.doc_gen._anthropic import AnthropicCallError
+
+_CALL_KWARGS = {
+    "system": "sys prompt",
+    "user_message": "polish this",
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 64,
+}
+
+
+@pytest.fixture(autouse=True)
+def _clean_auth_env(monkeypatch: pytest.MonkeyPatch):
+    """Neutral auth environment per test.
+
+    The suite-wide conftest pins ``ATTUNE_AUTHOR_AUTH_MODE=api``
+    (so un-mocked polish calls can't hit a real subscription);
+    these tests exercise the routing itself, so start from a
+    clean slate instead.
+    """
+    monkeypatch.delenv(AUTH_MODE_ENV, raising=False)
+    monkeypatch.delenv("CLAUDECODE", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    reset_auth_telemetry()
+    yield
+    reset_auth_telemetry()
+
+
+def _enable_subscription(monkeypatch: pytest.MonkeyPatch, importable: bool = True) -> None:
+    monkeypatch.setenv("CLAUDECODE", "1")
+    monkeypatch.setattr(auth, "_sdk_importable", lambda: importable)
+
+
+class TestSubscriptionDetection:
+    def test_unavailable_without_claudecode(self, monkeypatch):
+        monkeypatch.setattr(auth, "_sdk_importable", lambda: True)
+        assert subscription_available() is False
+
+    def test_unavailable_without_sdk(self, monkeypatch):
+        _enable_subscription(monkeypatch, importable=False)
+        assert subscription_available() is False
+
+    def test_available_with_both_signals(self, monkeypatch):
+        _enable_subscription(monkeypatch)
+        assert subscription_available() is True
+
+
+class TestResolveAuthMode:
+    def test_auto_prefers_subscription(self, monkeypatch):
+        _enable_subscription(monkeypatch)
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        assert resolve_auth_mode() == "sub"
+
+    def test_auto_falls_back_to_api(self, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        assert resolve_auth_mode() == "api"
+
+    def test_explicit_api_beats_available_subscription(self, monkeypatch):
+        _enable_subscription(monkeypatch)
+        assert resolve_auth_mode("api") == "api"
+
+    def test_explicit_param_beats_env_var(self, monkeypatch):
+        _enable_subscription(monkeypatch)
+        monkeypatch.setenv(AUTH_MODE_ENV, "api")
+        assert resolve_auth_mode("sub") == "sub"
+
+    def test_env_var_consulted_when_no_explicit(self, monkeypatch):
+        _enable_subscription(monkeypatch)
+        monkeypatch.setenv(AUTH_MODE_ENV, "api")
+        assert resolve_auth_mode() == "api"
+
+    def test_forced_sub_without_subscription_raises(self):
+        with pytest.raises(AnthropicCallError, match="forced but no subscription"):
+            resolve_auth_mode("sub")
+
+    def test_invalid_mode_raises(self):
+        with pytest.raises(AnthropicCallError, match="Invalid auth mode"):
+            resolve_auth_mode("subscription")
+
+
+class TestCallLlmRouting:
+    def test_subscription_route(self, monkeypatch):
+        _enable_subscription(monkeypatch)
+        with patch.object(auth, "_call_subscription", return_value="polished!") as sub:
+            result = call_llm(**_CALL_KWARGS)
+        assert result == "polished!"
+        sub.assert_called_once_with(
+            system="sys prompt",
+            user_message="polish this",
+            model="claude-sonnet-4-6",
+        )
+        assert auth_telemetry() == {"sub_calls": 1.0, "api_calls": 0.0}
+
+    def test_api_route(self, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        with patch("attune_author.doc_gen._anthropic.get_client") as gc:
+            gc.return_value = object()
+            with patch(
+                "attune_author.doc_gen._anthropic.call_anthropic",
+                return_value="api polished",
+            ) as ca:
+                result = call_llm(**_CALL_KWARGS, cache_system=True)
+        assert result == "api polished"
+        kwargs = ca.call_args.kwargs
+        assert kwargs["model"] == "claude-sonnet-4-6"
+        assert kwargs["max_tokens"] == 64
+        assert kwargs["cache_system"] is True
+        assert auth_telemetry() == {"sub_calls": 0.0, "api_calls": 1.0}
+
+    def test_no_credentials_raises_with_both_paths_named(self):
+        with pytest.raises(AnthropicCallError, match="Claude Code") as exc_info:
+            call_llm(**_CALL_KWARGS)
+        assert "ANTHROPIC_API_KEY" in str(exc_info.value)
+
+
+class TestSubscriptionFailureModes:
+    def test_auto_falls_back_to_api_on_sub_failure(self, monkeypatch, caplog):
+        _enable_subscription(monkeypatch)
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        with patch.object(auth, "_call_subscription", side_effect=RuntimeError("session expired")):
+            with patch("attune_author.doc_gen._anthropic.get_client") as gc:
+                gc.return_value = object()
+                with patch(
+                    "attune_author.doc_gen._anthropic.call_anthropic",
+                    return_value="api polished",
+                ):
+                    with caplog.at_level("WARNING"):
+                        result = call_llm(**_CALL_KWARGS)
+        assert result == "api polished"
+        assert any("falling back" in r.message for r in caplog.records)
+        assert auth_telemetry() == {"sub_calls": 0.0, "api_calls": 1.0}
+
+    def test_auto_sub_failure_without_key_raises(self, monkeypatch):
+        _enable_subscription(monkeypatch)
+        with patch.object(auth, "_call_subscription", side_effect=RuntimeError("session expired")):
+            with pytest.raises(AnthropicCallError, match="session expired"):
+                call_llm(**_CALL_KWARGS)
+
+    def test_forced_sub_failure_does_not_fall_back(self, monkeypatch):
+        """Explicit --auth-mode=sub means its failures too — no
+        silent billing of the API key behind the user's back."""
+        _enable_subscription(monkeypatch)
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        with patch.object(auth, "_call_subscription", side_effect=RuntimeError("boom")):
+            with patch("attune_author.doc_gen._anthropic.call_anthropic") as ca:
+                with pytest.raises(AnthropicCallError, match="boom"):
+                    call_llm(**_CALL_KWARGS, auth_mode="sub")
+        ca.assert_not_called()
+
+    def test_sub_failure_message_is_redacted(self, monkeypatch):
+        """Credential-looking material in subscription errors gets the
+        same redaction contract as call_anthropic."""
+        _enable_subscription(monkeypatch)
+        secret = "sk-ant-" + "abc123def456ghi789"
+        with patch.object(auth, "_call_subscription", side_effect=RuntimeError(f"bad {secret}")):
+            with pytest.raises(AnthropicCallError) as exc_info:
+                call_llm(**_CALL_KWARGS)
+        assert secret not in str(exc_info.value)
+        assert "sk-ant-[REDACTED]" in str(exc_info.value)
+
+
+class TestAuthStatus:
+    def test_subscription_state(self, monkeypatch):
+        _enable_subscription(monkeypatch)
+        status = auth_status()
+        assert status["claudecode"] is True
+        assert status["subscription_available"] is True
+        assert status["resolved_mode"] == "sub"
+        assert status["error"] is None
+
+    def test_no_credentials_state(self, monkeypatch):
+        monkeypatch.setattr(auth, "_sdk_importable", lambda: False)
+        status = auth_status()
+        assert status["subscription_available"] is False
+        assert status["api_key_available"] is False
+        assert status["resolved_mode"] == "api"
+
+    def test_forced_sub_error_reported_not_raised(self, monkeypatch):
+        monkeypatch.setenv(AUTH_MODE_ENV, "sub")
+        monkeypatch.setattr(auth, "_sdk_importable", lambda: False)
+        status = auth_status()
+        assert status["resolved_mode"] is None
+        assert "forced but no subscription" in str(status["error"])
+
+
+class TestPolishWiring:
+    def test_call_llm_is_the_polish_chokepoint(self, monkeypatch):
+        """polish._call_llm routes through auth.call_llm (task 1.3)."""
+        from attune_author import polish
+
+        with patch.object(auth, "call_llm", return_value="routed") as cl:
+            result = polish._call_llm(
+                content="# T\n\nbody\n",
+                feature_name="feat",
+                source_summary="def f(): pass",
+                template_type="concept",
+            )
+        assert result == "routed"
+        kwargs = cl.call_args.kwargs
+        assert kwargs["model"] == polish._POLISH_MODEL
+        assert kwargs["max_tokens"] == polish.POLISH_MAX_TOKENS
+
+
+class TestCliAuthStatus:
+    def test_status_exits_zero_and_reports_mode(self, monkeypatch, capsys):
+        from attune_author.cli import main
+
+        _enable_subscription(monkeypatch)
+        exit_code = main(["auth", "status"])
+        out = capsys.readouterr().out
+        assert exit_code == 0
+        assert "subscription (Agent SDK)" in out
+
+    def test_status_warns_when_api_mode_without_key(self, capsys):
+        from attune_author.cli import main
+
+        exit_code = main(["auth", "status"])
+        out = capsys.readouterr().out
+        assert exit_code == 0
+        assert "API key (Anthropic SDK)" in out
+        assert "WARNING" in out
+
+    def test_forced_sub_unavailable_exits_nonzero(self, monkeypatch, capsys):
+        from attune_author.cli import main
+
+        monkeypatch.setenv(AUTH_MODE_ENV, "sub")
+        monkeypatch.setattr(auth, "_sdk_importable", lambda: False)
+        exit_code = main(["auth", "status"])
+        err = capsys.readouterr().err
+        assert exit_code == 1
+        assert "ERROR" in err
+
+    def test_auth_mode_flag_sets_env_var(self, monkeypatch):
+        """The --auth-mode bridge mirrors the fact-check pattern:
+        flag maps onto the env var, pre-set env var wins."""
+        import argparse
+        import os
+
+        from attune_author.cli import _apply_auth_mode_args
+
+        args = argparse.Namespace(auth_mode="api")
+        _apply_auth_mode_args(args)
+        assert os.environ[AUTH_MODE_ENV] == "api"
+
+        os.environ[AUTH_MODE_ENV] = "sub"
+        _apply_auth_mode_args(argparse.Namespace(auth_mode="api"))
+        assert os.environ[AUTH_MODE_ENV] == "sub"
