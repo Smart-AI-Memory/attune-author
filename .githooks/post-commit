@@ -26,4 +26,7 @@ from attune_author.maintenance import run_hook
 result = run_hook('.help', '.')
 if result and result.regenerated_count > 0:
     print(f'[attune-author] Regenerated {result.regenerated_count} help template(s)')
-" 2>/dev/null || true
+" || true
+# (stderr intentionally NOT muted since 2026-06-11: a silent
+# 2>/dev/null hid keyless PolishErrors and cache-poisoning
+# symptoms; || true still guarantees the hook never blocks.)

@@ -311,7 +311,12 @@ def polish_template(
     cached = _cache_get(key)
     if cached is not None:
         logger.debug("Polish cache hit for %s/%s", feature_name, template_type)
-        return cached
+        # Re-sanitize on read: entries written before the
+        # fence-stripping fix (2026-06-11) may carry a wrapping
+        # ```markdown fence that breaks the downstream frontmatter
+        # merge. Sanitizing here heals poisoned entries without a
+        # cache purge; it's a no-op for clean entries.
+        return _sanitize_output(cached)
 
     try:
         polished = _call_llm(
@@ -378,8 +383,41 @@ def _mark_polish_skipped(content: str) -> str:
     return f"---\n{new_frontmatter}---\n{rest}"
 
 
+def _strip_wrapping_fence(content: str) -> str:
+    r"""Strip a code fence wrapping the ENTIRE response, if present.
+
+    The polish LLM occasionally returns the whole template wrapped
+    in a fenced block (```` ```markdown ... ``` ````) — observed
+    live 2026-06-11 on the subscription route. Unstripped, the
+    fence defeats :func:`attune_author.generator.
+    _replace_polished_frontmatter`'s ``\A---`` anchor, which then
+    prepends a second frontmatter block and ships the fenced
+    duplicate as the body.
+
+    Conservative: only strips when the FIRST line is an opening
+    fence (``` or ```<lang>) AND the LAST non-blank line is a bare
+    closing ```. Interior fences (real code blocks in the body)
+    are untouched because the wrapping pair is removed only from
+    the extremes.
+
+    Args:
+        content: Raw text returned by the LLM.
+
+    Returns:
+        Content without the wrapping fence, or unchanged when no
+        full wrap is detected.
+    """
+    stripped = content.strip()
+    if not stripped.startswith("```"):
+        return content
+    lines = stripped.splitlines()
+    if len(lines) < 2 or lines[-1].strip() != "```":
+        return content
+    return "\n".join(lines[1:-1])
+
+
 def _sanitize_output(content: str) -> str:
-    """Apply trailing-whitespace and newline hygiene.
+    """Apply fence, trailing-whitespace, and newline hygiene.
 
     The Anthropic API does not guarantee a trailing newline
     and occasionally leaves trailing whitespace on
@@ -387,17 +425,20 @@ def _sanitize_output(content: str) -> str:
     breaks the model emits in tables and lists). Both of
     these break the no-trailing-whitespace and
     single-trailing-newline invariants the rest of the
-    pipeline enforces, so we normalize them here.
+    pipeline enforces, so we normalize them here. A response
+    wrapped whole in a code fence is unwrapped first (see
+    :func:`_strip_wrapping_fence`).
 
     Args:
         content: Raw text returned by the LLM.
 
     Returns:
-        Content with each line right-stripped and exactly
-        one trailing newline.
+        Content with any wrapping fence removed, each line
+        right-stripped, and exactly one trailing newline.
     """
     if not content:
         return content
+    content = _strip_wrapping_fence(content)
     body = "\n".join(line.rstrip() for line in content.splitlines())
     if not body.endswith("\n"):
         body += "\n"
