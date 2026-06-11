@@ -383,3 +383,77 @@ class TestDetectionEdgeCases:
     def test_telemetry_lazy_init(self, monkeypatch):
         monkeypatch.delattr(auth.auth_telemetry, "_state", raising=False)
         assert auth_telemetry() == {"sub_calls": 0.0, "api_calls": 0.0}
+
+
+class TestAdapterMessageEdgeCases:
+    """The skip arcs in the _query_subscription message loop."""
+
+    async def test_unknown_messages_and_blocks_are_skipped(self, monkeypatch):
+        """Messages that are neither AssistantMessage nor ResultMessage
+        (system/init messages), non-text content blocks, and an
+        empty-string ResultMessage.result are all skipped without
+        affecting the collected text."""
+        import sys
+        import types
+
+        fake = types.ModuleType("claude_agent_sdk")
+
+        class TextBlock:
+            def __init__(self, text: str) -> None:
+                self.text = text
+
+        class OtherBlock:
+            pass
+
+        class AssistantMessage:
+            def __init__(self, content: list) -> None:
+                self.content = content
+
+        class ResultMessage:
+            def __init__(self, result: str | None) -> None:
+                self.result = result
+
+        class SystemishMessage:
+            pass
+
+        class ClaudeAgentOptions:
+            def __init__(self, **kwargs: object) -> None:
+                self.kwargs = kwargs
+
+        async def query(*, prompt: str, options: object):
+            yield SystemishMessage()  # neither branch — skipped
+            yield AssistantMessage([OtherBlock(), TextBlock("kept")])
+            yield ResultMessage("")  # blank result — not preferred
+
+        fake.TextBlock = TextBlock
+        fake.AssistantMessage = AssistantMessage
+        fake.ResultMessage = ResultMessage
+        fake.ClaudeAgentOptions = ClaudeAgentOptions
+        fake.query = query
+        monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake)
+
+        text = await auth._query_subscription(system="sys", user_message="msg", model="m-1")
+        assert text == "kept"
+
+
+class TestCliBranchEdgeCases:
+    def test_apply_auth_mode_args_noop_without_flag_or_env(self):
+        """Neither the flag nor the env var set: nothing is written."""
+        import argparse
+        import os
+
+        from attune_author.cli import _apply_auth_mode_args
+
+        _apply_auth_mode_args(argparse.Namespace(auth_mode=None))
+        assert AUTH_MODE_ENV not in os.environ
+
+    def test_status_api_mode_with_key_has_no_warning(self, monkeypatch, capsys):
+        """API mode with a key present: clean report, no warning."""
+        from attune_author.cli import main
+
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+        exit_code = main(["auth", "status"])
+        out = capsys.readouterr().out
+        assert exit_code == 0
+        assert "API key (Anthropic SDK)" in out
+        assert "WARNING" not in out

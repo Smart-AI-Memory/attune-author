@@ -235,3 +235,30 @@ class TestFormatStatusReport:
         output = format_status_report(report)
         assert "0** current" in output
         assert "### Stale" in output
+
+
+class TestAuthRouteSummary:
+    """The regen summary's auth-route line (sibling-subscription-auth)."""
+
+    def test_logs_polish_llm_call_routes(self, help_dir: Path, project_root: Path, caplog) -> None:
+        """When polish LLM calls ran during the regen, the summary
+        reports how many went through each auth route."""
+        from attune_author import auth
+        from attune_author.generator import GenerationResult
+
+        def _generate_and_count(**kwargs):
+            auth.auth_telemetry()["sub_calls"] += 1
+            return GenerationResult(feature=kwargs["feature"].name)
+
+        with patch(
+            "attune_author.maintenance.generate_feature_templates",
+            side_effect=_generate_and_count,
+        ):
+            with caplog.at_level("INFO"):
+                result = run_maintenance(help_dir=help_dir, project_root=project_root)
+
+        assert result.regenerated_count > 0
+        summary = [r.getMessage() for r in caplog.records if "Polish LLM calls" in r.getMessage()]
+        assert summary, "expected the auth-route summary line"
+        assert "(subscription)" in summary[0]
+        assert "(API)" in summary[0]
