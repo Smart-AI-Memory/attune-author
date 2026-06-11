@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-06-11
+
+Subscription-first auth: polish LLM calls route through the Claude
+subscription when running under Claude Code — no `ANTHROPIC_API_KEY`
+required.
+
 ### Added
 
 - **Subscription-first LLM auth** (sibling-subscription-auth
