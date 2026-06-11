@@ -21,6 +21,23 @@ and this project adheres to
   The `[rag]` extra cap widened `<0.3` -> `<0.8` (stale; current
   attune-rag is 0.7.0).
 
+### Fixed
+
+- **Fence-wrapped polish responses no longer corrupt templates or
+  poison the cache.** The polish LLM occasionally returns the whole
+  template wrapped in a ```` ```markdown ```` fence; unstripped, the
+  fence defeated the frontmatter merge (anchored at `\A---`), which
+  prepended a second frontmatter block and shipped the fenced
+  duplicate as the body — and the malformed response was cached,
+  replaying on keyless cache hits (observed live 2026-06-11 via the
+  post-commit regen hook). `_sanitize_output` now strips a wrapping
+  fence (conservative: opening fence on the first line AND a bare
+  closing fence on the last) before the frontmatter merge and before
+  the cache write, and cache READS are re-sanitized so pre-fix
+  poisoned entries self-heal without a purge. The post-commit hook
+  no longer mutes stderr (`2>/dev/null` removed; `|| true` still
+  guarantees it never blocks).
+
 ## [0.16.0] — 2026-06-11
 
 Subscription-first auth: polish LLM calls route through the Claude
