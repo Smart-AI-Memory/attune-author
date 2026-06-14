@@ -39,7 +39,11 @@ Thumbs.db
 .uv/
 
 # Local tooling state (Claude Code plans, attune project index, coverage)
-.claude/
+# Ignore .claude/ cruft (plans, worktrees, settings.local.json) but track
+# the vendored session hooks + their wiring (see specs/sibling-claude-hooks/).
+.claude/*
+!.claude/hooks/
+!.claude/settings.json
 .attune/
 coverage.json
 .env
