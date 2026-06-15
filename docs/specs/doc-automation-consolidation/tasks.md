@@ -39,8 +39,12 @@ Sequencing is load-bearing: contract (safety net) before consolidation
       `maintenance_contract.scan_maintenance`/`format_maintenance_report`
       + `attune-author maintenance-report [--all]` CLI command. Kept
       separate from `status` so its output stays stable (C2).
-- [ ] **1.6** Confirm `attune-author status` output format is
-      unchanged for attune-ai's parser, or version it (constraint C2).
+- [x] **1.6** Confirmed `attune-author status` output is unchanged and
+      still satisfies attune-ai's parser (`## Help Templates` → `### Stale`
+      → `| <slug> | … |`; `## Project Docs` excluded). Pinned with a
+      contract guard that mirrors attune-ai's `_parse_status_output` →
+      `tests/test_status_output_contract.py`, so a future format drift
+      fails attune-author CI (C2). No format change was needed.
 - [ ] **1.7** Release attune-author (it stays independently shippable).
 
 ## Phase 2 — Consolidate in attune-ai
