@@ -18,18 +18,23 @@ Sequencing is load-bearing: contract (safety net) before consolidation
 
 ## Phase 1 — Maintenance contract in attune-author (the safety net)
 
-- [ ] **1.1** Add frontmatter field `maintenance: auto|manual|hybrid`
-      (unmarked ⇒ `auto`, per S8). Define `hybrid` regions as HTML
-      comment fences `<!-- attune:manual:start/end -->` (S7).
-- [ ] **1.2** Parse the contract in the staleness/regen path.
-- [ ] **1.3** Honor it: `manual` → never write (report drift only);
-      `hybrid` → rewrite content outside fences, preserve everything
-      inside (conservative matched-fence parse, mirroring the 0.16
-      fence-strip fix); `auto` → unchanged behavior.
-- [ ] **1.4** Regression test: a `manual` page with drift is reported
-      but NOT overwritten; a `hybrid` page keeps its fenced regions
-      across a regen; unmatched/nested fences fail safe (no clobber).
-      (This is the core safety guarantee.)
+- [x] **1.1** Add frontmatter field `maintenance: auto|manual|hybrid`
+      (unmarked ⇒ `auto`, per S8). `hybrid` regions are HTML comment
+      fences `<!-- attune:manual:start/end -->` (S7).
+      → `maintenance_contract.py` (`read_maintenance_mode`, fences).
+- [x] **1.2** Parse the contract in the regen path. → `generator.py`
+      `_is_manual` now resolves via `read_maintenance_mode` (honors the
+      `status: manual` alias); write path calls `resolve_write_content`.
+- [x] **1.3** Honor it: `manual` → skipped upstream (never written);
+      `hybrid` → `resolve_write_content`/`merge_hybrid` rewrite outside
+      fences, preserve inside (conservative matched-fence parse,
+      mirroring the 0.17 fence-strip fix), carry the `maintenance:`
+      field across regen; `auto` → unchanged. Fail-safe keeps the
+      on-disk file on any fence mismatch (never clobbers).
+- [x] **1.4** Regression tests → `tests/test_maintenance_contract.py`
+      (20 cases): hybrid keeps fenced regions across regen; mismatched/
+      unbalanced/nested fences fail safe; `status: manual` alias; field
+      carry-over. (The core safety guarantee.)
 - [ ] **1.5** Generate the derived maintenance report (page → mode).
 - [ ] **1.6** Confirm `attune-author status` output format is
       unchanged for attune-ai's parser, or version it (constraint C2).
