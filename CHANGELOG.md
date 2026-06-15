@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-06-14
+
+Faithfulness summary now annotates the polish judge's auth routing,
+and fence-wrapped polish responses can no longer corrupt templates or
+poison the cache.
+
 ### Added
 
 - **Faithfulness summary auth-route annotation**
