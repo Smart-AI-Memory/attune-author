@@ -24,8 +24,12 @@ from pathlib import Path
 
 import jinja2
 
+from attune_author.maintenance_contract import (
+    read_maintenance_mode,
+    resolve_write_content,
+)
 from attune_author.manifest import Feature, is_safe_feature_name
-from attune_author.staleness import _read_frontmatter_value, compute_source_hash
+from attune_author.staleness import compute_source_hash
 
 logger = logging.getLogger(__name__)
 
@@ -408,15 +412,11 @@ def _refresh_metadata_in_place(out_path: Path, canonical: str, is_project_doc: b
         canonical_footer = _DOC_FOOTER_RE.search(canonical)
         if canonical_footer is None:
             return
-        refreshed, n = _DOC_FOOTER_RE.subn(
-            lambda _m: canonical_footer.group(0), existing, count=1
-        )
+        refreshed, n = _DOC_FOOTER_RE.subn(lambda _m: canonical_footer.group(0), existing, count=1)
         if n == 0:
             return
     else:
-        refreshed = _replace_polished_frontmatter(
-            polished=existing, canonical_source=canonical
-        )
+        refreshed = _replace_polished_frontmatter(polished=existing, canonical_source=canonical)
     if refreshed != existing:
         out_path.write_text(refreshed, encoding="utf-8")
 
@@ -728,6 +728,12 @@ def apply_polish_results(
             )
 
             final_content = strip_skip_directives_in_file(final_content)
+        # Honor the per-page maintenance contract: hybrid pages keep
+        # their fenced manual regions; an explicit maintenance: field is
+        # carried across the regen. Fails safe (keeps the on-disk file)
+        # rather than dropping hand-written content. (manual pages are
+        # already filtered out upstream in prepare_polish_phase.)
+        final_content = resolve_write_content(entry.out_path, final_content)
         entry.out_path.write_text(final_content, encoding="utf-8")
         _run_fact_check(entry.out_path)
         _run_faithfulness_judge(entry.out_path, absolute_sources, project_root)
@@ -962,7 +968,12 @@ def _maybe_polish(
 
 
 def _is_manual(path: Path) -> bool:
-    """Check if a template has status: manual in frontmatter.
+    """Check if a template is human-maintained (skipped by regen).
+
+    True when the page's maintenance contract resolves to ``manual`` —
+    i.e. ``maintenance: manual`` in frontmatter, or the legacy
+    ``status: manual`` alias. ``hybrid`` and ``auto`` pages are not
+    manual (hybrid is merged at write time, not skipped here).
 
     Args:
         path: Path to the template file.
@@ -976,7 +987,7 @@ def _is_manual(path: Path) -> bool:
         logger.debug("Cannot read %s while checking manual status: %s", path, exc)
         return False
 
-    return _read_frontmatter_value(text, "status") == "manual"
+    return read_maintenance_mode(text) == "manual"
 
 
 #: Maps each project-doc kind to its default docs/ subdirectory.
