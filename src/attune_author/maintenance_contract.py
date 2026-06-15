@@ -31,6 +31,8 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 from attune_author.staleness import _read_frontmatter_value
@@ -182,3 +184,94 @@ def resolve_write_content(out_path: Path, regenerated: str) -> str:
         return _carry_maintenance_field(target=merged, source=existing)
 
     return _carry_maintenance_field(target=regenerated, source=existing)
+
+
+# ---------------------------------------------------------------------------
+# Derived maintenance report (spec task 1.5)
+#
+# The report is a *view*: it reads each page's frontmatter (the source of
+# truth) and enumerates the mode. It never writes — it's for auditing and
+# for the one-time triage that flips genuinely-curated pages off ``auto``.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PageMaintenance:
+    """One page and its resolved maintenance mode."""
+
+    path: Path
+    mode: str
+
+
+def scan_maintenance(roots: Iterable[Path]) -> list[PageMaintenance]:
+    """Resolve the maintenance mode of every ``*.md`` page under ``roots``.
+
+    Each root is walked recursively. Missing roots are skipped. Results
+    are sorted by path for stable output. Unreadable files are omitted
+    (a read error means we can't classify the page; nothing to report).
+    """
+    pages: list[PageMaintenance] = []
+    seen: set[Path] = set()
+    for root in roots:
+        if not root.exists():
+            continue
+        for md in sorted(root.rglob("*.md")):
+            resolved = md.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            try:
+                text = md.read_text(encoding="utf-8")
+            except OSError as exc:
+                logger.debug("Skipping unreadable page %s: %s", md, exc)
+                continue
+            pages.append(PageMaintenance(path=md, mode=read_maintenance_mode(text)))
+    return pages
+
+
+def format_maintenance_report(
+    pages: list[PageMaintenance],
+    *,
+    base: Path | None = None,
+    show_auto: bool = False,
+) -> str:
+    """Render a human-readable maintenance report grouped by mode.
+
+    By default only the curated modes (``manual``/``hybrid``) are listed
+    — those are the pages a reader needs to know are protected. Pass
+    ``show_auto=True`` to list ``auto`` pages too. ``base``, when given,
+    is stripped from each path for compact display.
+    """
+
+    def _display(path: Path) -> str:
+        # Forward slashes regardless of OS so the report is portable and
+        # stable across platforms (Windows would otherwise emit backslashes).
+        if base is not None:
+            try:
+                return path.relative_to(base).as_posix()
+            except ValueError:
+                pass
+        return path.as_posix()
+
+    counts = {AUTO: 0, MANUAL: 0, HYBRID: 0}
+    for page in pages:
+        counts[page.mode] = counts.get(page.mode, 0) + 1
+
+    lines = ["## Maintenance report", ""]
+    lines.append(
+        f"{len(pages)} page(s) — {counts[AUTO]} auto, "
+        f"{counts[MANUAL]} manual, {counts[HYBRID]} hybrid"
+    )
+
+    listed_modes = [MANUAL, HYBRID] + ([AUTO] if show_auto else [])
+    for mode in listed_modes:
+        in_mode = [p for p in pages if p.mode == mode]
+        if not in_mode:
+            continue
+        lines += ["", f"### {mode} ({len(in_mode)})"]
+        lines += [f"- {_display(p.path)}" for p in in_mode]
+
+    if not show_auto and counts[AUTO]:
+        lines += ["", f"({counts[AUTO]} auto page(s) omitted; pass --all to list them)"]
+
+    return "\n".join(lines)

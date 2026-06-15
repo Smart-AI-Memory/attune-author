@@ -19,10 +19,13 @@ from attune_author.maintenance_contract import (
     MANUAL_FENCE_END,
     MANUAL_FENCE_START,
     HybridMergeError,
+    PageMaintenance,
     extract_manual_regions,
+    format_maintenance_report,
     merge_hybrid,
     read_maintenance_mode,
     resolve_write_content,
+    scan_maintenance,
 )
 
 
@@ -146,3 +149,188 @@ class TestResolveWriteContent:
         result = resolve_write_content(out, regenerated)
         assert result == existing  # untouched; PRECIOUS never dropped
         assert "PRECIOUS" in result
+
+    def test_unbalanced_regenerated_failsafe(self, tmp_path: Path) -> None:
+        # Existing is well-formed hybrid; the regenerated content has a
+        # dangling fence -> merge_hybrid raises -> fail safe keeps existing.
+        out = tmp_path / "concept.md"
+        existing = _doc(maintenance="hybrid", body=_fenced("KEEP"))
+        out.write_text(existing, encoding="utf-8")
+        regenerated = _doc(body=MANUAL_FENCE_START + "dangling")
+        assert resolve_write_content(out, regenerated) == existing
+
+    def test_carry_noop_when_source_has_no_maintenance_field(
+        self, tmp_path: Path
+    ) -> None:
+        # Existing auto page with NO maintenance field -> nothing to carry.
+        out = tmp_path / "concept.md"
+        out.write_text(_doc(body="OLD"), encoding="utf-8")  # no field at all
+        regenerated = _doc(body="NEW")
+        result = resolve_write_content(out, regenerated)
+        assert result == regenerated
+        assert "maintenance:" not in result
+
+    def test_carry_noop_when_regenerated_has_no_frontmatter(
+        self, tmp_path: Path
+    ) -> None:
+        # Hybrid existing declares the field; regenerated body has fences
+        # but no frontmatter -> merge succeeds, field can't be injected.
+        out = tmp_path / "concept.md"
+        out.write_text(
+            _doc(maintenance="hybrid", body=_fenced("KEEPME")), encoding="utf-8"
+        )
+        regenerated = "no-frontmatter " + _fenced("placeholder")
+        result = resolve_write_content(out, regenerated)
+        assert "KEEPME" in result  # region still preserved
+        assert not result.startswith("---")  # no frontmatter was fabricated
+
+
+class TestGeneratorIntegration:
+    """The contract holds through the real generator, not just in unit tests."""
+
+    def test_hybrid_region_survives_regeneration(
+        self, help_dir: Path, project_root: Path
+    ) -> None:
+        from attune_author.generator import generate_feature_templates
+        from attune_author.manifest import Feature
+
+        feature = Feature(
+            name="auth",
+            description="Authentication and authorization",
+            files=["src/auth/**"],
+            tags=["security"],
+        )
+        generate_feature_templates(
+            feature=feature,
+            help_dir=help_dir,
+            project_root=project_root,
+            use_rag=False,
+        )
+        concept = help_dir / "templates" / "auth" / "concept.md"
+        original = concept.read_text(encoding="utf-8")
+
+        # Author marks the page hybrid and adds a hand-written region.
+        sentinel = "HAND-WRITTEN — must survive regeneration"
+        edited = original.replace("---\n", "---\nmaintenance: hybrid\n", 1)
+        edited += f"\n{MANUAL_FENCE_START}\n{sentinel}\n{MANUAL_FENCE_END}\n"
+        concept.write_text(edited, encoding="utf-8")
+
+        # Regenerate even with overwrite: the stock template emits no
+        # fences, so the contract fails safe and preserves the region.
+        generate_feature_templates(
+            feature=feature,
+            help_dir=help_dir,
+            project_root=project_root,
+            overwrite=True,
+            use_rag=False,
+        )
+        assert sentinel in concept.read_text(encoding="utf-8")
+
+
+class TestScanMaintenance:
+    def test_classifies_pages_by_mode(self, tmp_path: Path) -> None:
+        (tmp_path / "a.md").write_text(_doc(maintenance="manual"), encoding="utf-8")
+        (tmp_path / "b.md").write_text(_doc(maintenance="hybrid"), encoding="utf-8")
+        (tmp_path / "c.md").write_text(_doc(), encoding="utf-8")  # auto
+        (tmp_path / "d.md").write_text(_doc(status="manual"), encoding="utf-8")  # alias
+        sub = tmp_path / "nested"
+        sub.mkdir()
+        (sub / "e.md").write_text(_doc(maintenance="hybrid"), encoding="utf-8")
+
+        pages = scan_maintenance([tmp_path])
+        by_name = {p.path.name: p.mode for p in pages}
+        assert by_name == {
+            "a.md": MANUAL,
+            "b.md": HYBRID,
+            "c.md": AUTO,
+            "d.md": MANUAL,
+            "e.md": HYBRID,
+        }
+
+    def test_missing_root_skipped(self, tmp_path: Path) -> None:
+        assert scan_maintenance([tmp_path / "does-not-exist"]) == []
+
+    def test_unreadable_page_skipped(self, tmp_path: Path) -> None:
+        # A directory named "*.md" matches rglob but can't be read_text'd
+        # (IsADirectoryError is an OSError) -> it's skipped, not crashed.
+        (tmp_path / "real.md").write_text(_doc(), encoding="utf-8")
+        (tmp_path / "bogus.md").mkdir()
+        names = [p.path.name for p in scan_maintenance([tmp_path])]
+        assert names == ["real.md"]
+
+    def test_sorted_and_deduplicated(self, tmp_path: Path) -> None:
+        (tmp_path / "z.md").write_text(_doc(), encoding="utf-8")
+        (tmp_path / "a.md").write_text(_doc(), encoding="utf-8")
+        # Same root passed twice -> each page reported once.
+        pages = scan_maintenance([tmp_path, tmp_path])
+        names = [p.path.name for p in pages]
+        assert names == ["a.md", "z.md"]
+
+
+class TestFormatMaintenanceReport:
+    def _pages(self, tmp_path: Path) -> list[PageMaintenance]:
+        return [
+            PageMaintenance(tmp_path / "auth" / "concept.md", AUTO),
+            PageMaintenance(tmp_path / "auth" / "task.md", MANUAL),
+            PageMaintenance(tmp_path / "cli" / "concept.md", HYBRID),
+        ]
+
+    def test_default_omits_auto_lists_curated(self, tmp_path: Path) -> None:
+        out = format_maintenance_report(self._pages(tmp_path), base=tmp_path)
+        assert "1 auto, 1 manual, 1 hybrid" in out
+        assert "### manual (1)" in out
+        assert "### hybrid (1)" in out
+        assert "auth/task.md" in out  # base stripped
+        assert "1 auto page(s) omitted" in out
+        assert "### auto" not in out
+
+    def test_show_auto_lists_everything(self, tmp_path: Path) -> None:
+        out = format_maintenance_report(
+            self._pages(tmp_path), base=tmp_path, show_auto=True
+        )
+        assert "### auto (1)" in out
+        assert "omitted" not in out
+
+    def test_no_base_shows_full_path(self, tmp_path: Path) -> None:
+        pages = [PageMaintenance(tmp_path / "x.md", MANUAL)]
+        out = format_maintenance_report(pages)
+        assert (tmp_path / "x.md").as_posix() in out
+
+    def test_path_outside_base_falls_back_to_full(self, tmp_path: Path) -> None:
+        outside = PageMaintenance(Path("/elsewhere/y.md"), HYBRID)
+        out = format_maintenance_report([outside], base=tmp_path)
+        assert "/elsewhere/y.md" in out
+
+    def test_empty_corpus(self, tmp_path: Path) -> None:
+        out = format_maintenance_report([], base=tmp_path)
+        assert "0 page(s)" in out
+
+
+class TestMaintenanceReportCommand:
+    def _make_corpus(self, tmp_path: Path) -> Path:
+        templates = tmp_path / ".help" / "templates" / "auth"
+        templates.mkdir(parents=True)
+        (templates / "concept.md").write_text(_doc(), encoding="utf-8")
+        (templates / "task.md").write_text(_doc(maintenance="manual"), encoding="utf-8")
+        return tmp_path / ".help"
+
+    def test_reports_modes(self, tmp_path: Path, capsys) -> None:
+        from attune_author.cli import main
+
+        help_dir = self._make_corpus(tmp_path)
+        exit_code = main(["maintenance-report", "--help-dir", str(help_dir)])
+        out = capsys.readouterr().out
+        assert exit_code == 0
+        assert "1 auto, 1 manual, 0 hybrid" in out
+        assert "templates/auth/task.md" in out  # manual page listed
+        assert "1 auto page(s) omitted" in out  # auto omitted by default
+
+    def test_all_flag_lists_auto(self, tmp_path: Path, capsys) -> None:
+        from attune_author.cli import main
+
+        help_dir = self._make_corpus(tmp_path)
+        exit_code = main(["maintenance-report", "--help-dir", str(help_dir), "--all"])
+        out = capsys.readouterr().out
+        assert exit_code == 0
+        assert "### auto (1)" in out
+        assert "omitted" not in out
