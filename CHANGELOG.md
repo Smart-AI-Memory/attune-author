@@ -10,6 +10,35 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-06-15
+
+Per-page maintenance contract: regeneration now respects how each
+page is maintained and never overwrites hand-curated content
+(doc-automation-consolidation spec, Phase 1 — the safety net).
+
+### Added
+
+- **Per-page maintenance contract** (`maintenance: auto|manual|hybrid`
+  in frontmatter). `manual` pages are never regenerated (the legacy
+  `status: manual` is honored as an alias); `hybrid` pages keep
+  hand-written regions fenced by `<!-- attune:manual:start -->` /
+  `<!-- attune:manual:end -->` while their auto regions are
+  refreshed; `auto` (the default) is unchanged. The merge is
+  conservative — matched fence pairs only — and **fails safe**: on
+  any fence mismatch the on-disk file is kept, so hand-written text
+  is never dropped.
+- **`attune-author maintenance-report [--all]`** — a derived view
+  that enumerates each page and its maintenance mode for auditing
+  (lists `manual`/`hybrid`; `--all` includes `auto`). Kept separate
+  from `status` so the `status` output stays stable for downstream
+  parsers.
+
+### Internal
+
+- Pinned the `attune-author status` output as a cross-repo contract
+  (`tests/test_status_output_contract.py`) so a future format change
+  that would break the attune-ai dashboard parser fails CI here.
+
 ## [0.17.0] — 2026-06-14
 
 Faithfulness summary now annotates the polish judge's auth routing,
