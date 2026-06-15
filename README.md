@@ -99,6 +99,45 @@ attune-author generate security-audit
 
 # Regenerate all stale templates
 attune-author regenerate
+
+# Report each page's maintenance mode (auto/manual/hybrid)
+attune-author maintenance-report
+```
+
+## Maintenance contract
+
+Each page declares how it is maintained in its frontmatter, so
+regeneration never overwrites hand-curated content:
+
+```yaml
+---
+maintenance: auto | manual | hybrid
+---
+```
+
+- **`auto`** (the default, and what an absent field means) —
+  fully generated; `regenerate` may overwrite freely.
+- **`manual`** — human-owned; `regenerate` never touches it. The
+  legacy `status: manual` field is honored as an alias.
+- **`hybrid`** — a generated baseline with hand-written regions
+  fenced by HTML comments. `regenerate` rewrites everything
+  *outside* the fences and preserves everything *inside* them:
+
+  ```markdown
+  Auto-generated overview...
+  <!-- attune:manual:start -->
+  Hand-written caveats that survive every regeneration.
+  <!-- attune:manual:end -->
+  More auto-generated content...
+  ```
+
+The merge is conservative (matched fence pairs only) and **fails
+safe** — on any fence mismatch the on-disk file is kept, so
+hand-written text is never dropped. Audit the whole corpus with:
+
+```bash
+attune-author maintenance-report        # lists manual/hybrid pages
+attune-author maintenance-report --all  # includes auto pages
 ```
 
 ## Fact-check (post-polish)
