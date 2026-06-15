@@ -244,12 +244,14 @@ def format_maintenance_report(
     """
 
     def _display(path: Path) -> str:
+        # Forward slashes regardless of OS so the report is portable and
+        # stable across platforms (Windows would otherwise emit backslashes).
         if base is not None:
             try:
-                return str(path.relative_to(base))
+                return path.relative_to(base).as_posix()
             except ValueError:
-                return str(path)
-        return str(path)
+                pass
+        return path.as_posix()
 
     counts = {AUTO: 0, MANUAL: 0, HYBRID: 0}
     for page in pages:
