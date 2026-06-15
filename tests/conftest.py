@@ -43,6 +43,14 @@ def _lenient_polish_by_default(
     # real Anthropic API with a key picked up from the dev
     # machine's environment — a huge cost/latency hazard.
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # The delenv above is only half the guarantee: cli.main() calls
+    # dotenv.load_dotenv() at startup, and a dev checkout's repo-root
+    # .env symlink (-> the sibling project's real key) would re-inject
+    # ANTHROPIC_API_KEY right back, reopening the exact hazard. No-op
+    # load_dotenv so credential-state stays whatever a test sets, never
+    # whatever is on disk. A test that wants to exercise real dotenv
+    # loading restores it with its own monkeypatch.setattr.
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
     # Pin LLM auth routing to the API path and hide any ambient
     # Claude Code session. Without this, running the suite inside
     # Claude Code (CLAUDECODE=1) would auto-route un-mocked polish
