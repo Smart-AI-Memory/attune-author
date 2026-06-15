@@ -24,7 +24,11 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-from attune_author.editor_launcher import PortfileData, SidecarStartError, ensure_sidecar
+from attune_author.editor_launcher import (
+    PortfileData,
+    SidecarStartError,
+    ensure_sidecar,
+)
 from attune_author.mcp.path_validation import validate_file_path
 
 logger = logging.getLogger(__name__)
@@ -99,6 +103,27 @@ def _build_parser() -> argparse.ArgumentParser:
         "--project-root",
         default=".",
         help="Project root directory (default: %(default)s).",
+    )
+
+    p_maint = sub.add_parser(
+        "maintenance-report",
+        help="Report each page's maintenance mode (auto/manual/hybrid)",
+        description=(
+            "Enumerate every help template and the maintenance contract it "
+            "declares in frontmatter (auto, manual, or hybrid). A derived "
+            "view for auditing which pages regen may overwrite versus which "
+            "are human-maintained."
+        ),
+    )
+    p_maint.add_argument(
+        "--help-dir",
+        default=".help",
+        help="Path to .help/ directory (default: %(default)s).",
+    )
+    p_maint.add_argument(
+        "--all",
+        action="store_true",
+        help="List auto pages too (default: only manual/hybrid).",
     )
 
     p_gen = sub.add_parser(
@@ -405,6 +430,7 @@ def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     handlers = {
         "init": _cmd_init,
         "status": _cmd_status,
+        "maintenance-report": _cmd_maintenance_report,
         "generate": _cmd_generate,
         "regenerate": _cmd_regenerate,
         "docs": _cmd_docs,
@@ -483,7 +509,9 @@ def _cmd_init(args: argparse.Namespace) -> int:
     manifest = proposals_to_manifest(proposals)
     path = save_manifest(manifest, help_dir)
     print(f"\nSaved {len(proposals)} features to {path}")
-    print("Edit .help/features.yaml to refine, then run: attune-author generate <feature>")
+    print(
+        "Edit .help/features.yaml to refine, then run: attune-author generate <feature>"
+    )
 
     return 0
 
@@ -514,6 +542,24 @@ def _cmd_status(args: argparse.Namespace) -> int:
     report = check_staleness(manifest, help_dir, root)
     print(format_status_report(report, help_dir))
 
+    return 0
+
+
+def _cmd_maintenance_report(args: argparse.Namespace) -> int:
+    """Handle the maintenance-report command (spec task 1.5)."""
+    from attune_author.maintenance_contract import (
+        format_maintenance_report,
+        scan_maintenance,
+    )
+
+    help_dir = validate_file_path(args.help_dir)
+    templates_dir = help_dir / "templates"
+    pages = scan_maintenance([templates_dir])
+    print(
+        format_maintenance_report(
+            pages, base=help_dir, show_auto=getattr(args, "all", False)
+        )
+    )
     return 0
 
 
@@ -934,7 +980,9 @@ def _cmd_edit(args: argparse.Namespace) -> int:
     try:
         sidecar = ensure_sidecar(port=args.port)
     except SidecarStartError as exc:
-        print(f"Could not start the editor sidecar ({exc.reason}): {exc}", file=sys.stderr)
+        print(
+            f"Could not start the editor sidecar ({exc.reason}): {exc}", file=sys.stderr
+        )
         if exc.reason == "missing_command":
             print("  Install with: pip install attune-gui", file=sys.stderr)
         elif exc.reason == "timeout":
@@ -1030,7 +1078,9 @@ def _handle_unregistered_path(sidecar: PortfileData, abs_path: Path) -> int:
 
 def _register_and_retry(sidecar: PortfileData, abs_path: Path, root: Path) -> int:
     """POST /api/corpus/register, then retry the open flow."""
-    payload = json.dumps({"name": root.name, "path": str(root), "kind": "ad-hoc"}).encode("utf-8")
+    payload = json.dumps(
+        {"name": root.name, "path": str(root), "kind": "ad-hoc"}
+    ).encode("utf-8")
     req = urllib.request.Request(
         f"{sidecar.url}/api/corpus/register",
         data=payload,
@@ -1109,7 +1159,9 @@ def _print_generate_usage(help_dir: Path) -> None:
     if the manifest is missing or unreadable.
     """
     print("Usage: attune-author generate <feature>", file=sys.stderr)
-    print("  Generates concept/task/reference templates for a feature.", file=sys.stderr)
+    print(
+        "  Generates concept/task/reference templates for a feature.", file=sys.stderr
+    )
 
     try:
         from attune_author.manifest import load_manifest

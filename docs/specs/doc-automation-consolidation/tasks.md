@@ -35,7 +35,10 @@ Sequencing is load-bearing: contract (safety net) before consolidation
       (20 cases): hybrid keeps fenced regions across regen; mismatched/
       unbalanced/nested fences fail safe; `status: manual` alias; field
       carry-over. (The core safety guarantee.)
-- [ ] **1.5** Generate the derived maintenance report (page → mode).
+- [x] **1.5** Derived maintenance report (page → mode). →
+      `maintenance_contract.scan_maintenance`/`format_maintenance_report`
+      + `attune-author maintenance-report [--all]` CLI command. Kept
+      separate from `status` so its output stays stable (C2).
 - [ ] **1.6** Confirm `attune-author status` output format is
       unchanged for attune-ai's parser, or version it (constraint C2).
 - [ ] **1.7** Release attune-author (it stays independently shippable).
