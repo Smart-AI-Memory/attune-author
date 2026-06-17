@@ -181,6 +181,90 @@ class TestReplacePolishedFrontmatter:
         assert "polish_attempts: 3" in result
         assert "model: claude-sonnet-4-6" in result
 
+    def test_comment_lines_in_polished_frontmatter_preserved(self) -> None:
+        """Non-key lines in the polished frontmatter (comments, blanks)
+        parse with an empty key in ``_parse_frontmatter_lines`` and so
+        flow through the non-deterministic branch — they must survive
+        the merge verbatim, same as any preserved field."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY
+        polished_frontmatter = _CANONICAL_FRONTMATTER.replace(
+            "status: generated\n---\n",
+            "status: generated\n# hand-authored note — keep me\n\nsummary: a concept\n---\n",
+        )
+        polished = polished_frontmatter + _POLISHED_BODY
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        # Comment line (empty-key) preserved.
+        assert "# hand-authored note — keep me" in result
+        # Non-deterministic field that followed it preserved too.
+        assert "summary: a concept" in result
+        # Deterministic field still corrected from canonical.
+        assert _hash_field(result) == _hash_field(_CANONICAL_FRONTMATTER)
+
+    def test_deterministic_field_in_polished_absent_from_canonical_is_dropped(self) -> None:
+        """When the polish output carries a DETERMINISTIC field the
+        canonical block lacks (here ``scaffold_hash`` — not present in
+        the rendered template), the value is dropped rather than
+        trusted: ``canonical_by_key.get(key)`` is ``None`` so neither
+        the polished nor a canonical line is emitted ("better silence
+        than propagating a possibly-perturbed value")."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY  # no scaffold_hash
+        polished_frontmatter = _CANONICAL_FRONTMATTER.replace(
+            "status: generated\n---\n",
+            "status: generated\nscaffold_hash: deadbeefcafe0000\n---\n",
+        )
+        polished = polished_frontmatter + _POLISHED_BODY
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        # The deterministic field absent from canonical is dropped entirely.
+        assert "scaffold_hash" not in result
+        assert "deadbeefcafe0000" not in result
+        # Other fields unaffected.
+        assert _hash_field(result) == _hash_field(_CANONICAL_FRONTMATTER)
+
+    def test_deterministic_field_missing_from_polished_appended_from_canonical(self) -> None:
+        """If the LLM dropped a single deterministic line (here
+        ``source_hash``) but kept the rest of the frontmatter, the
+        canonical value must still be re-appended — the final
+        canonical-append loop guarantees deterministic fields are
+        always present, distinct from the whole-frontmatter-missing
+        path (``polished_match is None``)."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY
+        # Polished frontmatter identical to canonical except the
+        # source_hash line is omitted entirely.
+        polished_frontmatter = "".join(
+            f"{line}\n"
+            for line in _CANONICAL_FRONTMATTER.splitlines()
+            if not line.startswith("source_hash:")
+        )
+        polished = polished_frontmatter + _POLISHED_BODY
+        assert "source_hash:" not in polished_frontmatter  # guard the setup
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        # Canonical source_hash re-appended despite polish omitting it.
+        assert _hash_field(result) == _hash_field(_CANONICAL_FRONTMATTER)
+
+    def test_multiline_yaml_value_in_polished_frontmatter_preserved(self) -> None:
+        """Structural / continuation lines of a multi-line YAML value
+        (a ``tags:`` list) aren't ``key: value`` shaped, so they parse
+        with an empty key and must pass through verbatim — the merge
+        must not flatten or drop block-style values."""
+        canonical = _CANONICAL_FRONTMATTER + _RENDERED_BODY
+        polished_frontmatter = _CANONICAL_FRONTMATTER.replace(
+            "status: generated\n---\n",
+            "status: generated\ntags:\n  - spec\n  - engine\n---\n",
+        )
+        polished = polished_frontmatter + _POLISHED_BODY
+
+        result = _replace_polished_frontmatter(polished, canonical)
+
+        assert "tags:" in result
+        assert "  - spec" in result
+        assert "  - engine" in result
+
 
 class TestApplyPolishResultsReinjectsFrontmatter:
     """Behavioral tests for the wiring in ``apply_polish_results``."""
