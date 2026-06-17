@@ -38,6 +38,15 @@
 - **S8 — Unmarked pages default to `auto`** (D4 resolved 2026-06-14,
   Patrick), paired with the one-time maintenance report so curated
   pages get flipped to `manual`/`hybrid` without freezing regen.
+- **S9 — New `maintenance:` field, `status: manual` is a back-compat
+  alias** (resolved 2026-06-14, Patrick). Phase-1 exploration found
+  attune-author already skips `status: manual` templates in regen
+  (`generator.py:_is_manual` / `prepare_polish_phase`). Rather than
+  overload `status`, introduce `maintenance: auto|manual|hybrid` as
+  the contract and honor existing `status: manual` as
+  `maintenance: manual`. So the `manual` half partly exists already;
+  the genuinely new work is **`hybrid`** (regen around fenced manual
+  regions) and **drift-reporting** for manual pages.
 
 ## Open — non-blocking (do not gate Phase 1)
 
