@@ -1,6 +1,6 @@
 """Drift-guard test for vendored Claude Code session hooks.
 
-The 7 hook files under ``.claude/hooks/`` are byte-identical copies
+The 8 hook files under ``.claude/hooks/`` are byte-identical copies
 of attune-ai's canonical hooks. ``.canonical-sha256`` carries the
 expected sha256 of each. This test fails if any vendored file's
 hash diverges, or if the file set itself changes without the

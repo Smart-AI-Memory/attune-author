@@ -32,6 +32,13 @@ def _run_hook(
 ) -> subprocess.CompletedProcess:
     """Invoke a hook script with a JSON stdin payload."""
     env = os.environ.copy()
+    # Neutralize SDK-subprocess markers so hooks exercise their interactive
+    # behavior. Each hook self-gates via ``_sdk_gate.exit_if_sdk_subprocess``
+    # (exit 0, no output) when ``ATTUNE_SDK_SUBPROCESS=1`` or
+    # ``CLAUDE_CODE_ENTRYPOINT`` starts with ``sdk-``; if the test runner
+    # carries either, security_guard would exit 0 instead of blocking.
+    env.pop("ATTUNE_SDK_SUBPROCESS", None)
+    env["CLAUDE_CODE_ENTRYPOINT"] = "cli"
     if env_overrides is not None:
         env.update(env_overrides)
     return subprocess.run(
