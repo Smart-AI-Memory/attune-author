@@ -14,11 +14,15 @@ name: RAG Gate
 #          this job today — it gates nothing in the publish path. The gate
 #          is a weekly drift detector plus an opt-in `live-eval` PR check.)
 #
-# No eval key configured:
+# No (or rejected) eval key:
 #   If neither ATTUNE_CI_EVAL_KEY nor ANTHROPIC_API_KEY is set, the gate
 #   cannot make live calls. It SKIPS (green, with a Step Summary note)
 #   rather than crashing — a missing secret is a config gap, not a
 #   regression. Provision ATTUNE_CI_EVAL_KEY to enable real drift checks.
+#   A key that IS set but Anthropic rejects (401/403 — expired/revoked/
+#   wrong value) is caught by a zero-token auth preflight and skipped the
+#   same way (green, ::warning::), so a bad secret is a one-line "rotate
+#   the key" notice instead of a recurring red scheduled run.
 #
 # Cooldown (30 min between publish attempts):
 #   Enforced by GitHub Environment protection rule on the `pypi` environment.
@@ -76,9 +80,10 @@ jobs:
         id: keycheck
         # Secrets can't be referenced in `if:` directly, so resolve the key
         # into env here and expose a plain boolean output the later steps
-        # gate on. When absent, write a Step Summary note and skip the run
-        # so the job ends green-but-skipped instead of crashing on the
-        # first API call (exit 2: "Could not resolve authentication method").
+        # gate on. When the key is absent — or present but rejected by a
+        # zero-token auth preflight (401/403) — write a Step Summary note and
+        # skip the run so the job ends green-but-skipped instead of crashing
+        # on the first API call (exit 2: auth error / "invalid x-api-key").
         env:
           EVAL_KEY: ${{ secrets.ATTUNE_CI_EVAL_KEY || secrets.ANTHROPIC_API_KEY }}
         run: |
@@ -93,7 +98,32 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             echo "::notice::RAG Gate skipped — no eval API key configured."
           else
-            echo "has_key=true" >> "$GITHUB_OUTPUT"
+            # A key is present — preflight-validate it with a zero-token,
+            # auth-only call (GET /v1/models). A present-but-rejected key
+            # (expired/revoked/wrong value) is a secret-ops gap, not a
+            # corpus/code regression: treat it like a missing key and skip
+            # green-with-warning instead of letting the full eval hard-fail
+            # red on the first 401. Only 401/403 count as "rejected";
+            # transient codes (429/5xx/network → 000) fall through so the
+            # real eval still surfaces them.
+            code="$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "x-api-key: $EVAL_KEY" \
+              -H "anthropic-version: 2023-06-01" \
+              https://api.anthropic.com/v1/models || echo 000)"
+            if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+              echo "has_key=false" >> "$GITHUB_OUTPUT"
+              {
+                echo "### ⏭️ RAG Gate skipped — eval API key rejected (HTTP $code)"
+                echo ""
+                echo "\`ATTUNE_CI_EVAL_KEY\` (or the \`ANTHROPIC_API_KEY\` fallback) is set, but"
+                echo "Anthropic rejected it (\`$code\`) — expired, revoked, or wrong value."
+                echo "Rotate the secret at repo → Settings → Secrets → Actions. Skipping"
+                echo "rather than failing: a bad secret is an ops gap, not a regression."
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning::RAG Gate skipped — eval API key rejected (HTTP $code). Rotate ATTUNE_CI_EVAL_KEY."
+            else
+              echo "has_key=true" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Set up Python
