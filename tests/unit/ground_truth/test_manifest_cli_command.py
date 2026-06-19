@@ -20,7 +20,8 @@ def test_feature_accepts_cli_command_in_constructor() -> None:
 
 def test_load_manifest_parses_cli_command(tmp_path: Path) -> None:
     (tmp_path / "features.yaml").write_text(
-        dedent("""
+        dedent(
+            """
             version: 1
             features:
               ops-dashboard:
@@ -28,7 +29,8 @@ def test_load_manifest_parses_cli_command(tmp_path: Path) -> None:
                 cli_command: ops
               other:
                 description: No CLI
-            """),
+            """
+        ),
         encoding="utf-8",
     )
 

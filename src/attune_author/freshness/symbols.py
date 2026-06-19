@@ -8,6 +8,7 @@ Public API:
     SymbolRecord      — frozen dataclass; one per public symbol
     SymbolExtractor   — parses Python source, emits SymbolRecord lists
 """
+
 from __future__ import annotations
 
 import ast
@@ -154,12 +155,10 @@ class SymbolExtractor:
         tree = ast.parse(source)
         records: list[SymbolRecord] = []
         for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 if _is_public(node.name):
                     records.append(
-                        self._function_record(
-                            file, node, qualname=node.name, kind="function"
-                        )
+                        self._function_record(file, node, qualname=node.name, kind="function")
                     )
             elif isinstance(node, ast.ClassDef):
                 if _is_public(node.name):
@@ -206,9 +205,7 @@ class SymbolExtractor:
                     if isinstance(target, ast.Name) and _is_public(target.id):
                         public_attrs.append(target.id)
             elif isinstance(stmt, ast.AnnAssign):
-                if isinstance(stmt.target, ast.Name) and _is_public(
-                    stmt.target.id
-                ):
+                if isinstance(stmt.target, ast.Name) and _is_public(stmt.target.id):
                     public_attrs.append(stmt.target.id)
 
         return SymbolRecord(
@@ -221,14 +218,10 @@ class SymbolExtractor:
             public_attrs=tuple(public_attrs),
         )
 
-    def _class_method_records(
-        self, file: Path, class_node: ast.ClassDef
-    ) -> list[SymbolRecord]:
+    def _class_method_records(self, file: Path, class_node: ast.ClassDef) -> list[SymbolRecord]:
         records: list[SymbolRecord] = []
         for stmt in class_node.body:
-            if isinstance(
-                stmt, (ast.FunctionDef, ast.AsyncFunctionDef)
-            ) and _is_public(stmt.name):
+            if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef) and _is_public(stmt.name):
                 records.append(
                     self._function_record(
                         file,

@@ -149,9 +149,7 @@ class TestPerKindSkip:
         prep2 = _prepare(tmp_path, feature, overwrite=True)
         assert [p.depth for p in prep2.pending] == ["concept"]
 
-    def test_pre_lever2_file_without_hash_repolishes_once_then_skips(
-        self, tmp_path: Path
-    ) -> None:
+    def test_pre_lever2_file_without_hash_repolishes_once_then_skips(self, tmp_path: Path) -> None:
         feature = _make_feature(tmp_path)
         prep1 = _prepare(tmp_path, feature)
         entry = prep1.pending[0]

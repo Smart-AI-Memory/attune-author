@@ -35,7 +35,8 @@ def test_is_tutorial_path_false_for_other_kinds() -> None:
 
 
 def test_strip_skip_directive_first_line() -> None:
-    src = dedent("""\
+    src = dedent(
+        """\
         Prose.
 
         ```python
@@ -44,7 +45,8 @@ def test_strip_skip_directive_first_line() -> None:
         ```
 
         More prose.
-        """)
+        """
+    )
     out = strip_skip_directives_in_file(src)
     assert "# attune-author: skip-mypy" not in out
     assert "do_thing()" in out
@@ -52,12 +54,14 @@ def test_strip_skip_directive_first_line() -> None:
 
 def test_strip_skip_directive_only_strips_when_first_line() -> None:
     """A trailing directive in a later position is NOT stripped."""
-    src = dedent("""\
+    src = dedent(
+        """\
         ```python
         thing()
         # attune-author: skip-mypy
         ```
-        """)
+        """
+    )
     out = strip_skip_directives_in_file(src)
     assert "# attune-author: skip-mypy" in out
 
@@ -76,13 +80,15 @@ def test_check_flags_syntax_error_in_fence(tmp_path: Path) -> None:
     p = tmp_path / "docs/tutorials/feat.md"
     p.parent.mkdir(parents=True)
     p.write_text(
-        dedent("""\
+        dedent(
+            """\
             Body text.
 
             ```python
             def broken(
             ```
-            """),
+            """
+        ),
         encoding="utf-8",
     )
 
@@ -124,13 +130,15 @@ def test_check_calls_mypy_for_valid_fence(tmp_path: Path) -> None:
     p = tmp_path / "docs/tutorials/feat.md"
     p.parent.mkdir(parents=True)
     p.write_text(
-        dedent("""\
+        dedent(
+            """\
             Intro.
 
             ```python
             x: int = "wrong type"
             ```
-            """),
+            """
+        ),
         encoding="utf-8",
     )
     mypy_output = "/tmp/x.py:1: error: Incompatible types in assignment  [assignment]\n"
@@ -153,12 +161,14 @@ def test_check_skips_fence_with_directive(tmp_path: Path) -> None:
     p = tmp_path / "docs/tutorials/feat.md"
     p.parent.mkdir(parents=True)
     p.write_text(
-        dedent("""\
+        dedent(
+            """\
             ```python
             # attune-author: skip-mypy
             illustrative_pseudocode()
             ```
-            """),
+            """
+        ),
         encoding="utf-8",
     )
 
@@ -210,11 +220,13 @@ def test_check_clean_when_mypy_returns_zero(tmp_path: Path) -> None:
     p = tmp_path / "docs/tutorials/feat.md"
     p.parent.mkdir(parents=True)
     p.write_text(
-        dedent("""\
+        dedent(
+            """\
             ```python
             x: int = 1
             ```
-            """),
+            """
+        ),
         encoding="utf-8",
     )
     with patch(

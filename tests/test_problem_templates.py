@@ -186,9 +186,7 @@ class TestProblemTemplateGeneration:
 
         content = result.templates[0].path.read_text(encoding="utf-8")
         for line in content.splitlines():
-            assert (
-                line == line.rstrip()
-            ), f"{kind}: line has trailing whitespace: {line!r}"
+            assert line == line.rstrip(), f"{kind}: line has trailing whitespace: {line!r}"
 
     @pytest.mark.parametrize("kind", PROBLEM_KINDS)
     def test_ends_with_single_newline(
