@@ -75,6 +75,27 @@ def test_extract_respects_dunder_all(tmp_path: Path) -> None:
     assert "__all__ = ['public_thing', 'another']" in result
 
 
+def test_dynamic_dunder_all_is_ignored(tmp_path: Path) -> None:
+    # A dynamically-computed __all__ (not a literal list/tuple) can't be
+    # resolved statically, so it is skipped — no `__all__ = [...]` line is
+    # emitted, but public symbols are still extracted.
+    src = _write(
+        tmp_path,
+        "module.py",
+        """
+        __all__ = _compute_exports()
+
+        def public_thing():
+            pass
+        """,
+    )
+
+    result = extract_public_api([src])
+
+    assert "def public_thing()" in result
+    assert "__all__ = [" not in result
+
+
 def test_empty_source_list_returns_empty_string() -> None:
     assert extract_public_api([]) == ""
 
