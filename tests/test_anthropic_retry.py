@@ -310,8 +310,7 @@ class TestCacheSystem:
             )
 
         assert any(
-            "cache" in r.message.lower() and "creation=1024" in r.message
-            for r in caplog.records
+            "cache" in r.message.lower() and "creation=1024" in r.message for r in caplog.records
         )
 
     def test_cache_usage_silent_when_no_cache_activity(

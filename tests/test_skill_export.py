@@ -28,7 +28,8 @@ def _write_template(root: Path, kind: str, slug: str, body: str = "") -> Path:
 
 
 def _default_body(slug: str) -> str:
-    return dedent(f"""\
+    return dedent(
+        f"""\
         ---
         type: concept
         name: {slug}
@@ -43,7 +44,8 @@ def _default_body(slug: str) -> str:
         ## What
 
         It works.
-        """)
+        """
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -338,7 +338,7 @@ class TestNoHallucinatedSymbols:
                     continue
 
                 for node in ast.walk(tree):
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                         symbols.add(node.name)
                     elif isinstance(node, ast.ClassDef):
                         symbols.add(node.name)

@@ -33,9 +33,7 @@ def _fenced(body: str) -> str:
     return f"{MANUAL_FENCE_START}{body}{MANUAL_FENCE_END}"
 
 
-def _doc(
-    maintenance: str | None = None, status: str | None = None, body: str = "x"
-) -> str:
+def _doc(maintenance: str | None = None, status: str | None = None, body: str = "x") -> str:
     lines = ["---", "type: help-concept"]
     if maintenance is not None:
         lines.append(f"maintenance: {maintenance}")
@@ -138,9 +136,7 @@ class TestResolveWriteContent:
         assert "placeholder" not in result
         assert read_maintenance_mode(result) == HYBRID  # field carried over
 
-    def test_hybrid_failsafe_keeps_existing_when_fences_mismatch(
-        self, tmp_path: Path
-    ) -> None:
+    def test_hybrid_failsafe_keeps_existing_when_fences_mismatch(self, tmp_path: Path) -> None:
         out = tmp_path / "concept.md"
         existing = _doc(maintenance="hybrid", body="OLD" + _fenced("PRECIOUS"))
         out.write_text(existing, encoding="utf-8")
@@ -159,9 +155,7 @@ class TestResolveWriteContent:
         regenerated = _doc(body=MANUAL_FENCE_START + "dangling")
         assert resolve_write_content(out, regenerated) == existing
 
-    def test_carry_noop_when_source_has_no_maintenance_field(
-        self, tmp_path: Path
-    ) -> None:
+    def test_carry_noop_when_source_has_no_maintenance_field(self, tmp_path: Path) -> None:
         # Existing auto page with NO maintenance field -> nothing to carry.
         out = tmp_path / "concept.md"
         out.write_text(_doc(body="OLD"), encoding="utf-8")  # no field at all
@@ -170,15 +164,11 @@ class TestResolveWriteContent:
         assert result == regenerated
         assert "maintenance:" not in result
 
-    def test_carry_noop_when_regenerated_has_no_frontmatter(
-        self, tmp_path: Path
-    ) -> None:
+    def test_carry_noop_when_regenerated_has_no_frontmatter(self, tmp_path: Path) -> None:
         # Hybrid existing declares the field; regenerated body has fences
         # but no frontmatter -> merge succeeds, field can't be injected.
         out = tmp_path / "concept.md"
-        out.write_text(
-            _doc(maintenance="hybrid", body=_fenced("KEEPME")), encoding="utf-8"
-        )
+        out.write_text(_doc(maintenance="hybrid", body=_fenced("KEEPME")), encoding="utf-8")
         regenerated = "no-frontmatter " + _fenced("placeholder")
         result = resolve_write_content(out, regenerated)
         assert "KEEPME" in result  # region still preserved
@@ -188,9 +178,7 @@ class TestResolveWriteContent:
 class TestGeneratorIntegration:
     """The contract holds through the real generator, not just in unit tests."""
 
-    def test_hybrid_region_survives_regeneration(
-        self, help_dir: Path, project_root: Path
-    ) -> None:
+    def test_hybrid_region_survives_regeneration(self, help_dir: Path, project_root: Path) -> None:
         from attune_author.generator import generate_feature_templates
         from attune_author.manifest import Feature
 
@@ -285,9 +273,7 @@ class TestFormatMaintenanceReport:
         assert "### auto" not in out
 
     def test_show_auto_lists_everything(self, tmp_path: Path) -> None:
-        out = format_maintenance_report(
-            self._pages(tmp_path), base=tmp_path, show_auto=True
-        )
+        out = format_maintenance_report(self._pages(tmp_path), base=tmp_path, show_auto=True)
         assert "### auto (1)" in out
         assert "omitted" not in out
 

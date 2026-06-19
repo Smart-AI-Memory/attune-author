@@ -4,6 +4,7 @@ Tests for SymbolExtractor / SymbolRecord.
 Each test maps to a numbered acceptance criterion in
 docs/specs/phase-1-semantic-freshness-spec.md.
 """
+
 from __future__ import annotations
 
 import textwrap

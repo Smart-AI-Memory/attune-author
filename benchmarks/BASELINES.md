@@ -26,9 +26,9 @@ thresholds in `eval_config.yaml`. Run `make eval` to regenerate.
 † `q30|sonnet|treated` has verdict=`error` (judge JSON parse failure on a
   non-JSON response). Excluded from treated totals; 24 valid entries used.
 
-**Faithfulness** = (correct + partial) / total — non-hallucination rate.  
-**Strict Accuracy** = correct / total — fully correct answers only.  
-**Baseline** = README + `git ls-files` tree, no RAG context.  
+**Faithfulness** = (correct + partial) / total — non-hallucination rate.
+**Strict Accuracy** = correct / total — fully correct answers only.
+**Baseline** = README + `git ls-files` tree, no RAG context.
 **Treated** = Baseline + `.help/templates/{feature}/reference.md` injected.
 
 ## Threshold Derivation
@@ -102,6 +102,6 @@ Five questions chosen for maximum discrimination in CI (lowest cost, highest sig
 | 12 | signature | partial (both)       | correct (both)  | Context recall signal: needs reference template |
 | 27 | enum      | partial (both)       | correct (both)  | Context recall signal: needs reference template |
 
-With working RAG (treated condition): 5/5 correct → faithfulness 100%, accuracy 100%.  
-With broken RAG (baseline condition): 2/5 hallucinated + 3/5 partial → faithfulness 60%, accuracy 0%.  
+With working RAG (treated condition): 5/5 correct → faithfulness 100%, accuracy 100%.
+With broken RAG (baseline condition): 2/5 hallucinated + 3/5 partial → faithfulness 60%, accuracy 0%.
 Both outcomes are far from the gates (95% / 85%), making the smoke set decisive.

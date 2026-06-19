@@ -509,9 +509,7 @@ def _cmd_init(args: argparse.Namespace) -> int:
     manifest = proposals_to_manifest(proposals)
     path = save_manifest(manifest, help_dir)
     print(f"\nSaved {len(proposals)} features to {path}")
-    print(
-        "Edit .help/features.yaml to refine, then run: attune-author generate <feature>"
-    )
+    print("Edit .help/features.yaml to refine, then run: attune-author generate <feature>")
 
     return 0
 
@@ -555,11 +553,7 @@ def _cmd_maintenance_report(args: argparse.Namespace) -> int:
     help_dir = validate_file_path(args.help_dir)
     templates_dir = help_dir / "templates"
     pages = scan_maintenance([templates_dir])
-    print(
-        format_maintenance_report(
-            pages, base=help_dir, show_auto=getattr(args, "all", False)
-        )
-    )
+    print(format_maintenance_report(pages, base=help_dir, show_auto=getattr(args, "all", False)))
     return 0
 
 
@@ -980,9 +974,7 @@ def _cmd_edit(args: argparse.Namespace) -> int:
     try:
         sidecar = ensure_sidecar(port=args.port)
     except SidecarStartError as exc:
-        print(
-            f"Could not start the editor sidecar ({exc.reason}): {exc}", file=sys.stderr
-        )
+        print(f"Could not start the editor sidecar ({exc.reason}): {exc}", file=sys.stderr)
         if exc.reason == "missing_command":
             print("  Install with: pip install attune-gui", file=sys.stderr)
         elif exc.reason == "timeout":
@@ -1078,9 +1070,7 @@ def _handle_unregistered_path(sidecar: PortfileData, abs_path: Path) -> int:
 
 def _register_and_retry(sidecar: PortfileData, abs_path: Path, root: Path) -> int:
     """POST /api/corpus/register, then retry the open flow."""
-    payload = json.dumps(
-        {"name": root.name, "path": str(root), "kind": "ad-hoc"}
-    ).encode("utf-8")
+    payload = json.dumps({"name": root.name, "path": str(root), "kind": "ad-hoc"}).encode("utf-8")
     req = urllib.request.Request(
         f"{sidecar.url}/api/corpus/register",
         data=payload,
@@ -1159,9 +1149,7 @@ def _print_generate_usage(help_dir: Path) -> None:
     if the manifest is missing or unreadable.
     """
     print("Usage: attune-author generate <feature>", file=sys.stderr)
-    print(
-        "  Generates concept/task/reference templates for a feature.", file=sys.stderr
-    )
+    print("  Generates concept/task/reference templates for a feature.", file=sys.stderr)
 
     try:
         from attune_author.manifest import load_manifest

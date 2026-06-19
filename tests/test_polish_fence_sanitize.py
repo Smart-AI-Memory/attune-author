@@ -97,9 +97,7 @@ class TestSanitizeOutput:
 
 
 class TestCacheReadHealing:
-    def test_poisoned_cache_hit_is_sanitized(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_poisoned_cache_hit_is_sanitized(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Pre-fix cache entries carrying the fence heal on read."""
         import attune_author.polish as polish_mod
 

@@ -101,7 +101,7 @@ def _extract_all(tree: ast.Module) -> list[str]:
         ):
             continue
         value = node.value
-        if isinstance(value, (ast.List, ast.Tuple)):
+        if isinstance(value, ast.List | ast.Tuple):
             names: list[str] = []
             for element in value.elts:
                 if isinstance(element, ast.Constant) and isinstance(element.value, str):
@@ -116,7 +116,7 @@ def _public_symbols(tree: ast.Module) -> tuple[list[str], list[str]]:
     classes: list[str] = []
 
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             if node.name.startswith("_"):
                 continue
             functions.append(f"def {node.name}{_format_signature(node)}")
@@ -125,7 +125,7 @@ def _public_symbols(tree: ast.Module) -> tuple[list[str], list[str]]:
                 continue
             method_summaries: list[str] = []
             for child in node.body:
-                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef):
                     if child.name.startswith("_") and child.name not in {
                         "__init__",
                         "__call__",
