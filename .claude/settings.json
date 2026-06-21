@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/spec_orient.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/spec_orient.py\"",
             "timeout": 4000
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/compact_warning.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/compact_warning.py\"",
             "timeout": 4000
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/security_guard.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/security_guard.py\"",
             "timeout": 5000
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/security_guard.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/security_guard.py\"",
             "timeout": 5000
           }
         ]
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/format_on_save.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/format_on_save.py\"",
             "timeout": 10000
           }
         ]
