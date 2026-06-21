@@ -49,6 +49,7 @@ def load_config(project_root: Path) -> FactCheckConfig:
         check_md_links=_bool("check_md_links", True),
         check_numeric_refs=_bool("check_numeric_refs", True),
         check_tutorial_static=_bool("check_tutorial_static", True),
+        check_doc_examples=_bool("check_doc_examples", True),
     )
     if isinstance(skip, dict):
         cfg.skip = {

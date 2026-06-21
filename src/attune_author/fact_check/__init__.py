@@ -12,10 +12,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import cli_refs, md_links, numeric_refs, python_refs, tutorial_static_check
+from . import cli_refs, doc_examples, md_links, numeric_refs, python_refs, tutorial_static_check
 from .config import load_config
 from .report import (
     CHECK_CLI_REFS,
+    CHECK_DOC_EXAMPLES,
     CHECK_MD_LINKS,
     CHECK_NUMERIC_REFS,
     CHECK_PYTHON_REFS,
@@ -69,6 +70,8 @@ def check_polished_file(
         report.extend(md_links.check(polished_path))
     if cfg.is_check_enabled(CHECK_NUMERIC_REFS, rel_path):
         report.extend(numeric_refs.check(polished_path, project_root))
+    if cfg.is_check_enabled(CHECK_DOC_EXAMPLES, rel_path):
+        report.extend(doc_examples.check(polished_path))
     if cfg.is_check_enabled(
         CHECK_TUTORIAL_STATIC, rel_path
     ) and tutorial_static_check.is_tutorial_path(polished_path):
@@ -95,6 +98,7 @@ def apply_soft_fail(polished_path: Path, report: FactCheckReport) -> bool:
 
 __all__ = [
     "CHECK_CLI_REFS",
+    "CHECK_DOC_EXAMPLES",
     "CHECK_MD_LINKS",
     "CHECK_NUMERIC_REFS",
     "CHECK_PYTHON_REFS",

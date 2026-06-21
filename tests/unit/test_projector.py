@@ -16,6 +16,7 @@ from attune_author.projector import (
     HELP_KIND_SECTIONS,
     parse_master_file,
     project_feature,
+    validate_master_file,
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "spec-engine.md"
@@ -46,6 +47,13 @@ def _parse_help_frontmatter(content: str) -> dict[str, str]:
     return out
 
 
+def _help_body(content: str) -> str:
+    """Return the markdown body after the leading ``---`` frontmatter."""
+    assert content.startswith("---\n")
+    _, _, body = content.split("---\n", 2)
+    return body.lstrip("\n")
+
+
 # --- parse_master_file ------------------------------------------------------
 
 
@@ -69,17 +77,19 @@ def test_parse_ignores_h2_inside_code_fences():
 # --- project_feature: planning ---------------------------------------------
 
 
-def test_dry_run_plans_ten_help_kinds_and_four_docs(tmp_path):
+def test_dry_run_plans_ten_help_kinds_and_three_docs(tmp_path):
     result = project_feature(FIXTURE, tmp_path, tmp_path / ".help", dry_run=True)
     help_outputs = [o for o in result.outputs if o.target == "help"]
     docs_outputs = [o for o in result.outputs if o.target == "docs"]
 
     assert len(help_outputs) == 10
-    assert len(docs_outputs) == 4
+    assert len(docs_outputs) == 3
     assert {o.kind for o in help_outputs} == set(HELP_KIND_SECTIONS)
     assert {o.kind for o in docs_outputs} == set(DOCS_PAGE_SECTIONS)
     # faq is never planned (D7).
     assert "faq" not in {o.kind for o in help_outputs}
+    # tutorial is never projected (D10) — hand-authored.
+    assert "tutorial" not in {o.kind for o in docs_outputs}
     # dry-run writes nothing.
     assert result.written == []
     assert not any(tmp_path.rglob("*.md"))
@@ -98,6 +108,22 @@ def test_help_frontmatter_has_seven_keys_and_depth_equals_kind(tmp_path):
         assert fm["feature"] == "spec-engine"
         assert fm["status"] == "generated"
         assert fm["source_hash"]  # non-empty
+
+
+def test_help_body_opens_with_h1_title(tmp_path):
+    # Every projected .help body must open with an `# H1` so attune-ai's
+    # ops dashboard (_title_from_content) recovers a real card title
+    # instead of degrading to "<feature> / <kind>" (P1).
+    result = project_feature(FIXTURE, tmp_path, tmp_path / ".help", dry_run=True)
+    help_outputs = [o for o in result.outputs if o.target == "help"]
+    assert help_outputs
+    for out in help_outputs:
+        body = _help_body(out.content)
+        first_line = body.splitlines()[0]
+        assert first_line.startswith("# ")
+        assert not first_line.startswith("## ")
+        # The H1 is the feature summary (frontmatter), not the slug.
+        assert first_line == "# Spec-driven development with approval loops"
 
 
 def test_docs_pages_carry_footer(tmp_path):
@@ -119,16 +145,16 @@ def test_project_feature_writes_to_disk(tmp_path):
     help_dir = tmp_path / ".help"
     result = project_feature(FIXTURE, tmp_path, help_dir, dry_run=False)
 
-    assert len(result.written) == 14
+    assert len(result.written) == 13
     assert (help_dir / "templates" / "spec-engine" / "concept.md").exists()
     assert (help_dir / "templates" / "spec-engine" / "reference.md").exists()
-    # docs land at their nav.mkdocs paths (note tutorials/ pluralization).
+    # docs land at their nav.mkdocs paths.
     assert (tmp_path / "docs" / "how-to" / "spec-engine.md").exists()
-    assert (tmp_path / "docs" / "tutorials" / "spec-engine.md").exists()
     assert (tmp_path / "docs" / "architecture" / "spec-engine.md").exists()
     assert (tmp_path / "docs" / "reference" / "spec-engine.md").exists()
-    # faq is never written (D7 / DD5).
+    # faq is never written (D7 / DD5); tutorial is hand-authored (D10).
     assert not (help_dir / "templates" / "spec-engine" / "faq.md").exists()
+    assert not (tmp_path / "docs" / "tutorials" / "spec-engine.md").exists()
 
 
 # --- tolerate missing sections ---------------------------------------------
@@ -160,4 +186,66 @@ def test_missing_section_skips_only_dependent_outputs(tmp_path):
     assert any(s.startswith("comparison") for s in result.skipped)
     assert any(s.startswith("error") for s in result.skipped)
     assert any(s.startswith("docs/how-to") for s in result.skipped)
-    assert any(s.startswith("docs/tutorial") for s in result.skipped)
+    assert any(s.startswith("docs/architecture") for s in result.skipped)
+
+
+# --- validate_master_file (warn-only) --------------------------------------
+
+
+def _write_master_with_mispathed_import(tmp_path) -> Path:
+    """A project_root with a source module and a master file whose
+    example imports it by the wrong (basename-guessed) module path."""
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "mymod.py").write_text(
+        '"""A module."""\n\n\ndef do_thing():\n    """Do the thing."""\n    return 1\n',
+        encoding="utf-8",
+    )
+    master = tmp_path / "feat.md"
+    master.write_text(
+        "---\n"
+        "feature: feat\n"
+        "summary: A feature\n"
+        "source_globs: [pkg/*.py]\n"
+        "---\n\n"
+        "## Tasks\n\n"
+        "```python\n"
+        # Wrong module path: real module is pkg.mymod, not bare mymod.
+        "from mymod import do_thing\n" "\n" "do_thing()\n" "```\n",
+        encoding="utf-8",
+    )
+    return master
+
+
+def test_validate_master_file_flags_import_repair_and_is_warn_only(tmp_path):
+    master = _write_master_with_mispathed_import(tmp_path)
+
+    findings = validate_master_file(master, tmp_path)
+
+    # Never raises — the pilot is warn-only; it returns a plain list.
+    assert isinstance(findings, list)
+    # The import_repair probe surfaces a warning that the example import
+    # would be rewritten to its canonical module path.
+    repair = [f for f in findings if "import_repair would rewrite" in f.message]
+    assert len(repair) == 1
+    assert repair[0].severity == "warning"
+
+
+def test_validate_master_file_clean_when_no_source_globs(tmp_path):
+    # No source_globs -> import_repair probe degrades to None; a clean
+    # master with no fishy refs yields no import_repair finding.
+    master = tmp_path / "clean.md"
+    master.write_text(
+        "---\n"
+        "feature: clean\n"
+        "summary: Clean feature\n"
+        "---\n\n"
+        "## Overview\n\nJust prose, no code, no references.\n",
+        encoding="utf-8",
+    )
+
+    findings = validate_master_file(master, tmp_path)
+
+    assert isinstance(findings, list)
+    assert not any("import_repair would rewrite" in f.message for f in findings)
