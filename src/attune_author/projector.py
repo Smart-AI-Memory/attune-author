@@ -61,6 +61,29 @@ DOCS_PAGE_SECTIONS: dict[str, list[str]] = {
     "reference": ["Reference"],
 }
 
+#: Hub page (D11 / Variant 1). The "Start here" hero points to the
+#: first present of these kinds; the remaining present site pages among
+#: ``_HUB_CARD_ORDER`` form the card grid. ``tutorial`` is hero-only
+#: (never a card) and ``concept`` is excluded entirely — it is a
+#: ``.help`` kind with no site page.
+_HUB_HERO_ORDER: tuple[str, ...] = ("tutorial", "how-to", "reference")
+_HUB_CARD_ORDER: tuple[str, ...] = ("how-to", "reference", "architecture")
+
+#: Human label + one-line blurb per site page kind, used by the hub's
+#: hero callout and card grid.
+_HUB_KIND_LABEL: dict[str, str] = {
+    "tutorial": "Tutorial",
+    "how-to": "How-to guide",
+    "reference": "Reference",
+    "architecture": "Architecture",
+}
+_HUB_KIND_BLURB: dict[str, str] = {
+    "tutorial": "a guided, start-to-finish walkthrough",
+    "how-to": "task recipes for common goals",
+    "reference": "the full API and option reference",
+    "architecture": "how it works and how to extend it",
+}
+
 #: Fallback ``docs/`` subdirectory per docs kind, used only when the
 #: master file's ``nav.mkdocs`` mapping does not pin an explicit path.
 #: Mirrors the generator's ``_PROJECT_DOC_KIND_SUBDIRS`` (note the
@@ -197,6 +220,12 @@ def project_feature(
     a single ``compute_scaffold_hash`` over the master file, shared by
     every output so they stay in lockstep.
 
+    Also emits a Variant-1 **hub page** to
+    ``<project_root>/docs/features/<feature>.md`` (kind ``"hub"``, D11):
+    a "Start here" hero + a card grid over the feature's declared
+    ``nav.mkdocs`` site pages. A feature with no ``nav.mkdocs`` pages
+    records a ``"hub (no docs pages)"`` skip rather than emitting one.
+
     A kind whose source sections are not all present is recorded in
     ``result.skipped`` rather than written — never an error. With
     ``dry_run=True`` nothing is written; ``result.outputs`` still holds
@@ -239,6 +268,14 @@ def project_feature(
         out_path = _docs_output_path(master, kind, project_root)
         result.outputs.append(ProjectedOutput(kind, "docs", out_path, content))
 
+    if "hub" not in skip_kinds:
+        hub_content = _render_hub(master)
+        if hub_content is None:
+            result.skipped.append("hub (no docs pages)")
+        else:
+            hub_path = project_root / "docs" / "features" / f"{master.feature}.md"
+            result.outputs.append(ProjectedOutput("hub", "docs", hub_path, hub_content))
+
     if not dry_run:
         for out in result.outputs:
             out.path.parent.mkdir(parents=True, exist_ok=True)
@@ -257,6 +294,65 @@ def _join_sections(master: MasterFile, titles: list[str]) -> str:
             continue
         parts.append(f"## {title}\n\n{body}")
     return "\n\n".join(parts)
+
+
+def _render_hub(master: MasterFile) -> str | None:
+    """Render the Variant-1 feature hub page (D11), or ``None``.
+
+    The hub is the single front door + discovery surface for a feature
+    (``docs/features/<feature>.md``). It leads with a "Start here" hero
+    callout pointing to the first present of (tutorial, how-to,
+    reference), then a Material card grid of the feature's remaining
+    present site pages among (how-to, reference, architecture). The hero
+    kind is not repeated as a card, and ``concept`` is excluded — it is a
+    ``.help`` kind with no published page.
+
+    Returns ``None`` when the master declares no ``nav.mkdocs`` site
+    pages (the caller records a skip, never an error). Deterministic
+    string render using only Material extensions attune-ai enables
+    (``attr_list`` + ``md_in_html`` grid cards, ``admonition``) — no
+    LLM, no AST (D3/D8).
+    """
+    nav = (master.frontmatter.get("nav") or {}).get("mkdocs") or {}
+    present = [k for k in (*_HUB_HERO_ORDER, *_HUB_CARD_ORDER) if nav.get(k)]
+    if not present:
+        return None
+
+    hero = next((k for k in _HUB_HERO_ORDER if k in present), None)
+    cards = [k for k in _HUB_CARD_ORDER if k in present and k != hero]
+
+    title = master.feature.replace("-", " ").replace("_", " ").title()
+    lines: list[str] = [f"# {title}", ""]
+    summary = master.frontmatter.get("summary")
+    if summary and str(summary).strip():
+        lines += [str(summary).strip(), ""]
+
+    if hero is not None:
+        lines += [
+            '!!! tip "Start here"',
+            "",
+            f"    [{_HUB_KIND_LABEL[hero]}](../{nav[hero]}.md) — {_HUB_KIND_BLURB[hero]}.",
+            "",
+        ]
+
+    if cards:
+        lines += ['<div class="grid cards" markdown>', ""]
+        for kind in cards:
+            blurb = _HUB_KIND_BLURB[kind]
+            label = _HUB_KIND_LABEL[kind]
+            lines += [
+                f"-   __{label}__",
+                "",
+                "    ---",
+                "",
+                f"    {blurb[0].upper()}{blurb[1:]}.",
+                "",
+                f"    [Open the {label.lower()}](../{nav[kind]}.md)",
+                "",
+            ]
+        lines += ["</div>", ""]
+
+    return "\n".join(lines).rstrip("\n") + "\n"
 
 
 def _feature_title(master: MasterFile) -> str:

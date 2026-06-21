@@ -80,10 +80,13 @@ def test_parse_ignores_h2_inside_code_fences():
 def test_dry_run_plans_ten_help_kinds_and_three_docs(tmp_path):
     result = project_feature(FIXTURE, tmp_path, tmp_path / ".help", dry_run=True)
     help_outputs = [o for o in result.outputs if o.target == "help"]
-    docs_outputs = [o for o in result.outputs if o.target == "docs"]
+    docs_outputs = [o for o in result.outputs if o.target == "docs" and o.kind != "hub"]
+    hub_outputs = [o for o in result.outputs if o.kind == "hub"]
 
     assert len(help_outputs) == 10
     assert len(docs_outputs) == 3
+    # The hub is additive — exactly one per feature with docs pages.
+    assert len(hub_outputs) == 1
     assert {o.kind for o in help_outputs} == set(HELP_KIND_SECTIONS)
     assert {o.kind for o in docs_outputs} == set(DOCS_PAGE_SECTIONS)
     # faq is never planned (D7).
@@ -128,7 +131,9 @@ def test_help_body_opens_with_h1_title(tmp_path):
 
 def test_docs_pages_carry_footer(tmp_path):
     result = project_feature(FIXTURE, tmp_path, tmp_path / ".help", dry_run=True)
-    docs = [o for o in result.outputs if o.target == "docs"]
+    # The hub is a nav surface, not a staleness-tracked projection — it
+    # carries no footer (asserted separately).
+    docs = [o for o in result.outputs if o.target == "docs" and o.kind != "hub"]
     assert docs
     for out in docs:
         assert "<!-- attune-generated:" in out.content
@@ -145,13 +150,15 @@ def test_project_feature_writes_to_disk(tmp_path):
     help_dir = tmp_path / ".help"
     result = project_feature(FIXTURE, tmp_path, help_dir, dry_run=False)
 
-    assert len(result.written) == 13
+    assert len(result.written) == 14
     assert (help_dir / "templates" / "spec-engine" / "concept.md").exists()
     assert (help_dir / "templates" / "spec-engine" / "reference.md").exists()
     # docs land at their nav.mkdocs paths.
     assert (tmp_path / "docs" / "how-to" / "spec-engine.md").exists()
     assert (tmp_path / "docs" / "architecture" / "spec-engine.md").exists()
     assert (tmp_path / "docs" / "reference" / "spec-engine.md").exists()
+    # the additive Variant-1 hub page (D11).
+    assert (tmp_path / "docs" / "features" / "spec-engine.md").exists()
     # faq is never written (D7 / DD5); tutorial is hand-authored (D10).
     assert not (help_dir / "templates" / "spec-engine" / "faq.md").exists()
     assert not (tmp_path / "docs" / "tutorials" / "spec-engine.md").exists()
@@ -189,6 +196,106 @@ def test_missing_section_skips_only_dependent_outputs(tmp_path):
     assert any(s.startswith("docs/architecture") for s in result.skipped)
 
 
+# --- project_feature: hub page (D11 / Variant 1) ---------------------------
+
+
+def _hub_content(result) -> str:
+    """Return the single hub output's rendered content."""
+    hubs = [o for o in result.outputs if o.kind == "hub"]
+    assert len(hubs) == 1
+    return hubs[0].content
+
+
+def _degraded_master(tmp_path) -> Path:
+    """A master that declares how-to/reference/architecture but NO
+    tutorial — exercising the degraded how-to-hero branch (`models`)."""
+    master = tmp_path / "models.md"
+    master.write_text(
+        "---\n"
+        "feature: models\n"
+        "summary: Model registry and selection\n"
+        "nav:\n"
+        "  mkdocs:\n"
+        "    how-to: how-to/models\n"
+        "    architecture: architecture/models\n"
+        "    reference: reference/models\n"
+        "---\n\n"
+        "## Overview\n\nthe overview\n\n"
+        "## Concepts\n\nthe concepts\n\n"
+        "## Quickstart\n\nthe quickstart\n\n"
+        "## Tasks\n\nthe tasks\n\n"
+        "## Reference\n\nthe reference\n\n"
+        "## Design & extension\n\nthe design\n",
+        encoding="utf-8",
+    )
+    return master
+
+
+def test_hub_tutorial_hero_links_tutorial_and_omits_it_from_cards(tmp_path):
+    # spec-engine's master declares nav.mkdocs.tutorial → the hero links
+    # the tutorial path; the tutorial is NOT repeated as a card.
+    result = project_feature(FIXTURE, tmp_path, tmp_path / ".help", dry_run=True)
+    hub = _hub_content(result)
+
+    assert hub.startswith("# Spec Engine\n")
+    assert "Spec-driven development with approval loops" in hub
+    # Hero "Start here" admonition points at the tutorial.
+    assert '!!! tip "Start here"' in hub
+    assert "[Tutorial](../tutorials/spec-engine.md)" in hub
+    # Card grid uses Material idioms and lists how-to/reference/architecture.
+    assert '<div class="grid cards" markdown>' in hub
+    assert "[Open the how-to guide](../how-to/spec-engine.md)" in hub
+    assert "[Open the reference](../reference/spec-engine.md)" in hub
+    assert "[Open the architecture](../architecture/spec-engine.md)" in hub
+    # The tutorial is the hero, never a card.
+    assert "Open the tutorial" not in hub
+    assert hub.count("../tutorials/spec-engine.md") == 1
+
+
+def test_hub_degraded_how_to_hero_when_no_tutorial(tmp_path):
+    # No tutorial declared → hero degrades to how-to; cards are the
+    # remaining present pages (reference, architecture). No tutorial card.
+    master = _degraded_master(tmp_path)
+    result = project_feature(master, tmp_path, tmp_path / ".help", dry_run=True)
+    hub = _hub_content(result)
+
+    assert hub.startswith("# Models\n")
+    assert '!!! tip "Start here"' in hub
+    # Hero is the how-to, not a tutorial.
+    assert "[How-to guide](../how-to/models.md)" in hub
+    assert "tutorial" not in hub.lower()
+    # Remaining pages become cards; the hero how-to is not repeated.
+    assert "[Open the reference](../reference/models.md)" in hub
+    assert "[Open the architecture](../architecture/models.md)" in hub
+    assert "Open the how-to" not in hub
+
+
+def test_hub_skipped_when_no_nav_pages(tmp_path):
+    # A master with no nav.mkdocs pages → hub recorded in result.skipped,
+    # no hub output, no file written.
+    master = tmp_path / "barebones.md"
+    master.write_text(
+        "---\nfeature: barebones\nsummary: x\n---\n\n## Overview\n\nprose\n",
+        encoding="utf-8",
+    )
+
+    result = project_feature(master, tmp_path, tmp_path / ".help", dry_run=False)
+
+    assert "hub (no docs pages)" in result.skipped
+    assert not any(o.kind == "hub" for o in result.outputs)
+    assert not (tmp_path / "docs" / "features" / "barebones.md").exists()
+
+
+def test_hub_dry_run_writes_nothing_but_is_in_outputs(tmp_path):
+    # dry_run=True: hub content is planned in result.outputs but no file
+    # is written.
+    result = project_feature(FIXTURE, tmp_path, tmp_path / ".help", dry_run=True)
+
+    assert any(o.kind == "hub" for o in result.outputs)
+    assert result.written == []
+    assert not (tmp_path / "docs" / "features" / "spec-engine.md").exists()
+
+
 # --- validate_master_file (warn-only) --------------------------------------
 
 
@@ -212,7 +319,10 @@ def _write_master_with_mispathed_import(tmp_path) -> Path:
         "## Tasks\n\n"
         "```python\n"
         # Wrong module path: real module is pkg.mymod, not bare mymod.
-        "from mymod import do_thing\n" "\n" "do_thing()\n" "```\n",
+        "from mymod import do_thing\n"
+        "\n"
+        "do_thing()\n"
+        "```\n",
         encoding="utf-8",
     )
     return master
