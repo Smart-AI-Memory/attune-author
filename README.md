@@ -370,6 +370,40 @@ for feature in report.stale:
     print(f"  {feature.name}: {feature.reason}")
 ```
 
+## Single-source projection (pilot)
+
+A second authoring path complements LLM generation: author one
+**master file** per feature (`content/features/<feature>.md` — YAML
+frontmatter plus named H2 sections) and **deterministically project**
+it to both the in-tool `.help` corpus and the `docs/` site. No LLM, no
+AST render — the projector slices the master file's sections per a
+fixed map and wraps them with the same frontmatter/footer the
+generator emits, so `attune-help` serves the output unchanged. This
+keeps a single hand-authored source of truth while still feeding both
+consumers.
+
+```python
+from attune_author.projector import project_feature, validate_master_file
+
+# Plan the outputs without writing (10 .help kinds + 4 docs pages):
+result = project_feature(
+    "content/features/spec-engine.md", project_root=".", help_dir=".help",
+    dry_run=True,
+)
+for out in result.outputs:
+    print(out.target, out.kind, "->", out.path)
+
+# Fact-check the master file (warn-only):
+for finding in validate_master_file("content/features/spec-engine.md", "."):
+    print(finding.severity, finding.message)
+```
+
+Pilot status: this ships the `attune_author.projector` module; the
+consumer drives it from a small script (see attune-ai
+`scripts/project_features.py`). The repurposing of attune-author from
+LLM content-generator toward deterministic *projector + validator* is
+tracked in attune-ai `docs/specs/help-docs-single-source/`.
+
 ## Features
 
 - **Progressive-depth templates** -- Every feature gets a
