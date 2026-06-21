@@ -10,6 +10,38 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-06-21
+
+Projector improvements surfaced by the help-docs-single-source pilot
+(attune-ai #964), landing before the bulk rollout because they change
+projector output.
+
+### Added
+
+- **`attune_author.fact_check.check_doc_examples`** — an
+  execution-oriented check that compiles every `python` code block
+  (tolerating illustrative top-level-`await` fragments by retrying
+  wrapped in `async def`) and flags coroutine functions called without
+  `await`. Whether a callable is a coroutine is derived generically
+  from each block's own import statements via
+  `inspect.iscoroutinefunction` — no hardcoded package list — so it
+  stays consumer-agnostic. Wired into `check_polished_file` behind a
+  default-on `check_doc_examples` config toggle.
+
+### Changed
+
+- **Projector `.help` output now opens with an `# H1` title.**
+  `_wrap_help` prepends `# {title}` (frontmatter `summary`, else the
+  title-cased feature name), mirroring `_wrap_docs`. Projected `.help`
+  bodies previously opened at `## `, so downstream readers that key off
+  the first H1 — e.g. attune-ai's ops dashboard `_title_from_content`
+  — degraded card titles to `<feature> / <kind>`.
+- **`tutorial` dropped from `DOCS_PAGE_SECTIONS`.** A guided tutorial
+  resists pure section projection (the projected version is the `Tasks`
+  list verbatim, duplicating the how-to); tutorials stay hand-authored
+  (attune-ai decision D10). Projected docs pages per feature drop from
+  4 to 3 (how-to / architecture / reference).
+
 ## [0.19.0] — 2026-06-21
 
 Deterministic projector for the help-docs-single-source pilot:
