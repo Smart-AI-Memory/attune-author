@@ -703,6 +703,15 @@ def apply_polish_results(
     # _run_fact_check; matched_files are stored relative to it.
     project_root = Path.cwd()
     absolute_sources = [project_root / rel_path for rel_path in prep.matched_files]
+    # Repair mis-pathed example imports (``from pipeline import …`` ->
+    # ``from attune.pipeline import …``) before each write so the
+    # fact-check pass below finds nothing to flag. See import_repair.
+    from attune_author.fact_check.import_repair import (
+        build_symbol_module_map,
+        repair_imports,
+    )
+
+    symbol_module_map = build_symbol_module_map(prep.source_info)
     for entry in prep.pending:
         if entry.depth in polished_by_depth:
             # Polish ran: take the polished body but re-inject the
@@ -734,6 +743,7 @@ def apply_polish_results(
         # rather than dropping hand-written content. (manual pages are
         # already filtered out upstream in prepare_polish_phase.)
         final_content = resolve_write_content(entry.out_path, final_content)
+        final_content = repair_imports(final_content, symbol_module_map)
         entry.out_path.write_text(final_content, encoding="utf-8")
         _run_fact_check(entry.out_path)
         _run_faithfulness_judge(entry.out_path, absolute_sources, project_root)

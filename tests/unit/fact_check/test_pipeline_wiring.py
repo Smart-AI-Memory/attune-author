@@ -61,3 +61,48 @@ def test_run_fact_check_swallows_internal_errors(tmp_path: Path, monkeypatch, ca
     missing = tmp_path / "missing.md"
     # Should not raise.
     _run_fact_check(missing)
+
+
+def test_apply_polish_results_repairs_imports_before_write(tmp_path: Path, monkeypatch) -> None:
+    """Round-trip guard: a mis-pathed example import is repaired in the
+    written file, proving ``repair_imports`` is wired into the write path.
+
+    Regression guard for the attune-author generated-doc fiction bug:
+    the polish pass emitted ``from <feature> import <Symbol>`` (dir
+    basename) instead of the real package path, and the fact-checker
+    then published a false ``## Unresolved references`` block.
+    """
+    monkeypatch.setenv("ATTUNE_AUTHOR_FACT_CHECK", "off")
+    monkeypatch.setenv("ATTUNE_AUTHOR_FAITHFULNESS", "off")
+    monkeypatch.chdir(tmp_path)
+
+    from attune_author.generator import (
+        PolishPreparation,
+        _PendingPolish,
+        _SourceInfo,
+        apply_polish_results,
+    )
+
+    # A real symbol whose defining module is importable, so the map
+    # build resolves it deterministically (attune_author is on path).
+    info = _SourceInfo()
+    info.public_classes = [
+        {"name": "PolishPreparation", "file": "src/attune_author/generator.py", "doc": ""}
+    ]
+
+    out_path = tmp_path / "concept.md"
+    body = "# Concept\n\n```python\nfrom generator import PolishPreparation\n```\n"
+    prep = PolishPreparation(
+        feature=type("F", (), {"name": "demo"})(),
+        source_hash="deadbeef",
+        matched_files=[],
+        source_info=info,
+        pending=(_PendingPolish(depth="concept", rendered_content=body, out_path=out_path),),
+        use_rag=False,
+    )
+
+    apply_polish_results(prep, {})
+
+    written = out_path.read_text(encoding="utf-8")
+    assert "from attune_author.generator import PolishPreparation" in written
+    assert "from generator import" not in written
