@@ -10,6 +10,31 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-06-21
+
+Deterministic projector for the help-docs-single-source pilot:
+author one master file per feature and render it to both the in-tool
+`.help` corpus and the `docs/` site, with no LLM on the canonical
+path.
+
+### Added
+
+- **`attune_author.projector`** — a deterministic projector that
+  reads a hand-authored master file (`content/features/<feature>.md`
+  in the consumer repo) and renders it to the 10 non-faq `.help`
+  kinds plus the 4 `docs/` feature pages. No LLM, no AST render, no
+  meta-templates: named H2 sections are sliced and concatenated per
+  a fixed projection map, then wrapped with the same
+  frontmatter/footer the generator emits, so attune-help's
+  `HelpEngine` and the staleness machinery read the output
+  unchanged. `parse_master_file` does a fence-aware H2 split;
+  `project_feature` supports `dry_run` and skips (never errors on)
+  outputs whose source sections are absent; `validate_master_file`
+  runs the `fact_check` pass plus an `import_repair` probe,
+  warn-only. `faq` is intentionally excluded (sourced by the FAQ
+  Generator, not projected). See attune-ai
+  `docs/specs/help-docs-single-source/`.
+
 ## [0.18.0] — 2026-06-15
 
 Per-page maintenance contract: regeneration now respects how each
