@@ -10,6 +10,33 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.21.0] — 2026-06-21
+
+Per-feature **hub page** emission for the help-docs-single-source
+rollout gate (attune-ai help-docs-rollout-gate spec, T1). Locks the
+entry-point convention (decisions.md **D11**, Variant 1) so the bulk
+~270-feature rollout never has to hand-wire navigation per feature.
+
+### Added
+
+- **Variant-1 feature hub page.** `projector.project_feature` now
+  additionally emits a thin hub page to
+  `<project_root>/docs/features/<feature>.md` (a new `ProjectedOutput`
+  with `kind="hub"`). The hub leads with a "Start here" admonition
+  whose hero links the first present of
+  (`tutorial` → `how-to` → `reference`) from the master file's
+  `nav.mkdocs`, followed by a Material card grid of the remaining
+  present site pages among (`how-to`, `reference`, `architecture`).
+  The hero kind is never repeated as a card, and `concept` is excluded
+  (it is a `.help`-only kind with no published page). Render is a
+  deterministic string build using only the Material extensions
+  attune-ai enables (`attr_list` + `md_in_html` grid cards,
+  `admonition`) — no LLM, no AST (D3/D8). `skip_kinds` and `dry_run`
+  are honored; a feature whose master declares no `nav.mkdocs` pages
+  records a `"hub (no docs pages)"` skip rather than erroring. The hub
+  is additive — the existing 10 `.help` kinds and 3 docs pages are
+  unchanged.
+
 ## [0.20.0] — 2026-06-21
 
 Projector improvements surfaced by the help-docs-single-source pilot
