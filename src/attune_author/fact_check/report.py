@@ -19,6 +19,7 @@ CHECK_CLI_REFS = "check_cli_refs"
 CHECK_MD_LINKS = "check_md_links"
 CHECK_NUMERIC_REFS = "check_numeric_refs"
 CHECK_TUTORIAL_STATIC = "check_tutorial_static"
+CHECK_DOC_EXAMPLES = "check_doc_examples"
 
 
 class FactCheckError(Exception):
@@ -84,6 +85,7 @@ class FactCheckConfig:
     check_md_links: bool = True
     check_numeric_refs: bool = True
     check_tutorial_static: bool = True
+    check_doc_examples: bool = True
     #: Mapping of file path (relative to project root, posix) to
     #: a list of check-id strings that should be skipped for
     #: that file.
@@ -131,9 +133,11 @@ def format_unresolved_block(findings: list[Finding]) -> str:
 
 __all__ = [
     "CHECK_CLI_REFS",
+    "CHECK_DOC_EXAMPLES",
     "CHECK_MD_LINKS",
     "CHECK_NUMERIC_REFS",
     "CHECK_PYTHON_REFS",
+    "CHECK_TUTORIAL_STATIC",
     "FactCheckConfig",
     "FactCheckError",
     "FactCheckReport",

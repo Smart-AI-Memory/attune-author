@@ -262,6 +262,7 @@ def test_check_polished_file_routes_to_tutorial_static_only_for_tutorials(
         check_cli_refs=False,
         check_md_links=False,
         check_numeric_refs=False,
+        check_doc_examples=False,
         check_tutorial_static=True,
     )
 
@@ -287,6 +288,7 @@ def test_check_polished_file_disabled_when_toggle_off(tmp_path: Path) -> None:
         check_cli_refs=False,
         check_md_links=False,
         check_numeric_refs=False,
+        check_doc_examples=False,
         check_tutorial_static=False,
     )
 

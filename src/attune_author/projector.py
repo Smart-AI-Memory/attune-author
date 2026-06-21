@@ -3,7 +3,7 @@
 Part of the help-docs-single-source pilot (T2). Reads one
 hand-authored "master file" per feature
 (``content/features/<feature>.md`` in the consumer repo) and renders
-it to the 10 non-faq ``.help`` kinds plus the 4 ``docs/`` feature
+it to the 10 non-faq ``.help`` kinds plus the 3 ``docs/`` feature
 pages. No LLM, no AST render, no meta-templates: the master file's
 named H2 sections are sliced and concatenated per a fixed projection
 map, then wrapped with the same frontmatter/footer the generator
@@ -51,9 +51,12 @@ HELP_KIND_SECTIONS: dict[str, list[str]] = {
 }
 
 #: ``docs/`` page (project-doc kind) -> source H2 sections.
+#: ``tutorial`` is intentionally excluded (attune-ai decision D10): a
+#: guided tutorial resists pure section projection — the projected
+#: version is just the ``Tasks`` list verbatim, duplicating the how-to
+#: — so tutorials stay hand-authored.
 DOCS_PAGE_SECTIONS: dict[str, list[str]] = {
     "how-to": ["Quickstart", "Tasks", "Reference"],
-    "tutorial": ["Tasks"],
     "architecture": ["Overview", "Concepts", "Design & extension"],
     "reference": ["Reference"],
 }
@@ -189,7 +192,7 @@ def project_feature(
 
     Renders the 10 non-faq ``.help`` kinds to
     ``<help_dir>/templates/<feature>/<kind>.md`` (YAML frontmatter)
-    and the 4 ``docs/`` pages to their ``nav.mkdocs`` paths under
+    and the 3 ``docs/`` pages to their ``nav.mkdocs`` paths under
     ``<project_root>/docs/`` (HTML-comment footer). ``source_hash`` is
     a single ``compute_scaffold_hash`` over the master file, shared by
     every output so they stay in lockstep.
@@ -210,6 +213,8 @@ def project_feature(
 
     result = ProjectionResult()
 
+    title = _feature_title(master)
+
     for kind, titles in HELP_KIND_SECTIONS.items():
         if kind in skip_kinds:
             continue
@@ -218,7 +223,7 @@ def project_feature(
             result.skipped.append(f"{kind} (missing: {', '.join(missing)})")
             continue
         body = _join_sections(master, titles)
-        content = _wrap_help(master.feature, kind, source_hash, generated_help, body)
+        content = _wrap_help(master.feature, kind, source_hash, generated_help, body, title=title)
         out_path = help_dir / "templates" / master.feature / f"{kind}.md"
         result.outputs.append(ProjectedOutput(kind, "help", out_path, content))
 
@@ -254,11 +259,36 @@ def _join_sections(master: MasterFile, titles: list[str]) -> str:
     return "\n\n".join(parts)
 
 
-def _wrap_help(feature: str, kind: str, source_hash: str, generated_at: str, body: str) -> str:
+def _feature_title(master: MasterFile) -> str:
+    """Human-readable H1 title for a feature's projected pages.
+
+    Prefers the master file's frontmatter ``summary`` (the one-line
+    feature description authors write); falls back to the title-cased
+    feature slug, matching ``_wrap_docs``.
+    """
+    summary = master.frontmatter.get("summary")
+    if summary and str(summary).strip():
+        return str(summary).strip()
+    return master.feature.replace("-", " ").replace("_", " ").title()
+
+
+def _wrap_help(
+    feature: str,
+    kind: str,
+    source_hash: str,
+    generated_at: str,
+    body: str,
+    *,
+    title: str,
+) -> str:
     """Wrap a body with the ``.help`` YAML frontmatter the generator emits.
 
     The 7-key block matches ``generator._render_template`` exactly so
-    attune-help's HelpEngine reads projected templates unchanged.
+    attune-help's HelpEngine reads projected templates unchanged. An H1
+    ``# {title}`` is prepended ahead of the body (mirroring
+    ``_wrap_docs``) so downstream readers that key off the first H1 —
+    e.g. attune-ai's ops dashboard ``_title_from_content`` — recover a
+    real card title instead of degrading to ``<feature> / <kind>``.
     """
     name = f"{feature}-{kind}"
     block = (
@@ -272,7 +302,7 @@ def _wrap_help(feature: str, kind: str, source_hash: str, generated_at: str, bod
         f"status: generated\n"
         f"---\n"
     )
-    result = block + "\n" + body
+    result = f"{block}\n# {title}\n\n{body}"
     if not result.endswith("\n"):
         result += "\n"
     return result
