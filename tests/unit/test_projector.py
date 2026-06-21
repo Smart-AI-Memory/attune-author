@@ -319,10 +319,7 @@ def _write_master_with_mispathed_import(tmp_path) -> Path:
         "## Tasks\n\n"
         "```python\n"
         # Wrong module path: real module is pkg.mymod, not bare mymod.
-        "from mymod import do_thing\n"
-        "\n"
-        "do_thing()\n"
-        "```\n",
+        "from mymod import do_thing\n" "\n" "do_thing()\n" "```\n",
         encoding="utf-8",
     )
     return master
