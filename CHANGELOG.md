@@ -10,6 +10,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Extended prompt-cache TTL (opt-in).** Setting
+  `ATTUNE_AUTHOR_CACHE_TTL=1h` extends the Anthropic prompt-cache window
+  on the cached system prompt from the 5-minute default to 1 hour. A new
+  `doc_gen._cache.cache_control()` helper resolves the marker from the
+  environment (read per call, case- and whitespace-insensitive) and is
+  routed through by both the synchronous (`_anthropic`) and batched
+  (`_anthropic_batch`) emit paths. When the env var is unset the wire
+  shape is byte-identical to prior behavior. Sibling of attune-ai
+  Task A (Smart-AI-Memory/attune-ai#998) and attune-rag's
+  `ATTUNE_RAG_CACHE_TTL`.
+
 ## [0.21.0] — 2026-06-21
 
 Per-feature **hub page** emission for the help-docs-single-source
