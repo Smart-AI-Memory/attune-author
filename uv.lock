@@ -55,7 +55,7 @@ wheels = [
 
 [[package]]
 name = "attune-author"
-version = "0.21.0"
+version = "0.22.0"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
@@ -132,6 +132,7 @@ requires-dist = [
     { name = "attune-author", marker = "extra == 'authoring'", specifier = ">=0.7.0" },
     { name = "mcp", marker = "extra == 'dev'", specifier = ">=0.9.0" },
     { name = "mcp", marker = "extra == 'plugin'", specifier = ">=0.9.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "python-frontmatter", specifier = ">=1.0.0" },

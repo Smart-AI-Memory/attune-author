@@ -10,6 +10,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.22.0] — 2026-06-22
+
+Opt-in extended prompt-cache TTL for the doc-gen path — the
+attune-author sibling of attune-ai's `ATTUNE_CACHE_TTL`.
+
 ### Added
 
 - **Extended prompt-cache TTL (opt-in).** Setting
