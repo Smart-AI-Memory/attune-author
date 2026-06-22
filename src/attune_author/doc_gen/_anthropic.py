@@ -15,6 +15,8 @@ import re
 import time
 from typing import TYPE_CHECKING
 
+from attune_author.doc_gen._cache import cache_control
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -149,7 +151,7 @@ def call_anthropic(
             {
                 "type": "text",
                 "text": system,
-                "cache_control": {"type": "ephemeral"},
+                "cache_control": cache_control(),
             }
         ]
     else:

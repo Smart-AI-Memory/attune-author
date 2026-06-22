@@ -32,6 +32,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from attune_author.doc_gen._cache import cache_control
+
 if TYPE_CHECKING:
     from anthropic import Anthropic
 
@@ -93,7 +95,7 @@ def _build_request_param(req: BatchPolishRequest) -> dict[str, Any]:
             {
                 "type": "text",
                 "text": req.system,
-                "cache_control": {"type": "ephemeral"},
+                "cache_control": cache_control(),
             }
         ]
     else:
