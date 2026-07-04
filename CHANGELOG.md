@@ -10,6 +10,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.23.0] — 2026-07-04
+
+Manifest-level `status: manual` awareness — staleness, status
+reporting, and generation all now respect single-sourced
+(projector-owned or hand-written) features, fixing the
+whole-catalog false-stale report in all-manual workspaces.
+
 ### Fixed
 
 - **Manifest-level `status: manual` features no longer misreport as
