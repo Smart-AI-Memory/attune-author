@@ -306,8 +306,20 @@ def generate_feature_templates(
             project-doc templates.
 
     Returns:
-        GenerationResult with paths and metadata.
+        GenerationResult with paths and metadata. Empty (no
+        templates) when the manifest marks the feature
+        ``status: manual`` and ``overwrite`` is False — manual
+        features are owned elsewhere (hand-written or projected)
+        and must not be clobbered with LLM output.
     """
+    if feature.status == "manual" and not overwrite:
+        logger.warning(
+            "Skipping '%s': manifest marks it status: manual "
+            "(content owned elsewhere; pass overwrite=True to force)",
+            feature.name,
+        )
+        return GenerationResult(feature=feature.name)
+
     prep = prepare_polish_phase(
         feature=feature,
         help_dir=help_dir,

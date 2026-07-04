@@ -10,6 +10,26 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **Manifest-level `status: manual` features no longer misreport as
+  stale.** A features.yaml entry marked `status: manual` (content
+  owned elsewhere — hand-written or projected from a single-source
+  master, typically with no `files:` globs) used to hash to the
+  empty digest and mismatch its stored `source_hash`, so an
+  all-manual catalog reported every feature stale with "0 source
+  files" changed (attune-ai 2026-07-04: 27/27 stale). `Feature`
+  now parses `status` (default `"auto"`), `check_staleness` skips
+  manual features and reports them in the new
+  `StalenessReport.manual_features`, the status report renders them
+  as "N manual (not tracked)", `run_maintenance` populates the
+  previously-vestigial `MaintenanceResult.skipped_manual`, and
+  `generate_feature_templates` refuses manual features unless
+  `overwrite=True` — closing the LLM-clobber hazard for
+  projector-owned templates whose frontmatter still says
+  `status: generated`.
+
+
 ## [0.22.0] — 2026-06-22
 
 Opt-in extended prompt-cache TTL for the doc-gen path — the
