@@ -102,10 +102,15 @@ class StalenessReport:
     Attributes:
         help_entries: Per-feature staleness for ``.help/`` templates.
         doc_entries: Per-doc staleness for ``docs/`` generated files.
+        manual_features: Features skipped because the manifest marks
+            them ``status: manual`` — their content is owned elsewhere
+            (hand-written or projected), so hash tracking doesn't
+            apply to them.
     """
 
     help_entries: list[FeatureStaleness] = field(default_factory=list)
     doc_entries: list[DocStaleness] = field(default_factory=list)
+    manual_features: list[str] = field(default_factory=list)
 
     @property
     def stale_count(self) -> int:
@@ -384,6 +389,10 @@ def check_staleness(
 ) -> StalenessReport:
     """Check staleness across help templates and project docs.
 
+    Features marked ``status: manual`` in the manifest are skipped
+    entirely (their content is owned elsewhere; there are no source
+    globs to hash) and reported in ``manual_features``.
+
     For each feature in the manifest:
 
     - **Help templates**: reads ``source_hash`` from
@@ -407,6 +416,7 @@ def check_staleness(
     root = Path(project_root)
     help_entries: list[FeatureStaleness] = []
     doc_entries: list[DocStaleness] = []
+    manual_features: list[str] = []
 
     names = features if features is not None else list(manifest.features.keys())
 
@@ -414,6 +424,10 @@ def check_staleness(
         feat = manifest.features.get(name)
         if not feat:
             logger.warning("Feature '%s' not in manifest", name)
+            continue
+
+        if feat.status == "manual":
+            manual_features.append(name)
             continue
 
         current_hash, matched = compute_source_hash(feat, root)
@@ -453,7 +467,11 @@ def check_staleness(
                 )
             )
 
-    return StalenessReport(help_entries=help_entries, doc_entries=doc_entries)
+    return StalenessReport(
+        help_entries=help_entries,
+        doc_entries=doc_entries,
+        manual_features=manual_features,
+    )
 
 
 def check_workspace_staleness(

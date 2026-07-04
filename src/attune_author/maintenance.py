@@ -116,7 +116,10 @@ def run_maintenance(
     manifest = load_manifest(help_dir)
     report = check_staleness(manifest, help_dir, project_root, features)
 
-    result = MaintenanceResult(staleness=report)
+    result = MaintenanceResult(
+        staleness=report,
+        skipped_manual=list(report.manual_features),
+    )
 
     if dry_run or report.stale_count == 0:
         return result
@@ -302,9 +305,13 @@ def format_status_report(
 
     help_stale = sum(1 for e in report.help_entries if e.is_stale)
     help_current = sum(1 for e in report.help_entries if not e.is_stale)
+    manual_count = len(report.manual_features)
 
     lines = ["## Help Templates\n"]
-    lines.append(f"**{help_current}** current, **{help_stale}** stale\n")
+    summary = f"**{help_current}** current, **{help_stale}** stale"
+    if manual_count:
+        summary += f", **{manual_count}** manual (not tracked)"
+    lines.append(summary + "\n")
 
     if help_stale > 0:
         lines.append("### Stale\n")
@@ -326,6 +333,11 @@ def format_status_report(
                     lines.append(f"- **{entry.feature}** — {preamble}\n")
                 else:
                     lines.append(f"- {entry.feature}\n")
+        lines.append("")
+
+    if report.manual_features:
+        lines.append("### Manual (single-sourced, not hash-tracked)\n")
+        lines.append(", ".join(sorted(report.manual_features)) + "\n")
         lines.append("")
 
     # --- Project Docs section (only shown when doc entries exist) ---
