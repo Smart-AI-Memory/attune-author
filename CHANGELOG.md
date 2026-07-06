@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.23.1] — 2026-07-06
+
+Commit-hook hardening — commits made from inside Claude Code no
+longer burn a doomed subscription LLM call and dump a traceback;
+polish failures no longer abort the regen loop.
+
 ### Fixed
 
 - **Commit hook no longer burns a doomed LLM call (and dumps a
