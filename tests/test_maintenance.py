@@ -263,7 +263,8 @@ class TestRunHook:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.delenv(AUTH_MODE_ENV, raising=False)
         (project_root / ".env").write_text(
-            "ANTHROPIC_API_KEY=sk-ant-from-dotenv\n", encoding="utf-8"
+            "ANTHROPIC_API_KEY=sk-ant-from-dotenv\n",  # pragma: allowlist secret
+            encoding="utf-8",
         )
 
         with patch(
@@ -282,6 +283,47 @@ class TestRunHook:
         assert result is not None
         assert result.regenerated_count > 0
         assert os.environ.get(AUTH_MODE_ENV) == "api"
+
+    def test_nested_keyless_all_current_skips_warning(
+        self, help_dir: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Keyless nested path with nothing stale reports quietly."""
+        # Bring everything current first (lenient polish, no LLM).
+        run_maintenance(help_dir=help_dir, project_root=project_root)
+
+        monkeypatch.setenv("CLAUDECODE", "1")
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+        with patch(
+            "attune_author.maintenance.get_changed_files",
+            return_value=["src/auth/login.py"],
+        ):
+            result = run_hook(help_dir=help_dir, project_root=project_root)
+
+        assert result is not None
+        assert result.stale_count == 0
+        assert result.regenerated_count == 0
+
+    def test_survives_missing_dotenv_package(
+        self, help_dir: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """run_hook works when python-dotenv is not installed."""
+        import sys
+
+        monkeypatch.setitem(sys.modules, "dotenv", None)
+
+        with patch(
+            "attune_author.maintenance.get_changed_files",
+            return_value=["src/auth/login.py"],
+        ):
+            with patch(
+                "attune_author.maintenance.generate_feature_templates",
+                return_value=MagicMock(templates=[], feature="auth"),
+            ):
+                result = run_hook(help_dir=help_dir, project_root=project_root)
+
+        assert result is not None
+        assert result.regenerated_count > 0
 
     def test_returns_none_on_invalid_manifest(self, tmp_path: Path) -> None:
         """Test None when manifest has invalid structure."""
