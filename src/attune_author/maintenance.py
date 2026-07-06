@@ -8,6 +8,7 @@ templates.
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -128,7 +129,7 @@ def run_maintenance(
     # reflects this regen rather than carrying state across runs.
     from attune_author.auth import reset_auth_telemetry
     from attune_author.generator import reset_faithfulness_telemetry
-    from attune_author.polish import reset_polish_cache_telemetry
+    from attune_author.polish import PolishError, reset_polish_cache_telemetry
 
     reset_auth_telemetry()
     reset_faithfulness_telemetry()
@@ -154,7 +155,10 @@ def run_maintenance(
                 len(gen_result.templates),
                 entry.feature,
             )
-        except OSError as e:
+        except (OSError, PolishError) as e:
+            # PolishError is per-feature too: one feature's failed
+            # LLM polish (strict mode) must not abort the remaining
+            # stale features' regeneration.
             logger.error(
                 "Failed to regenerate '%s': %s",
                 entry.feature,
@@ -241,6 +245,17 @@ def run_hook(
     against the feature manifest, and regenerates templates
     for affected features only.
 
+    Loads the project's ``.env`` (like ``cli.main()`` does) so the
+    polish pass finds ``ANTHROPIC_API_KEY`` even though the hook
+    bypasses the CLI entry point. When the commit happens inside a
+    Claude Code session (``CLAUDECODE=1``), polish is pinned to the
+    API-key route: the claude-in-claude subscription call completes
+    the turn but dies on subprocess teardown (cost incurred, result
+    discarded — see attune-ai project_sdk_workflows_blocked_nested),
+    so auto mode's sub-first routing must not be attempted. If no
+    API key is available either, the hook degrades to a dry-run
+    staleness report instead of burning a doomed LLM call.
+
     Args:
         help_dir: Path to the .help/ directory.
         project_root: Project root directory.
@@ -253,6 +268,16 @@ def run_hook(
     help_path = Path(help_dir)
     if not (help_path / "features.yaml").exists():
         return None
+
+    # The hook enters here directly (python -c), skipping cli.main()
+    # and its load_dotenv() — without this the repo-root .env key is
+    # invisible and polish has no credentials.
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(Path(project_root) / ".env")
+    except ImportError:
+        pass
 
     changed = get_changed_files(project_root)
     if not changed:
@@ -274,6 +299,40 @@ def run_hook(
         len(affected_names),
         ", ".join(affected_names),
     )
+
+    if os.environ.get("CLAUDECODE") == "1":
+        from attune_author.auth import AUTH_MODE_ENV, api_key_available
+
+        if api_key_available():
+            # setdefault: an explicit ATTUNE_AUTHOR_AUTH_MODE (e.g. a
+            # forced "sub") still wins over this nested-session guard.
+            os.environ.setdefault(AUTH_MODE_ENV, "api")
+            if os.environ.get(AUTH_MODE_ENV) == "api":
+                # The session exports the Claude Code gateway URL,
+                # which the anthropic SDK would silently honor —
+                # sending the raw key to the gateway instead of
+                # api.anthropic.com. Scrub it (and the gateway auth
+                # token) for this short-lived hook process; this is
+                # the confirmed claude-in-claude workaround.
+                os.environ.pop("ANTHROPIC_BASE_URL", None)
+                os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
+        else:
+            result = run_maintenance(
+                help_dir=help_dir,
+                project_root=project_root,
+                features=affected_names,
+                dry_run=True,
+            )
+            if result.stale_count:
+                logger.warning(
+                    "%d stale feature(s) NOT regenerated: commit ran inside a "
+                    "Claude Code session with no ANTHROPIC_API_KEY, where the "
+                    "nested subscription route spends a call and then discards "
+                    "the result. Set ANTHROPIC_API_KEY (e.g. in .env) or run "
+                    "`attune-author regenerate` from a plain terminal.",
+                    result.stale_count,
+                )
+            return result
 
     return run_maintenance(
         help_dir=help_dir,
