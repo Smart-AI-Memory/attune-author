@@ -10,6 +10,27 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **Commit hook no longer burns a doomed LLM call (and dumps a
+  traceback) when committing from inside Claude Code.** `run_hook()`
+  entered via `python -c` bypassed `cli.main()`'s `load_dotenv()`,
+  so the repo-root `.env` key was invisible and auto mode attempted
+  the subscription route — which, nested claude-in-claude, completes
+  the turn (cost incurred) and then dies on subprocess teardown,
+  aborting the regen with a `PolishError` traceback on every commit.
+  `run_hook()` now loads the project `.env` itself; when
+  `CLAUDECODE=1` it pins polish to the API-key route (scrubbing the
+  session's `ANTHROPIC_BASE_URL` gateway var so the raw key reaches
+  `api.anthropic.com`), and with no key at all it degrades to a
+  dry-run staleness report with a one-line warning instead of
+  crashing. An explicit `ATTUNE_AUTHOR_AUTH_MODE` still wins.
+- **One feature's polish failure no longer aborts the whole regen
+  loop.** `run_maintenance()` caught only `OSError` per feature, so
+  a strict-mode `PolishError` short-circuited every remaining stale
+  feature; it is now caught per feature and recorded in
+  `MaintenanceResult.failed`.
+
 ## [0.23.0] — 2026-07-04
 
 Manifest-level `status: manual` awareness — staleness, status
