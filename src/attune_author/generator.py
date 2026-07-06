@@ -29,7 +29,11 @@ from attune_author.maintenance_contract import (
     resolve_write_content,
 )
 from attune_author.manifest import Feature, is_safe_feature_name
-from attune_author.staleness import compute_source_hash
+from attune_author.staleness import (
+    EMPTY_SOURCE_SHA256,
+    EmptySourceError,
+    compute_source_hash,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -461,9 +465,46 @@ def prepare_polish_phase(
         raise ValueError(f"Invalid feature name: {feature.name!r}")
 
     source_hash, matched_files = compute_source_hash(feature, root)
+    template_dir = help_path / "templates" / feature.name
+
+    if not matched_files or source_hash == EMPTY_SOURCE_SHA256:
+        # Empty resolved source is fine for scaffolding a brand-new
+        # feature (no templates on disk yet), but must never OVERWRITE
+        # existing content: the 2026-07-05 incident regen ran against a
+        # wrong project root, resolved every glob to nothing, and
+        # rewrote 36 good templates with degraded empty-source output.
+        at_risk = []
+        for depth in target_depths:
+            if depth not in _ALL_TEMPLATE_NAMES:
+                continue
+            if depth in _PROJECT_DOC_NAMES:
+                out = _project_doc_output_path(depth, feature, root)
+            else:
+                out = template_dir / f"{depth}.md"
+            if out.exists():
+                at_risk.append(str(out))
+        detail = (
+            "no files matched its source globs"
+            if not matched_files
+            else f"all {len(matched_files)} matched file(s) resolved to empty/unreadable content"
+        )
+        if at_risk:
+            raise EmptySourceError(
+                f"Refusing to regenerate templates for '{feature.name}': {detail} "
+                f"under project root {root} (globs: {list(feature.files)!r}), "
+                f"but generated output already exists ({', '.join(at_risk)}). "
+                "Overwriting it from empty source would replace good templates "
+                "with degraded content stamped with the empty-string source_hash "
+                "— check that --project-root points at the repo checkout."
+            )
+        logger.warning(
+            "Scaffolding '%s' from empty source (%s under %s); " "no existing templates at risk",
+            feature.name,
+            detail,
+            root,
+        )
     source_info = _extract_source_info(matched_files, root)
 
-    template_dir = help_path / "templates" / feature.name
     template_dir.mkdir(parents=True, exist_ok=True)
 
     env = _build_jinja_env(help_path)
@@ -1315,7 +1356,9 @@ def _string_collection_values(node: ast.expr) -> list[str] | None:
     return out
 
 
-def _extract_module_constant(node: ast.Assign | ast.AnnAssign) -> dict[str, object] | None:
+def _extract_module_constant(
+    node: ast.Assign | ast.AnnAssign,
+) -> dict[str, object] | None:
     """Return a structured record for a module-level string constant.
 
     Recognizes four shapes that users routinely ask about:
@@ -1420,7 +1463,13 @@ def _extract_class_properties(node: ast.ClassDef) -> list[dict[str, str]]:
         if not _has_property_decorator(child):
             continue
         ret = _unparse_annotation(child.returns) if child.returns else ""
-        props.append({"name": child.name, "return_type": ret, "doc": _docstring_first_line(child)})
+        props.append(
+            {
+                "name": child.name,
+                "return_type": ret,
+                "doc": _docstring_first_line(child),
+            }
+        )
     return props
 
 
@@ -1429,7 +1478,10 @@ def _has_property_decorator(node: ast.FunctionDef | ast.AsyncFunctionDef) -> boo
     for dec in node.decorator_list:
         if isinstance(dec, ast.Name) and dec.id == "property":
             return True
-        if isinstance(dec, ast.Attribute) and dec.attr in ("property", "abstractproperty"):
+        if isinstance(dec, ast.Attribute) and dec.attr in (
+            "property",
+            "abstractproperty",
+        ):
             return True
     return False
 

@@ -9,6 +9,8 @@ __version__ = "0.25.0"
 
 from attune_author.manifest import Feature, Manifest, load_manifest
 from attune_author.staleness import (
+    EMPTY_SOURCE_SHA256,
+    EmptySourceError,
     StalenessReport,
     check_staleness,
     check_workspace_staleness,
@@ -21,6 +23,8 @@ __all__ = [
     "Manifest",
     "load_manifest",
     # Staleness
+    "EMPTY_SOURCE_SHA256",
+    "EmptySourceError",
     "StalenessReport",
     "check_staleness",
     "check_workspace_staleness",
