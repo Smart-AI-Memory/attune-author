@@ -60,9 +60,7 @@ class TestBuildSourceSummary:
 
     def test_truncates_long_lists(self) -> None:
         """Test that long lists are truncated."""
-        many_classes = [
-            {"name": f"Class{i}", "doc": "", "file": "f.py"} for i in range(20)
-        ]
+        many_classes = [{"name": f"Class{i}", "doc": "", "file": "f.py"} for i in range(20)]
         result = build_source_summary(
             public_classes=many_classes,
             public_functions=[],
@@ -94,8 +92,11 @@ class TestPolishTemplate:
         """Test fallback to original when LLM call fails in lenient mode."""
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.side_effect = RuntimeError("API down")
                 content = "# Test\nOriginal."
@@ -157,8 +158,11 @@ class TestPolishTemplate:
         """
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.return_value = "# Test\nPolished content."
                 result = polish_template("orig", "test", "summary")
@@ -176,8 +180,11 @@ class TestPolishTemplate:
 
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = _call_llm("content", "feature", "summary", "concept")
 

@@ -69,9 +69,7 @@ class TestPerTypePrompts:
             ("faq", "plain language"),
         ],
     )
-    def test_kind_guidance_differentiates_prompts(
-        self, kind: str, expected_phrase: str
-    ) -> None:
+    def test_kind_guidance_differentiates_prompts(self, kind: str, expected_phrase: str) -> None:
         """Each kind-specific prompt contains a phrase that
         uniquely identifies its intent — guards against
         silent regression to the pre-PR 2 single prompt.
@@ -99,9 +97,7 @@ class TestPerTypePrompts:
         for kind, patterns in ANTI_PATTERNS.items():
             prompt = SYSTEM_PROMPTS[kind]
             for phrase in patterns:
-                assert (
-                    phrase in prompt
-                ), f"{kind}: anti-pattern {phrase!r} missing from prompt"
+                assert phrase in prompt, f"{kind}: anti-pattern {phrase!r} missing from prompt"
 
 
 # ---------------------------------------------------------
@@ -182,9 +178,7 @@ class TestStrictMode:
             )
             assert result == "original"
 
-    @pytest.mark.parametrize(
-        "value", ["", "1", "true", "TRUE", "yes", "Yes", "on", "maybe"]
-    )
+    @pytest.mark.parametrize("value", ["", "1", "true", "TRUE", "yes", "Yes", "on", "maybe"])
     def test_env_var_defaults_to_strict(self, value: str) -> None:
         """Unset, truthy, or unrecognized env-var values keep
         strict mode on. Strict is the default; the env var
@@ -206,8 +200,11 @@ class TestStrictMode:
         """
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.side_effect = ValueError("sdk blew up")
                 with pytest.raises(PolishError) as exc_info:
@@ -298,8 +295,11 @@ class TestPolishTemplateUsesPerTypePrompt:
 
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 _call_llm("content", "feature", "summary", "troubleshooting")
 
@@ -330,8 +330,11 @@ class TestPolishTemplateUsesPerTypePrompt:
 
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 _call_llm("content", "myfeature", "summary", "warning")
 
@@ -627,8 +630,11 @@ class TestSanitizeOutput:
         """
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.return_value = "# Polished  \n\nBody  \n"
                 result = polish_template(

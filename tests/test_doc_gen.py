@@ -44,9 +44,7 @@ class TestParseOutlineSections:
 
     def test_parses_numbered_sections(self) -> None:
         """Test parsing top-level numbered sections."""
-        outline = (
-            "1. Introduction\n" "   1.1 Background\n" "2. Setup\n" "3. API Reference\n"
-        )
+        outline = "1. Introduction\n" "   1.1 Background\n" "2. Setup\n" "3. API Reference\n"
         sections = parse_outline_sections(outline)
         assert sections == ["Introduction", "Setup", "API Reference"]
 
@@ -173,8 +171,11 @@ class TestGenerateDocs:
 
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = generate_docs("def foo(): pass")
 
@@ -194,8 +195,11 @@ class TestGenerateDocs:
 
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = generate_docs(str(source_file))
 
@@ -216,8 +220,11 @@ class TestGenerateDocs:
 
         with patch.dict(
             "os.environ",
-            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
-        ):  # pragma: allowlist secret
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 generate_docs("source", output_path=str(out))
 
