@@ -7,8 +7,9 @@ caught by tests/test_model_tiers_drift.py.
 
 from __future__ import annotations
 
+import logging
+
 import pytest
-from structlog.testing import capture_logs
 
 from attune_author.model_tiers import (
     _DEFAULTS,
@@ -54,21 +55,21 @@ class TestResolveModel:
         monkeypatch.setenv(_ENV["cheap"], "claude-haiku-4-5-20251001")
         assert resolve_model("cheap") == "claude-haiku-4-5-20251001"
 
-    def test_unknown_override_warns_but_is_honored(self, monkeypatch):
+    def test_unknown_override_warns_but_is_honored(self, monkeypatch, caplog):
         monkeypatch.setenv(_ENV["premium"], "claude-tpyo-9")
-        with capture_logs() as logs:
+        with caplog.at_level(logging.WARNING, logger="attune_author.model_tiers"):
             assert resolve_model("premium") == "claude-tpyo-9"
-        warnings = [e for e in logs if e["log_level"] == "warning"]
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
         assert len(warnings) == 1
-        assert warnings[0]["model"] == "claude-tpyo-9"
-        assert warnings[0]["tier"] == "premium"
-        assert warnings[0]["env_var"] == _ENV["premium"]
+        assert "claude-tpyo-9" in warnings[0].getMessage()
+        assert "tier=premium" in warnings[0].getMessage()
+        assert _ENV["premium"] in warnings[0].getMessage()
 
-    def test_known_override_does_not_warn(self, monkeypatch):
+    def test_known_override_does_not_warn(self, monkeypatch, caplog):
         monkeypatch.setenv(_ENV["premium"], "claude-sonnet-5")
-        with capture_logs() as logs:
+        with caplog.at_level(logging.WARNING, logger="attune_author.model_tiers"):
             assert resolve_model("premium") == "claude-sonnet-5"
-        assert not [e for e in logs if e["log_level"] == "warning"]
+        assert not [r for r in caplog.records if r.levelno == logging.WARNING]
 
     def test_unknown_tier_raises_value_error(self):
         with pytest.raises(ValueError, match="unknown model tier 'turbo'"):
