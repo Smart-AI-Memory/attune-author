@@ -75,30 +75,36 @@ class TestCacheKeyIncludesModel:
     """
 
     def test_model_change_invalidates_cache(self, cache_dir: Path) -> None:
-        """Changing _POLISH_MODEL produces a different key for the
-        same content/summary/template_type/system_prompt/context.
+        """Changing the resolved polish model (via the premium-tier env
+        pin) produces a different key for the same
+        content/summary/template_type/system_prompt/context.
         """
         from attune_author import polish
 
-        # First call with the production model produces a key K1.
-        with patch.object(polish, "_POLISH_MODEL", "claude-old"):
-            with patch("attune_author.polish._call_llm", return_value="from old"):
-                with patch.dict(
-                    "os.environ",
-                    {"ANTHROPIC_API_KEY": "fake"},  # pragma: allowlist secret
-                ):
-                    out_old = polish.polish_template("# T", "feat", "sum", template_type="concept")
+        # First call with one model pin produces a key K1. The pins are
+        # unknown model ids — resolve_model honors them with a warning.
+        with patch("attune_author.polish._call_llm", return_value="from old"):
+            with patch.dict(
+                "os.environ",
+                {
+                    "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                    "ATTUNE_MODEL_PREMIUM": "claude-old",
+                },
+            ):
+                out_old = polish.polish_template("# T", "feat", "sum", template_type="concept")
         assert out_old.startswith("from old")
 
         # Second call with a different model must miss the cache —
         # the LLM mock returns a different value, which we observe.
-        with patch.object(polish, "_POLISH_MODEL", "claude-new"):
-            with patch("attune_author.polish._call_llm", return_value="from new"):
-                with patch.dict(
-                    "os.environ",
-                    {"ANTHROPIC_API_KEY": "fake"},  # pragma: allowlist secret
-                ):
-                    out_new = polish.polish_template("# T", "feat", "sum", template_type="concept")
+        with patch("attune_author.polish._call_llm", return_value="from new"):
+            with patch.dict(
+                "os.environ",
+                {
+                    "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                    "ATTUNE_MODEL_PREMIUM": "claude-new",
+                },
+            ):
+                out_new = polish.polish_template("# T", "feat", "sum", template_type="concept")
         assert out_new.startswith(
             "from new"
         ), "model change should invalidate cache key, but a stale entry was served"

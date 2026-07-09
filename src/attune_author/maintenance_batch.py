@@ -306,7 +306,6 @@ def _build_polish_request(
     path calls, so the wire-level prompts are byte-identical.
     """
     from attune_author.polish import (
-        _POLISH_MODEL,
         POLISH_CACHE_SYSTEM,
         POLISH_MAX_TOKENS,
         build_polish_prompt,
@@ -326,10 +325,30 @@ def _build_polish_request(
         depth=depth,
         system=system,
         user_message=user,
-        model=_POLISH_MODEL,
+        model=_batch_polish_model(),
         max_tokens=POLISH_MAX_TOKENS,
         cache_system=POLISH_CACHE_SYSTEM,
     )
+
+
+def _batch_polish_model() -> str:
+    """Premium tier for batch polish, with fable swapped for its fallback.
+
+    The Batch API rejects the ``fallbacks`` param (beta, non-batch
+    only), so a fable model submitted here would run with no
+    server-side fallback and an unhandled per-item refusal story.
+    Until the companion spec settles batch refusal handling (see
+    specs/fable-model-tiers task 11 notes in the attune workspace
+    repo), batch premium uses the fallback target directly:
+    opus-4-8. An ``ATTUNE_MODEL_PREMIUM`` pin to any non-fable model
+    (e.g. CI's sonnet-5) is honored as-is.
+    """
+    from attune_author.model_tiers import fable_extras, resolve_model
+
+    model = resolve_model("premium")
+    if fable_extras(model):
+        return "claude-opus-4-8"
+    return model
 
 
 def _collect_polish_prompts(

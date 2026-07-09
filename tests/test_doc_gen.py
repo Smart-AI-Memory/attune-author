@@ -44,7 +44,9 @@ class TestParseOutlineSections:
 
     def test_parses_numbered_sections(self) -> None:
         """Test parsing top-level numbered sections."""
-        outline = "1. Introduction\n" "   1.1 Background\n" "2. Setup\n" "3. API Reference\n"
+        outline = (
+            "1. Introduction\n" "   1.1 Background\n" "2. Setup\n" "3. API Reference\n"
+        )
         sections = parse_outline_sections(outline)
         assert sections == ["Introduction", "Setup", "API Reference"]
 
@@ -169,7 +171,10 @@ class TestGenerateDocs:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
+        ):  # pragma: allowlist secret
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = generate_docs("def foo(): pass")
 
@@ -187,7 +192,10 @@ class TestGenerateDocs:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
+        ):  # pragma: allowlist secret
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = generate_docs(str(source_file))
 
@@ -206,7 +214,10 @@ class TestGenerateDocs:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {"ANTHROPIC_API_KEY": "fake", "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6"},
+        ):  # pragma: allowlist secret
             with patch("anthropic.Anthropic", return_value=mock_client):
                 generate_docs("source", output_path=str(out))
 

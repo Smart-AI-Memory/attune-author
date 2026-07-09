@@ -16,6 +16,7 @@ import time
 from typing import TYPE_CHECKING
 
 from attune_author.doc_gen._cache import cache_control
+from attune_author.model_tiers import ModelRefusalError, fable_extras
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,6 +24,11 @@ if TYPE_CHECKING:
     from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)
+
+_RETENTION_HINT = (
+    "claude-fable-5 requires >=30-day org data retention - check the org's "
+    "retention configuration before debugging the payload."
+)
 
 _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 1.0  # seconds; doubles each attempt
@@ -157,6 +163,11 @@ def call_anthropic(
     else:
         system_payload = system
 
+    # Premium-tier (fable) calls carry the server-side-fallback opt-in
+    # and must go through the beta namespace — the ``fallbacks`` param
+    # is beta-only. Non-fable models keep the exact pre-tier payload.
+    extras = fable_extras(model)
+
     last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES + 1):
         if attempt:
@@ -170,18 +181,35 @@ def call_anthropic(
             )
             time.sleep(delay)
         try:
-            response = client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                system=system_payload,
-                messages=[{"role": "user", "content": user_message}],
-            )
+            request_kwargs = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "system": system_payload,
+                "messages": [{"role": "user", "content": user_message}],
+            }
+            if extras:
+                response = client.beta.messages.create(**request_kwargs, **extras)
+            else:
+                response = client.messages.create(**request_kwargs)
+            if extras and getattr(response, "stop_reason", None) == "refusal":
+                details = getattr(response, "stop_details", None)
+                raise ModelRefusalError(
+                    f"model {model} refused the request "
+                    "(the entire server-side fallback chain refused)",
+                    category=_stop_detail(details, "category"),
+                    explanation=_stop_detail(details, "explanation"),
+                )
             creation, read = _log_cache_usage(response, model)
             if on_cache_usage is not None:
                 on_cache_usage(creation, read, model)
             if response.content:
                 return response.content[0].text
             return ""
+        except ModelRefusalError:
+            # Not transport noise: the model (and its whole fallback
+            # chain) declined. Carries no credential material — no
+            # redaction wrap; callers surface it, never silently skip.
+            raise
         except Exception as exc:  # noqa: BLE001
             # INTENTIONAL: every SDK exception type funnels through
             # one redaction pass so credential material can't leak
@@ -191,9 +219,19 @@ def call_anthropic(
             if _is_retryable(exc):
                 last_exc = exc
                 continue
-            raise AnthropicCallError(_redact(str(exc))) from None
+            message = _redact(str(exc))
+            if extras and getattr(exc, "status_code", None) == 400:
+                message = f"{message}\n{_RETENTION_HINT}"
+            raise AnthropicCallError(message) from None
 
     raise AnthropicCallError(_redact(str(last_exc))) from None
+
+
+def _stop_detail(details: object, key: str) -> str | None:
+    """Read a ``stop_details`` field from either an object or a raw dict."""
+    if isinstance(details, dict):
+        return details.get(key)
+    return getattr(details, key, None)
 
 
 def _log_cache_usage(response: object, model: str) -> tuple[int, int]:

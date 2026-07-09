@@ -1,10 +1,12 @@
 """Smoke test pinning the polish wire-level model name.
 
 Lives outside the broader polish test suite specifically to
-catch the next model-rename failure immediately. When Anthropic
-deprecates the current model alias and we need to bump
-`_POLISH_MODEL` again, this test fires a clear "the wire
-contract is stale" signal so the bump is mechanical.
+catch the next model-change failure immediately. The polish model
+is now the premium *tier* (specs/fable-model-tiers): the default
+comes from ``attune_author.model_tiers`` and is overridable via
+``ATTUNE_MODEL_PREMIUM``. When the tier default is bumped again,
+this test fires a clear "the wire contract is stale" signal so
+the bump is mechanical.
 
 The test mocks at ``attune_author.doc_gen._anthropic.call_anthropic``
 so no API tokens are spent.
@@ -16,36 +18,47 @@ from unittest.mock import patch
 
 import pytest
 
-from attune_author.polish import _POLISH_MODEL, polish_template
+from attune_author.polish import _polish_model, polish_template
 
-# The current value the codebase is pinned to. Update *both* this
-# constant and `_POLISH_MODEL` together when migrating; the
-# co-located assertion catches half-migrations where someone
-# bumps one and forgets the other.
-_EXPECTED_MODEL = "claude-sonnet-4-6"
+# The current premium-tier default the codebase is pinned to. Update
+# *both* this constant and model_tiers._DEFAULTS["premium"] together
+# when migrating; the co-located assertion catches half-migrations
+# where someone bumps one and forgets the other.
+_EXPECTED_MODEL = "claude-fable-5"
 
 
-def test_polish_model_constant_matches_expected() -> None:
-    """Sentinel: ``_POLISH_MODEL`` is the model alias we expect.
+def test_polish_model_matches_expected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sentinel: the resolved polish model is the alias we expect.
 
-    Failure mode: someone bumped the constant in source without
-    bumping ``_EXPECTED_MODEL`` here. Update both together.
+    Failure mode: someone bumped the premium tier default in
+    ``model_tiers`` without bumping ``_EXPECTED_MODEL`` here.
+    Update both together.
     """
-    assert _POLISH_MODEL == _EXPECTED_MODEL
+    monkeypatch.delenv("ATTUNE_MODEL_PREMIUM", raising=False)
+    assert _polish_model() == _EXPECTED_MODEL
 
 
-def test_polish_template_calls_sdk_with_expected_model() -> None:
+def test_polish_model_respects_premium_env_pin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The CI sonnet pin (rag-gate.yml) must reach the polish path."""
+    monkeypatch.setenv("ATTUNE_MODEL_PREMIUM", "claude-sonnet-5")
+    assert _polish_model() == "claude-sonnet-5"
+
+
+def test_polish_template_calls_sdk_with_expected_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Wire-contract test: the model passed to ``call_anthropic``
-    matches ``_POLISH_MODEL`` (and thus our expected alias).
+    matches the resolved premium tier (and thus our expected alias).
 
-    Pinning the wire-level call shape — not just the constant —
-    catches refactors that bypass the constant or pin the
+    Pinning the wire-level call shape — not just the resolver —
+    catches refactors that bypass the tier module or pin the
     model elsewhere in the call site.
 
     Forces a cache miss via patched ``_cache_get`` so the LLM
     call path always runs (otherwise on a hot polish cache the
     SDK never gets called).
     """
+    monkeypatch.delenv("ATTUNE_MODEL_PREMIUM", raising=False)
     with patch("attune_author.polish._cache_get", return_value=None):
         with patch(
             "attune_author.doc_gen._anthropic.call_anthropic", return_value="polished body"
@@ -67,47 +80,47 @@ def test_polish_template_calls_sdk_with_expected_model() -> None:
     kwargs = mock_call.call_args.kwargs
     assert kwargs["model"] == _EXPECTED_MODEL, (
         f"polish call went out with model={kwargs['model']!r}, "
-        f"expected {_EXPECTED_MODEL!r}. If the model was intentionally bumped, "
-        "update _EXPECTED_MODEL in tests/test_polish_smoke.py."
+        f"expected {_EXPECTED_MODEL!r}. If the premium tier was intentionally "
+        "bumped, update _EXPECTED_MODEL in tests/test_polish_smoke.py."
     )
 
 
-def test_polish_template_uses_constant_not_hardcoded() -> None:
-    """Belt-and-suspenders: re-pinning ``_POLISH_MODEL`` to a
-    different value flows through to the SDK call.
-
-    If someone hard-codes a model name at the call site instead
-    of reading the constant, this test fails because the call
-    will use the constant we monkey-patched but the assertion
-    expects the new value.
+def test_polish_template_env_pin_flows_to_sdk_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Belt-and-suspenders: pinning ``ATTUNE_MODEL_PREMIUM`` flows
+    through to the SDK call — resolution is per call, not a
+    hard-coded model name at the call site.
     """
-    sentinel = "claude-test-sentinel-9"
+    monkeypatch.setenv("ATTUNE_MODEL_PREMIUM", "claude-opus-4-8")
     with patch("attune_author.polish._cache_get", return_value=None):
-        with patch("attune_author.polish._POLISH_MODEL", sentinel):
-            with patch(
-                "attune_author.doc_gen._anthropic.call_anthropic", return_value="ok"
-            ) as mock_call:
-                with patch("attune_author.doc_gen._anthropic.get_client") as mock_client:
-                    mock_client.return_value = object()
-                    polish_template(
-                        content="# X\n\nY\n",
-                        feature_name="x",
-                        source_summary="",
-                        template_type="concept",
-                        strict=True,
-                    )
+        with patch(
+            "attune_author.doc_gen._anthropic.call_anthropic", return_value="ok"
+        ) as mock_call:
+            with patch("attune_author.doc_gen._anthropic.get_client") as mock_client:
+                mock_client.return_value = object()
+                polish_template(
+                    content="# X\n\nY\n",
+                    feature_name="x",
+                    source_summary="",
+                    template_type="concept",
+                    strict=True,
+                )
 
-    assert mock_call.call_args.kwargs["model"] == sentinel
+    assert mock_call.call_args.kwargs["model"] == "claude-opus-4-8"
 
 
-def test_doc_gen_config_default_model_matches_expected() -> None:
+def test_doc_gen_config_default_model_matches_expected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Same sentinel for the second polish-adjacent code path:
     the `attune-author docs` subcommand uses `DocGenConfig.model`
-    as its default model. Bumps must keep it aligned with the
-    polish constant.
+    as its default model. Both resolve the premium tier, so they
+    track together by construction.
     """
     from attune_author.doc_gen import DocGenConfig
 
+    monkeypatch.delenv("ATTUNE_MODEL_PREMIUM", raising=False)
     assert DocGenConfig().model == _EXPECTED_MODEL, (
         f"DocGenConfig default model is {DocGenConfig().model!r}, "
         f"expected {_EXPECTED_MODEL!r}. The two model pins should track together."
@@ -120,11 +133,16 @@ def test_doc_gen_config_default_model_matches_expected() -> None:
         # Historical: previously-pinned model that hit EOL 2026-06-15.
         # Re-using this list as a regression seed if we ever migrate again.
         "claude-sonnet-4-20250514",
+        # Pre-tier pin replaced by the premium tier (specs/fable-model-tiers).
+        "claude-sonnet-4-6",
     ],
 )
-def test_no_deprecated_model_aliases_in_constants(deprecated_alias: str) -> None:
+def test_no_deprecated_model_aliases_in_defaults(
+    deprecated_alias: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Ensure deprecated aliases don't sneak back via copy-paste."""
     from attune_author.doc_gen import DocGenConfig
 
-    assert _POLISH_MODEL != deprecated_alias
+    monkeypatch.delenv("ATTUNE_MODEL_PREMIUM", raising=False)
+    assert _polish_model() != deprecated_alias
     assert DocGenConfig().model != deprecated_alias
