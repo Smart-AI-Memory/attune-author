@@ -40,7 +40,7 @@ def test_fable_routes_to_beta_namespace_with_extras() -> None:
     client.messages.create.assert_not_called()
     kwargs = client.beta.messages.create.call_args.kwargs
     assert kwargs["betas"] == ["server-side-fallback-2026-06-01"]
-    assert kwargs["fallbacks"] == [{"model": "claude-opus-4-8"}]
+    assert kwargs["extra_body"] == {"fallbacks": [{"model": "claude-opus-4-8"}]}
     assert kwargs["model"] == "claude-fable-5"
 
 
@@ -57,7 +57,7 @@ def test_non_fable_keeps_plain_namespace_and_payload() -> None:
     client.beta.messages.create.assert_not_called()
     kwargs = client.messages.create.call_args.kwargs
     assert "betas" not in kwargs
-    assert "fallbacks" not in kwargs
+    assert "extra_body" not in kwargs
 
 
 def test_fable_refusal_raises_model_refusal_error_not_wrapped() -> None:
