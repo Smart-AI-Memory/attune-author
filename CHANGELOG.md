@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.24.0] — 2026-07-09
+
+Model tiers: the premium tier (claude-fable-5, server-side opus-4-8
+fallback) reaches polish, doc-gen, and the faithfulness judge, with a
+drift-tested mirror of attune-rag's canonical tier module.
+
 ### Added
 
 - **Model tiers (premium)** — specs/fable-model-tiers (attune
