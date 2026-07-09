@@ -51,7 +51,7 @@ ai = ["anthropic>=0.40.0", "claude-agent-sdk>=0.1.60"]
 # opt-out via --no-rag or ATTUNE_AUTHOR_RAG=0). Optional
 # so authors who don't want the dep avoid it. Lazy-imported
 # inside attune_author.rag_hook; core import is unaffected.
-rag = ["attune-rag>=0.1.0,<0.8"]
+rag = ["attune-rag>=0.8.0,<0.9"]
 plugin = [
     "mcp>=0.9.0",
     "anthropic>=0.40.0",
