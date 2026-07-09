@@ -223,7 +223,7 @@ class TestPolishWiring:
             )
         assert result == "routed"
         kwargs = cl.call_args.kwargs
-        assert kwargs["model"] == polish._POLISH_MODEL
+        assert kwargs["model"] == polish._polish_model()
         assert kwargs["max_tokens"] == polish.POLISH_MAX_TOKENS
 
 

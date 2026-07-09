@@ -169,7 +169,13 @@ class TestGenerateDocs:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = generate_docs("def foo(): pass")
 
@@ -187,7 +193,13 @@ class TestGenerateDocs:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = generate_docs(str(source_file))
 
@@ -206,7 +218,13 @@ class TestGenerateDocs:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 generate_docs("source", output_path=str(out))
 

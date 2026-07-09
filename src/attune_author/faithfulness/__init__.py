@@ -25,19 +25,24 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from attune_author.model_tiers import resolve_model
 
 logger = logging.getLogger(__name__)
 
 
-#: Approximate cost per 1K input tokens for the judge model
-#: (Haiku 4.5 default). The dict keys match the substrings we
-#: search for in the model id; first match wins.
+#: Approximate cost per 1K input tokens for the judge model.
+#: The dict keys match the substrings we search for in the model
+#: id; first match wins. "fable" uses opus-class rates — the
+#: conservative assumption for the budget gate until real fable
+#: pricing telemetry says otherwise.
 _COST_PER_1K_INPUT_TOKENS: dict[str, float] = {
     "haiku": 0.001,
     "sonnet": 0.003,
     "opus": 0.015,
+    "fable": 0.015,
 }
 
 #: Approximate output-token cost. Output is typically ~1/5 of
@@ -47,6 +52,7 @@ _COST_PER_1K_OUTPUT_TOKENS: dict[str, float] = {
     "haiku": 0.005,
     "sonnet": 0.015,
     "opus": 0.075,
+    "fable": 0.075,
 }
 
 #: Rough character-per-token estimate used to convert sizes to
@@ -68,9 +74,9 @@ class FaithfulnessConfig:
         budget_per_file_usd: Skip the judge call when the estimated
             cost (input + output tokens × model price) would exceed
             this. Default ``$0.10`` matches the spec.
-        model: Judge model name. Defaults to the attune-rag default
-            (Sonnet 4.6); Haiku 4.5 is roughly 1/3 the cost and
-            usable for high-volume runs.
+        model: Judge model name. Defaults to the premium tier
+            (``ATTUNE_MODEL_PREMIUM`` env pin respected); Haiku 4.5
+            is a fraction of the cost and usable for high-volume runs.
         block_polish_on_unavailable: When ``True``, missing
             ``attune-rag[claude]`` or missing API key raises rather
             than degrading silently. Default ``False`` — the judge is
@@ -80,7 +86,7 @@ class FaithfulnessConfig:
     enabled: bool = False
     threshold: float = 0.95
     budget_per_file_usd: float = 0.10
-    model: str = "claude-sonnet-4-6"
+    model: str = field(default_factory=lambda: resolve_model("premium"))
     block_polish_on_unavailable: bool = False
 
 

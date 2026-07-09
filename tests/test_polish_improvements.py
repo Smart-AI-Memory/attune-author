@@ -198,7 +198,13 @@ class TestStrictMode:
         """Strict mode re-raises anthropic SDK errors as
         PolishError with the original exception chained.
         """
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.side_effect = ValueError("sdk blew up")
                 with pytest.raises(PolishError) as exc_info:
@@ -287,7 +293,13 @@ class TestPolishTemplateUsesPerTypePrompt:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 _call_llm("content", "feature", "summary", "troubleshooting")
 
@@ -316,7 +328,13 @@ class TestPolishTemplateUsesPerTypePrompt:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 _call_llm("content", "myfeature", "summary", "warning")
 
@@ -610,7 +628,13 @@ class TestSanitizeOutput:
         polished response with trailing whitespace must
         come back clean.
         """
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.return_value = "# Polished  \n\nBody  \n"
                 result = polish_template(

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from attune_author.model_tiers import resolve_model
+
 from . import FaithfulnessConfig
 
 
@@ -62,7 +64,9 @@ def load_config(project_root: Path) -> FaithfulnessConfig:
         enabled=_bool("enabled", False),
         threshold=_float("threshold", 0.95),
         budget_per_file_usd=_float("budget_per_file_usd", 0.10),
-        model=_str("model", "claude-sonnet-4-6"),
+        # Premium tier resolved at load time (env pin respected); an
+        # explicit pyproject `model` value still wins.
+        model=_str("model", resolve_model("premium")),
         block_polish_on_unavailable=_bool("block_polish_on_unavailable", False),
     )
 

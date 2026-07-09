@@ -90,7 +90,13 @@ class TestPolishTemplate:
 
     def test_returns_original_on_llm_error_when_lenient(self) -> None:
         """Test fallback to original when LLM call fails in lenient mode."""
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.side_effect = RuntimeError("API down")
                 content = "# Test\nOriginal."
@@ -150,7 +156,13 @@ class TestPolishTemplate:
         newline. Sanitization is covered in detail in
         TestSanitizeOutput in test_polish_improvements.py.
         """
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("attune_author.polish._call_llm") as mock_call:
                 mock_call.return_value = "# Test\nPolished content."
                 result = polish_template("orig", "test", "summary")
@@ -166,7 +178,13 @@ class TestPolishTemplate:
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
 
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}):  # pragma: allowlist secret
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "fake",  # pragma: allowlist secret
+                "ATTUNE_MODEL_PREMIUM": "claude-sonnet-4-6",
+            },
+        ):
             with patch("anthropic.Anthropic", return_value=mock_client):
                 result = _call_llm("content", "feature", "summary", "concept")
 

@@ -44,12 +44,19 @@ from pathlib import Path
 
 from attune_author import auth
 from attune_author.doc_gen._anthropic import AnthropicCallError
+from attune_author.model_tiers import resolve_model
 from attune_author.polish_prompts import get_system_prompt
 
-#: Anthropic model used for the polish pass. Hoisted to a
-#: module-level constant so it participates in the cache key —
-#: bumping the model invalidates cache entries automatically.
-_POLISH_MODEL = "claude-sonnet-4-6"
+
+def _polish_model() -> str:
+    """Anthropic model for the polish pass: the premium tier.
+
+    Resolved per call (``ATTUNE_MODEL_PREMIUM`` env pin respected) and
+    fed into the cache key, so a model change — via env pin or a tier
+    default bump — invalidates cache entries automatically.
+    """
+    return resolve_model("premium")
+
 
 #: Env var that overrides the default polish cache directory.
 _CACHE_DIR_ENV = "ATTUNE_AUTHOR_POLISH_CACHE"
@@ -306,7 +313,7 @@ def polish_template(
         template_type,
         system_prompt,
         augmented_context or "",
-        _POLISH_MODEL,
+        _polish_model(),
     )
     cached = _cache_get(key)
     if cached is not None:
@@ -505,7 +512,11 @@ def build_polish_prompt(
 #: from. ``cache_system=True`` because the polish system prompt is
 #: ~6000 tokens — well over the 1024-token sonnet caching threshold;
 #: cache hits cut input cost ~90% on repeated polish passes.
-POLISH_MAX_TOKENS = 4096
+#: 6144, not the pre-tier 4096: sonnet-5/fable-5 tokenize ~30% heavier
+#: than sonnet-4-6, and a truncated polish silently drops template tail
+#: content (specs/fable-model-tiers design, data-model notes). Billing
+#: is per emitted token, so the extra headroom is free insurance.
+POLISH_MAX_TOKENS = 6144
 POLISH_CACHE_SYSTEM = True
 
 #: Rolling hit rate below which the end-of-run summary appends a
@@ -664,7 +675,7 @@ def _call_llm(
     polished = auth.call_llm(
         system=system_prompt,
         user_message=user_message,
-        model=_POLISH_MODEL,
+        model=_polish_model(),
         max_tokens=POLISH_MAX_TOKENS,
         cache_system=POLISH_CACHE_SYSTEM,
         on_cache_usage=_record_cache_usage,

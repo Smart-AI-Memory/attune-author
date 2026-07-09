@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from attune_author.model_tiers import resolve_model
+
+
+def _default_model() -> str:
+    """Premium tier, resolved at config construction time so
+    ``ATTUNE_MODEL_PREMIUM`` env pins apply without re-import."""
+    return resolve_model("premium")
+
 
 @dataclass
 class DocGenConfig:
@@ -14,7 +22,8 @@ class DocGenConfig:
             (e.g., "api-reference", "guide", "readme").
         audience: Target audience (e.g., "developers",
             "beginners", "ops").
-        model: Anthropic model ID for generation.
+        model: Anthropic model ID for generation. Defaults to the
+            premium tier (``ATTUNE_MODEL_PREMIUM`` env pin respected).
         max_outline_tokens: Max tokens for outline stage.
         max_write_tokens: Max tokens for write stage.
         max_review_tokens: Max tokens for review stage.
@@ -24,7 +33,7 @@ class DocGenConfig:
 
     doc_type: str = "api-reference"
     audience: str = "developers"
-    model: str = "claude-sonnet-4-6"
+    model: str = field(default_factory=_default_model)
     max_outline_tokens: int = 1000
     max_write_tokens: int = 8000
     max_review_tokens: int = 8000
