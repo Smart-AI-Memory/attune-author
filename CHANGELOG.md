@@ -10,6 +10,25 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Model tiers (premium)** — specs/fable-model-tiers (attune
+  workspace repo): new `attune_author.model_tiers` (byte-for-byte
+  mirror of `attune_rag.model_tiers`, drift-tested). Polish, doc-gen,
+  and faithfulness defaults resolve the premium tier
+  (`claude-fable-5`; `ATTUNE_MODEL_PREMIUM` pin respected — CI's
+  rag-gate pins sonnet-5 with a guard step). Fable calls route via
+  the beta namespace with server-side fallback to opus-4-8
+  (`extra_body.fallbacks`), raise `ModelRefusalError` on refusal, and
+  carry a 30-day-retention hint on 400s. `POLISH_MAX_TOKENS`
+  4096 → 6144 for the heavier tokenizer. Batch polish uses opus-4-8
+  directly (the Batch API rejects `fallbacks`).
+
+### Changed
+
+- **`[rag]` extra floor**: `attune-rag>=0.8.0,<0.9` — the first
+  version carrying `attune_rag.model_tiers` (drift-test dependency).
+
 ## [0.23.1] — 2026-07-06
 
 Commit-hook hardening — commits made from inside Claude Code no
