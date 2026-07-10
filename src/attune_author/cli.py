@@ -405,6 +405,44 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Replace any existing SKILL.md instead of skipping it.",
     )
 
+    p_sums = sub.add_parser(
+        "polish-summaries",
+        help="LLM-polish a workspace's path-keyed .help/summaries.json (Batch API)",
+        description=(
+            "Rewrite mechanically seeded one-line summaries in a workspace's "
+            ".help/summaries.json into purpose-written catalog lines via the "
+            "Anthropic Batch API on the capable tier. Provenance goes to "
+            ".help/summaries.meta.json; hand-edited entries are never "
+            "overwritten. Spec: specs/summaries-polish (attune workspace repo)."
+        ),
+    )
+    p_sums.add_argument(
+        "--help-dir",
+        default=".help",
+        help="Workspace help directory containing summaries.json (default: %(default)s).",
+    )
+    p_sums.add_argument(
+        "--max-usd",
+        type=float,
+        default=2.0,
+        help="Abort before submitting if the cost estimate exceeds this (default: %(default)s).",
+    )
+    p_sums.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-polish entries already marked polished in summaries.meta.json.",
+    )
+    p_sums.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print request count + cost estimate and exit without submitting.",
+    )
+    p_sums.add_argument(
+        "--resume",
+        action="store_true",
+        help="Poll a previously submitted batch (state in .help/.summaries-batch-state.json).",
+    )
+
     return parser
 
 
@@ -438,6 +476,7 @@ def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         "auth": _cmd_auth,
         "edit": _cmd_edit,
         "export-skills": _cmd_export_skills,
+        "polish-summaries": _cmd_polish_summaries,
     }
     handler = handlers.get(args.command)
     if handler is None:
@@ -1258,6 +1297,83 @@ def _cmd_export_skills(args: argparse.Namespace) -> int:
         print(f"\nSkipped {len(result.skipped)}:")
         for feature, reason in result.skipped:
             print(f"  - {feature:<32} {reason}")
+    return 0
+
+
+def _cmd_polish_summaries(args: argparse.Namespace) -> int:
+    """LLM-polish the workspace summaries sidecar via the Batch API.
+
+    Submit + poll in one invocation; ``--resume`` re-enters polling for
+    a previously submitted batch after a timeout. Exit codes: 0 applied
+    (or dry run), 2 bad input / cost gate / no pending state, 3 batch
+    ended without applying (timed out — state kept for --resume).
+    """
+    from attune_author import summaries_polish as sp
+    from attune_author.doc_gen._anthropic_batch import (
+        adaptive_timeout_secs,
+        poll_batch,
+        submit_batch,
+    )
+
+    help_dir = Path(args.help_dir).expanduser().resolve()
+    model = sp.polish_model()
+
+    try:
+        if args.resume:
+            state = sp.load_state(help_dir)
+            batch_id = state["batch_id"]
+            model = state.get("model") or model
+            report = None
+            expected = sp.build_requests(help_dir, model, force=True).requests
+            expected = [r for r in expected if r.custom_id in set(state["custom_ids"])]
+        else:
+            report = sp.build_requests(help_dir, model, force=args.force)
+            expected = report.requests
+    except sp.SummariesPolishError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    if report is not None:
+        estimate = sp.estimate_cost_usd(report.requests)
+        print(
+            f"{len(report.requests)} to polish "
+            f"({len(report.skipped_polished)} already polished, "
+            f"{len(report.skipped_hand_edited)} hand-edited kept), "
+            f"model {model}, est. ~${estimate:.2f} (Batch API)"
+        )
+        if not report.requests:
+            return 0
+        if estimate > args.max_usd:
+            print(
+                f"error: estimate ${estimate:.2f} exceeds --max-usd "
+                f"{args.max_usd:.2f}; nothing submitted",
+                file=sys.stderr,
+            )
+            return 2
+        if args.dry_run:
+            return 0
+        batch_id = submit_batch(report.requests)
+        sp.save_state(help_dir, batch_id, report.requests)
+        print(f"submitted batch {batch_id}")
+
+    status, results = poll_batch(
+        batch_id,
+        expected,
+        timeout_secs=adaptive_timeout_secs(len(expected)),
+    )
+    if status != "ended":
+        print(
+            f"batch {batch_id} status={status}; state kept — rerun with --resume",
+            file=sys.stderr,
+        )
+        return 3
+    counters = sp.apply_results(help_dir, results, model=model)
+    sp.clear_state(help_dir)
+    print(
+        f"applied {counters['applied']} "
+        f"(truncated {counters['truncated']}, errored {counters['errored']}, "
+        f"empty {counters['empty']}) -> {help_dir / 'summaries.json'}"
+    )
     return 0
 
 
