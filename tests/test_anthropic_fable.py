@@ -137,9 +137,7 @@ def test_fable_response_leading_thinking_block_skipped() -> None:
     is the answer. Hit live 2026-07-10 via the commit regen hook."""
     thinking = SimpleNamespace(thinking="reasoning...", type="thinking")
     text_block = SimpleNamespace(text="the answer", type="text")
-    response = SimpleNamespace(
-        content=[thinking, text_block], stop_reason="end_turn", usage=None
-    )
+    response = SimpleNamespace(content=[thinking, text_block], stop_reason="end_turn", usage=None)
     client = MagicMock()
     client.beta.messages.create.return_value = response
     assert (
