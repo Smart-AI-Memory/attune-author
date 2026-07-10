@@ -131,8 +131,16 @@ def polish_model() -> str:
 
 
 def custom_id_for(rel_path: str) -> str:
-    """Stable Anthropic ``custom_id`` for one template path."""
-    return f"sum__{rel_path}"
+    """Stable Anthropic ``custom_id`` for one template path.
+
+    The Batch API requires ``^[a-zA-Z0-9_-]{1,64}$`` — template paths
+    (slashes, dots) violate it, so the id is a path hash. The readable
+    path rides in the request's ``feature`` field, which ``poll_batch``
+    copies onto each result; ``apply_results`` maps results back
+    through THAT, never by parsing the id. (Learned from a live 400 on
+    the first attune-ai run, 2026-07-10.)
+    """
+    return f"sum_{_sha256(rel_path)[:24]}"
 
 
 def build_requests(help_dir: Path, model: str, *, force: bool = False) -> BuildReport:
@@ -172,8 +180,10 @@ def build_requests(help_dir: Path, model: str, *, force: bool = False) -> BuildR
         )
         requests.append(
             BatchPolishRequest(
+                # feature carries the FULL relative path — apply_results
+                # maps batch results back through it (see custom_id_for).
                 custom_id=custom_id_for(rel_path),
-                feature=str(Path(rel_path).parent),
+                feature=rel_path,
                 depth=Path(rel_path).stem,
                 system=_SYSTEM,
                 user_message=user_message,
@@ -232,7 +242,7 @@ def apply_results(
     stamp = (_now or (lambda: datetime.now(timezone.utc)))().isoformat()
     counters = {"applied": 0, "truncated": 0, "errored": 0, "empty": 0}
     for result in results:
-        rel_path = result.custom_id.removeprefix("sum__")
+        rel_path = result.feature  # full relative path — see custom_id_for
         if result.error is not None or result.text is None:
             counters["errored"] += 1
             continue

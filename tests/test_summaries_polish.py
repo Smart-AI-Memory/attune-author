@@ -40,7 +40,8 @@ class TestBuildRequests:
         report = sp.build_requests(help_dir, "claude-sonnet-5")
         assert len(report.requests) == 2
         req = report.requests[0]
-        assert req.custom_id == "sum__cli/concept.md"
+        assert req.custom_id == sp.custom_id_for("cli/concept.md")
+        assert req.feature == "cli/concept.md"  # apply maps results via this
         assert req.model == "claude-sonnet-5"
         assert "Current (mechanical) summary: seed" in req.user_message
         assert "Body prose here." in req.user_message
@@ -78,7 +79,7 @@ class TestBuildRequests:
         sidecar["gone/nope.md"] = "orphan"
         (help_dir / "summaries.json").write_text(json.dumps(sidecar))
         report = sp.build_requests(help_dir, "claude-sonnet-5")
-        assert [r.custom_id for r in report.requests] == ["sum__cli/concept.md"]
+        assert [r.feature for r in report.requests] == ["cli/concept.md"]
 
 
 class TestModelAndCost:
@@ -126,8 +127,8 @@ class TestNormalize:
 class TestApplyResults:
     def _result(self, rel: str, text: str | None, error: str | None = None) -> BatchPolishResult:
         return BatchPolishResult(
-            custom_id=f"sum__{rel}",
-            feature=str(Path(rel).parent),
+            custom_id=sp.custom_id_for(rel),
+            feature=rel,
             depth=Path(rel).stem,
             text=text,
             error=error,
@@ -286,8 +287,8 @@ class TestJsonAndHashEdges:
             help_dir,
             [
                 BatchPolishResult(
-                    custom_id="sum__cli/concept.md",
-                    feature="cli",
+                    custom_id=sp.custom_id_for("cli/concept.md"),
+                    feature="cli/concept.md",
                     depth="concept",
                     text="Polished.",
                     error=None,
@@ -306,8 +307,8 @@ class TestJsonAndHashEdges:
             help_dir,
             [
                 BatchPolishResult(
-                    custom_id="sum__cli/concept.md",
-                    feature="cli",
+                    custom_id=sp.custom_id_for("cli/concept.md"),
+                    feature="cli/concept.md",
                     depth="concept",
                     text=long_text,
                     error=None,
@@ -358,3 +359,17 @@ class TestCliResume:
         assert sidecar["cli/concept.md"] == "Resumed polish."
         assert not (help_dir / ".summaries-batch-state.json").exists()
         assert "applied 1" in capsys.readouterr().out
+
+
+class TestCustomIdContract:
+    def test_matches_batch_api_charset(self):
+        """The Batch API enforces ^[a-zA-Z0-9_-]{1,64}$ — a raw template
+        path (slashes, dots) 400s the whole submit. Hit live 2026-07-10."""
+        import re
+
+        for rel in ("cli/concept.md", "elicitation-forms/troubleshooting.md"):
+            cid = sp.custom_id_for(rel)
+            assert re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", cid), cid
+
+    def test_distinct_paths_get_distinct_ids(self):
+        assert sp.custom_id_for("a/b.md") != sp.custom_id_for("a/c.md")
