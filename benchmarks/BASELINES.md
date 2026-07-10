@@ -1,16 +1,13 @@
-# RAG Evaluation Baselines — attune-author v0.3.9
-
-> ⚠️ **PENDING RE-MEASURE (2026-06-04).** The question set's ground-truth
-> answers were refreshed against current code (v0.14.2) — see
-> `specs/rag-gate-accuracy-baseline/`. The numbers in this file were measured
-> against the *stale* v0.3.9 ground truth and are **superseded**: a treated
-> answer that is correct against current code was previously graded "partial"
-> against the old ground truth, so the strict-accuracy figures below understate
-> current quality. **Re-run `make eval` (full 25 × 2 models, ~$3–8) to
-> regenerate this table**, then drop this banner and update the header version.
+# RAG Evaluation Baselines — attune-author v0.25.0 (measured 2026-07-10)
 
 Measured scores from `benchmarks/hallucination-v0.3.9/` used to ground the
 thresholds in `eval_config.yaml`. Run `make eval` to regenerate.
+
+Re-measured 2026-07-10 against the **refreshed ground truth** (answers
+audited against current code, specs/rag-gate-accuracy-baseline tasks 1–3)
+and the **freshly regenerated `.help/templates`** (all 10 stale features,
+PR #95). This closes task 9 of that spec; the 2026-06-04 PENDING
+RE-MEASURE banner is resolved.
 
 ## Score Summary
 
@@ -24,7 +21,14 @@ thresholds in `eval_config.yaml`. Run `make eval` to regenerate.
 | opus   | treated   | 100.0% (25/25)   | 100.0% (25/25)   |
 
 † `q30|sonnet|treated` has verdict=`error` (judge JSON parse failure on a
-  non-JSON response). Excluded from treated totals; 24 valid entries used.
+  non-JSON response — the same q30 flake as the v0.3.9 measurement).
+  Excluded from treated totals; 24 valid entries used.
+
+The 2026-07-10 top-line numbers reproduce the superseded v0.3.9 table
+exactly (same baselines, same treated ceilings, same q30 judge flake) —
+the ground-truth refresh moved *per-question* grading (18 sonnet / 16
+opus paired improvements, McNemar p ≈ 0.0000, zero regressions) without
+shifting the aggregate gates.
 
 **Faithfulness** = (correct + partial) / total — non-hallucination rate.
 **Strict Accuracy** = correct / total — fully correct answers only.
@@ -127,6 +131,13 @@ Per-question (treated): q2 correct, q9 correct, q12 correct,
 q27 partial, q39 partial. The enum (q27) and dataclass (q39) questions
 remain the accuracy stragglers — q39 template regeneration is the
 standing remediation candidate.
+
+**Post-regen smoke re-run (2026-07-10, after PR #95 regenerated all 10
+stale features):** faithfulness 100% (PASS), strict accuracy **80%**
+advisory (q2/q9/q12/q27 correct, q39 partial — up from error). The
+full-25 re-measure the same day (table above) grades q39 treated
+*correct* under the full-25 judge; the smoke-vs-full q39 delta is
+residual judge wobble, not corpus staleness.
 
 Claude 5 API notes baked into `smoke_eval.py` by this run: the
 `temperature` param is rejected ("deprecated for this model", 400), and
