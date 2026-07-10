@@ -202,8 +202,13 @@ def call_anthropic(
             creation, read = _log_cache_usage(response, model)
             if on_cache_usage is not None:
                 on_cache_usage(creation, read, model)
-            if response.content:
-                return response.content[0].text
+            # First TEXT block, not content[0]: fable responses can lead
+            # with a BetaThinkingBlock (no .text) even though explicit
+            # thinking params are rejected — hit live 2026-07-10.
+            for block in response.content or []:
+                text = getattr(block, "text", None)
+                if text:
+                    return text
             return ""
         except ModelRefusalError:
             # Not transport noise: the model (and its whole fallback
