@@ -105,3 +105,30 @@ Five questions chosen for maximum discrimination in CI (lowest cost, highest sig
 With working RAG (treated condition): 5/5 correct → faithfulness 100%, accuracy 100%.
 With broken RAG (baseline condition): 2/5 hallucinated + 3/5 partial → faithfulness 60%, accuracy 0%.
 Both outcomes are far from the gates (95% / 85%), making the smoke set decisive.
+
+## Sonnet-5 Judge Baseline (2026-07-10 — model tiers rollout)
+
+`smoke_eval.py` now resolves its models via the attune tier contract
+(`attune_author.model_tiers`): answers = capable tier, judge = premium
+tier. The rag-gate CI pin (`ATTUNE_MODEL_PREMIUM=claude-sonnet-5`) makes
+CI runs sonnet-5-judged; previously the models were hardcoded
+(sonnet-4-6 answers / opus-4-6 judge) and the pin was decorative.
+
+First sonnet-5/sonnet-5 run (local, dev key, 2026-07-10 — recorded for
+specs/fable-model-tiers task 10 and specs/rag-gate-accuracy-baseline in
+the attune workspace repo):
+
+| Metric | Score | Gate | Result |
+| :----- | ----: | ---: | :----- |
+| Faithfulness (hard) | 100.0% | ≥95% | ✅ PASS |
+| Strict Accuracy (advisory) | 60.0% | ≥85% | ⚠️ advisory warn (was 40% under sonnet-4-6/opus-4-6) |
+
+Per-question (treated): q2 correct, q9 correct, q12 correct,
+q27 partial, q39 partial. The enum (q27) and dataclass (q39) questions
+remain the accuracy stragglers — q39 template regeneration is the
+standing remediation candidate.
+
+Claude 5 API notes baked into `smoke_eval.py` by this run: the
+`temperature` param is rejected ("deprecated for this model", 400), and
+responses may lead with a ThinkingBlock — read the first TEXT block,
+never `content[0].text`.

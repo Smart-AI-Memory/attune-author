@@ -31,6 +31,8 @@ import yaml
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
+from attune_author.model_tiers import resolve_model
+
 load_dotenv()
 
 # ---------------------------------------------------------------------------
@@ -41,8 +43,14 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH = REPO / "benchmarks" / "hallucination-v0.3.9"
 
 SMOKE_QUESTION_IDS = {2, 9, 12, 27, 39}
-ANSWER_MODEL_ID = "claude-sonnet-4-6"
-JUDGE_MODEL_ID = "claude-opus-4-6"
+# Models resolve via the attune tier contract so the rag-gate CI pin
+# (ATTUNE_MODEL_PREMIUM=claude-sonnet-5, guard-stepped) actually reaches
+# the eval — previously these were hardcoded (sonnet-4-6 / opus-4-6) and
+# the pin was decorative. Judge = premium tier (CI pins sonnet-5 to keep
+# the $5/$20 ATTUNE_CI_EVAL_KEY caps valid); answers = capable tier.
+# specs/fable-model-tiers tasks 8/10 (attune workspace repo).
+ANSWER_MODEL_ID = resolve_model("capable")
+JUDGE_MODEL_ID = resolve_model("premium")
 
 FAITHFULNESS_GATE = 0.95  # end_user persona — HARD gate (drives exit code)
 ACCURACY_GATE = 0.85  # developer persona — ADVISORY on smoke; full-25 enforces
@@ -151,16 +159,28 @@ JUDGE_SYSTEM = (
 _JSON_RE = re.compile(r"\{[\s\S]*\}")
 
 
+def _first_text(response) -> str:
+    """First TEXT block — Claude 5 responses can lead with a ThinkingBlock
+    (no ``.text``) even without requesting thinking. Hit live 2026-07-10."""
+    for block in response.content or []:
+        text = getattr(block, "text", None)
+        if text:
+            return text
+    return ""
+
+
 def get_answer(client: Anthropic, context: str, question: str) -> str:
     user = f"{context}\n\n---\n\n# Question\n\n{question}"
+    # No explicit temperature: Claude 5 models reject the param
+    # ("`temperature` is deprecated for this model", 400) — hit live
+    # 2026-07-10 on the first sonnet-5 baseline run.
     r = client.messages.create(
         model=ANSWER_MODEL_ID,
         max_tokens=1024,
-        temperature=0,
         system=ANSWER_SYSTEM,
         messages=[{"role": "user", "content": user}],
     )
-    return r.content[0].text
+    return _first_text(r)
 
 
 def judge_answer(client: Anthropic, question: str, truth: str, answer: str) -> dict:
@@ -172,11 +192,10 @@ def judge_answer(client: Anthropic, question: str, truth: str, answer: str) -> d
     r = client.messages.create(
         model=JUDGE_MODEL_ID,
         max_tokens=512,
-        temperature=0,
         system=JUDGE_SYSTEM,
         messages=[{"role": "user", "content": user}],
     )
-    raw = r.content[0].text
+    raw = _first_text(r)
     m = _JSON_RE.search(raw)
     if not m:
         return {"verdict": "error", "reasoning": f"No JSON in judge response: {raw[:200]}"}
