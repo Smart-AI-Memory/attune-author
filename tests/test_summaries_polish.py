@@ -263,3 +263,98 @@ class TestCli:
         assert code == 0
         mock_submit.assert_not_called()
         assert "0 to polish" in capsys.readouterr().out
+
+
+class TestJsonAndHashEdges:
+    def test_unreadable_sidecar_raises(self, tmp_path):
+        help_dir = _mk_help_dir(tmp_path, {"cli/concept.md": "seed"})
+        (help_dir / "summaries.json").write_text("{not json", encoding="utf-8")
+        with pytest.raises(sp.SummariesPolishError, match="unreadable JSON"):
+            sp.build_requests(help_dir, "m")
+
+    def test_non_object_sidecar_raises(self, tmp_path):
+        help_dir = _mk_help_dir(tmp_path, {"cli/concept.md": "seed"})
+        (help_dir / "summaries.json").write_text('["a", "list"]', encoding="utf-8")
+        with pytest.raises(sp.SummariesPolishError, match="not a JSON object"):
+            sp.build_requests(help_dir, "m")
+
+    def test_source_hash_falls_back_to_body_sha(self, tmp_path):
+        help_dir = _mk_help_dir(tmp_path, {"cli/concept.md": "seed"})
+        template = help_dir / "templates" / "cli" / "concept.md"
+        template.write_text("# No frontmatter here\n\nJust body.\n", encoding="utf-8")
+        sp.apply_results(
+            help_dir,
+            [
+                BatchPolishResult(
+                    custom_id="sum__cli/concept.md",
+                    feature="cli",
+                    depth="concept",
+                    text="Polished.",
+                    error=None,
+                )
+            ],
+            model="m",
+        )
+        meta = json.loads((help_dir / "summaries.meta.json").read_text())
+        expected = sp._sha256(template.read_text(encoding="utf-8"))
+        assert meta["cli/concept.md"]["source_hash"] == expected
+
+    def test_apply_truncates_overlong_result_and_flags_meta(self, tmp_path):
+        help_dir = _mk_help_dir(tmp_path, {"cli/concept.md": "seed"})
+        long_text = "Leading sentence stays. " + "pad " * 100
+        counters = sp.apply_results(
+            help_dir,
+            [
+                BatchPolishResult(
+                    custom_id="sum__cli/concept.md",
+                    feature="cli",
+                    depth="concept",
+                    text=long_text,
+                    error=None,
+                )
+            ],
+            model="m",
+        )
+        assert counters["truncated"] == 1
+        sidecar = json.loads((help_dir / "summaries.json").read_text())
+        assert sidecar["cli/concept.md"] == "Leading sentence stays."
+        meta = json.loads((help_dir / "summaries.meta.json").read_text())
+        assert meta["cli/concept.md"]["truncated"] is True
+
+
+class TestCliResume:
+    def test_resume_happy_path_polls_and_applies(self, tmp_path, capsys):
+        help_dir = _mk_help_dir(tmp_path, {"cli/concept.md": "seed"})
+        sp.save_state(
+            help_dir,
+            "batch_777",
+            sp.build_requests(help_dir, "claude-sonnet-5").requests,
+        )
+
+        def fake_poll(batch_id, expected, **kwargs):
+            assert batch_id == "batch_777"
+            return "ended", [
+                BatchPolishResult(
+                    custom_id=r.custom_id,
+                    feature=r.feature,
+                    depth=r.depth,
+                    text="Resumed polish.",
+                    error=None,
+                )
+                for r in expected
+            ]
+
+        with (
+            patch("attune_author.doc_gen._anthropic_batch.submit_batch") as mock_submit,
+            patch(
+                "attune_author.doc_gen._anthropic_batch.poll_batch",
+                side_effect=fake_poll,
+            ),
+        ):
+            code = main(["polish-summaries", "--help-dir", str(help_dir), "--resume"])
+        assert code == 0
+        mock_submit.assert_not_called()  # resume never resubmits
+        sidecar = json.loads((help_dir / "summaries.json").read_text())
+        assert sidecar["cli/concept.md"] == "Resumed polish."
+        assert not (help_dir / ".summaries-batch-state.json").exists()
+        assert "applied 1" in capsys.readouterr().out
