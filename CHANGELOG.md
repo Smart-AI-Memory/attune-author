@@ -10,6 +10,35 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.25.0] — 2026-07-10
+
+Summaries polish: a Batch-API command that upgrades a workspace's
+path-keyed `.help/summaries.json` into purpose-written one-line
+catalog summaries (specs/summaries-polish in the attune workspace
+repo; first production run: attune-ai's 296 templates, ~$0.40).
+
+### Added
+
+- **`attune-author polish-summaries`** — rewrites mechanically seeded
+  summaries via the Anthropic Batch API on the capable tier
+  (`ATTUNE_MODEL_CAPABLE` pin respected; fable pins swap to opus-4-8
+  because the Batch API rejects `fallbacks`). Provenance in a sibling
+  `.help/summaries.meta.json` (`polished_at`/`model`/`source_hash`/
+  `summary_hash`); hand-edited entries are hash-detected and never
+  overwritten. Cost gate aborts above `--max-usd` (default $2);
+  `--dry-run`/`--force`/`--resume` (state file survives poll
+  timeouts). Batch `custom_id`s are path hashes (the API enforces
+  `^[a-zA-Z0-9_-]{1,64}$`); overlong outputs truncate at clause/word
+  boundaries, never mid-word, and are flagged in meta.
+
+### Fixed
+
+- **Fable responses leading with thinking blocks**: `call_anthropic`
+  now returns the first TEXT block instead of `content[0].text` —
+  live fable responses can lead with a `BetaThinkingBlock` even
+  though explicit thinking params are rejected.
+
+
 ## [0.24.0] — 2026-07-09
 
 Model tiers: the premium tier (claude-fable-5, server-side opus-4-8
