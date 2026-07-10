@@ -120,6 +120,27 @@ class TestNormalize:
         assert truncated is True
         assert line.endswith("…")
 
+    def test_truncation_breaks_at_clause_boundary_not_mid_word(self):
+        """102 of 296 live entries clipped mid-word ('the /agent ski…');
+        clip at the last comma/semicolon (or word) before the cap."""
+        line = "Consult when integrating attune.agent_factory: " + ", ".join(
+            f"Identifier{i}" for i in range(30)
+        )
+        clipped, truncated = sp._normalize_summary(line)
+        assert truncated is True
+        assert clipped.endswith("…")
+        body = clipped.rstrip("…")
+        # ends exactly at a full identifier, no partial token
+        assert body.split(", ")[-1].startswith("Identifier")
+        assert body == body.rstrip(" ,;")
+        assert len(clipped) <= sp.MAX_SUMMARY_CHARS
+
+    def test_truncation_word_boundary_without_clauses(self):
+        words = "word " * 60
+        clipped, truncated = sp._normalize_summary(words.strip())
+        assert truncated is True
+        assert clipped.endswith("word…")
+
     def test_strips_wrapping_quotes(self):
         assert sp._normalize_summary('"Quoted line."')[0] == "Quoted line."
 

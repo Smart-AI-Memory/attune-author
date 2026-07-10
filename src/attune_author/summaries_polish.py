@@ -216,7 +216,15 @@ def _normalize_summary(text: str) -> tuple[str, bool]:
     parts = _SENTENCE_END.split(line)
     clipped = parts[0].strip()
     if len(clipped) > MAX_SUMMARY_CHARS:
-        clipped = clipped[: MAX_SUMMARY_CHARS - 1].rstrip() + "…"
+        # Never cut mid-word ("…the /agent ski…"): clip at the last
+        # clause boundary (comma/semicolon) before the cap when one
+        # exists past the halfway mark, else the last word boundary.
+        window = clipped[: MAX_SUMMARY_CHARS - 1]
+        clause = max(window.rfind(","), window.rfind(";"))
+        if clause > MAX_SUMMARY_CHARS // 2:
+            clipped = window[:clause].rstrip() + "…"
+        else:
+            clipped = window.rsplit(" ", 1)[0].rstrip(" ,;:") + "…"
     return clipped, True
 
 
