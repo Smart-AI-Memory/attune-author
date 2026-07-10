@@ -1,92 +1,78 @@
 ---
 type: task
+name: doc-gen-pipeline-task
 feature: doc-gen-pipeline
 depth: task
-generated_at: 2026-04-26T19:50:08.962814+00:00
-source_hash: ed1e0ee4f61601566ddf49801a234a64d93605b2683aafe5ee4f86d48d8dd885
+generated_at: 2026-07-10T13:11:24.173332+00:00
+source_hash: 133624bd892c65fc1107ef6e8ac7503496aa666e58699b21c2121e800ebee9bc
 status: generated
+scaffold_hash: c63b5d5f0ce202474b296c8b21db75edc3807d0bcc15d6dec2a12136f0062171
 ---
 
-# Work with doc gen pipeline
+# Modify the doc-gen pipeline
 
-Use the doc gen pipeline when you need high-quality documentation generated through a three-stage process: outline creation, content writing, and review.
+Use this procedure when you need to change how the doc-gen pipeline generates documentation — for example, to adjust how outlines are built, how content is written or reviewed, or to add a new configuration option.
 
 ## Prerequisites
 
 - Access to the project source code
-- An Anthropic API key configured for AI-powered generation
-- Understanding of the target documentation type (api-reference, quickstart, etc.)
+- The AI extras installed — `generate_docs()` raises `AnthropicCallError` if the Anthropic client is unavailable (install with `pip install 'attune-author[ai]'`)
+- Familiarity with the three modules under `src/attune_author/doc_gen/`: `pipeline.py`, `stages.py`, and `config.py`
 
-## Configure the pipeline
+## Steps
 
-1. **Set up DocGenConfig with your requirements:**
-   ```python
-   from attune_author.doc_gen.config import DocGenConfig
+1. **Trace a generation run end to end.**
+   Start at `generate_docs()` in `pipeline.py` — it orchestrates the three stages and returns a `DocGenResult`. The stages live in `stages.py`:
+   - `build_outline()` — generates a structured documentation outline
+   - `parse_outline_sections()` — extracts top-level section titles from that outline
+   - `write_content()` — writes documentation content from the outline, optionally narrowed by `section_focus`
+   - `review_content()` — reviews and polishes the draft
 
-   config = DocGenConfig(
-       doc_type='api-reference',
-       audience='developers',
-       max_outline_tokens=1000,
-       sections_per_chunk=4
-   )
-   ```
+2. **Pick the stage that owns the behavior you want to change.**
+   Each stage function has a single responsibility, so match your change to the right one: outline structure belongs in `build_outline()`, prose generation in `write_content()`, and polish or correction passes in `review_content()`. If your change is a tuning knob rather than logic — such as token limits or audience — it likely belongs in `DocGenConfig` instead.
 
-2. **Choose your documentation type:**
-   - Use `'api-reference'` for comprehensive function and class documentation
-   - Use `'quickstart'` for getting-started guides
-   - Use `'tutorial'` for step-by-step learning materials
+3. **Edit the stage function or config.**
+   Stage functions share a common shape: they take a `client`, the `source_content`, a `doc_type`, an `audience`, a `model`, and `max_tokens`. Keep that shape intact so `generate_docs()` can continue to orchestrate them. If you add a configuration field, thread it through `DocGenConfig` in `config.py` — existing fields include `doc_type`, `audience`, `model`, `max_outline_tokens`, `max_write_tokens`, `max_review_tokens`, `sections_per_chunk`, and `section_focus`.
 
-## Generate documentation
+4. **Update `DocGenResult` if your change adds output.**
+   The result dataclass carries `content`, `outline`, `draft`, `stages_completed`, and `source_path`. New intermediate artifacts should be added here so callers can inspect them.
 
-1. **Call the main pipeline function:**
-   ```python
-   from attune_author.doc_gen.pipeline import generate_docs
+5. **Run the related tests.**
+   Target the pipeline tests with `pytest -k "doc-gen-pipeline"` to catch regressions before they reach other developers.
 
-   result = generate_docs(
-       target='path/to/source.py',
-       config=config,
-       output_path='docs/output.md'
-   )
-   ```
+## Verify your change
 
-2. **Verify each stage completed:**
-   Check `result.stages_completed` contains `['outline', 'write', 'review']`.
+Call `generate_docs()` on a small source file and inspect the returned `DocGenResult`:
 
-3. **Review the generated content:**
-   The final documentation is in `result.content`, with intermediate artifacts in `result.outline` and `result.draft`.
+- `stages_completed` lists every stage you expected to run
+- `content` is non-empty and reflects your change
+- `outline` and `draft` show the intermediate artifacts, which helps you confirm which stage produced the difference
 
-## Customize generation stages
+## Key files
 
-1. **Focus on specific sections:**
-   ```python
-   config.section_focus = ['Installation', 'Quick Start', 'API Reference']
-   ```
+- `src/attune_author/doc_gen/pipeline.py` — orchestration and `DocGenResult`
+- `src/attune_author/doc_gen/stages.py` — the outline, write, and review stage functions
+- `src/attune_author/doc_gen/config.py` — `DocGenConfig` and its defaults
 
-2. **Adjust token limits for longer content:**
-   ```python
-   config.max_write_tokens = 12000  # For comprehensive guides
-   config.max_review_tokens = 10000  # For thorough editing
-   ```
+## Where changes usually land
 
-3. **Control chunking for large documents:**
-   ```python
-   config.sections_per_chunk = 2  # Process fewer sections at once
-   ```
+- `generate_docs()` — change stage ordering, error handling, or output writing
+- `build_outline()` — change outline structure or prompting for the outline stage
+- `write_content()` — change how sections are drafted, including `section_focus` handling
+- `review_content()` — change how drafts are polished
+- `parse_outline_sections()` — change how section titles are extracted from an outline
+## Faithfulness review
 
-## Troubleshoot common issues
+> Auto-generated by attune-author faithfulness judge. Score 0.83 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
 
-1. **If generation fails with AnthropicCallError:**
-   Install the AI dependencies: `pip install 'attune-author[ai]'`
+**Score:** 0.83 (supported: 15, unsupported: 3)
 
-2. **If output is incomplete:**
-   Increase `max_write_tokens` or reduce `sections_per_chunk` to handle complex content.
+### Unsupported claims
 
-3. **If outline doesn't match expectations:**
-   Review the `result.outline` and adjust `section_focus` to target specific areas.
+- The AI extras can be installed with pip install 'attune-author[ai]' (while the passages mention this installation instruction in an error message context, the answer presents it as a prerequisite step rather than as part of error handling)
+- parse_outline_sections() is called within the pipeline orchestration (the passages define parse_outline_sections() but do not show it being called in generate_docs())
+- pytest -k 'doc-gen-pipeline' is a valid way to run related tests (the passages do not mention pytest or test commands)
 
-## Verify success
+### Reasoning
 
-The pipeline succeeds when:
-- `result.stages_completed` includes all three stages
-- `result.content` contains well-structured documentation
-- The output file (if specified) exists and contains the generated content
+The answer is largely grounded in the retrieved passages, which provide the source code and docstrings for the doc-gen pipeline. Most claims about the three stages, their purposes, function signatures, and configuration fields are directly stated in the code. However, a few claims go beyond what is explicitly supported: the pytest command for running tests is not mentioned in the passages, parse_outline_sections() is defined but never shown being called within generate_docs() orchestration (it appears to be a utility), and while the pip install instruction appears in the passages, it is presented there as part of an error message rather than as a standalone prerequisite installation step. The answer also frames the AI extras installation as a prerequisite, whereas the passages show it only as a fallback error message. These represent reasonable but not explicitly supported inferences.

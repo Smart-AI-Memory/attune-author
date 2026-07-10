@@ -1,60 +1,68 @@
 ---
 type: concept
+name: template-generation-concept
 feature: template-generation
 depth: concept
-generated_at: 2026-04-26T19:46:21.981322+00:00
-source_hash: e3ad2679109ec5bb81db1607254855a0f32feadedbce291531797eb11bf09912
+generated_at: 2026-07-10T13:05:05.884219+00:00
+source_hash: e149f981f61eeb2abe34e8dcb562351d5abf6345541b513e7652221934c533ab
 status: generated
+scaffold_hash: 64f72a4f020d94a9132979a91b26ba03081fbcf82c3fef8c9529a87b92d416e6
 ---
 
-# Template Generation
+# Template generation
 
-Template generation creates markdown help files from feature definitions and source code analysis. Instead of writing documentation manually, you define a feature and the system inspects your code to generate structured templates automatically.
+Template generation renders markdown help templates from feature definitions and source code inspection, so help content stays anchored to the code it describes rather than drifting like hand-written docs.
 
-## How the generation process works
+## How it works
 
-The system takes a feature name, analyzes the corresponding source files, and creates multiple template types (concept, task, reference, quickstart) from the same code. Each template serves a different reader need while staying synchronized with the actual implementation.
+You generate templates one feature at a time. The simplest path is a single call to `generate_feature_templates()`, which takes a feature, a help directory, and a project root, and returns a `GenerationResult` describing what was written. You can pass `depths` to control which template depths are produced, `overwrite=False` to skip existing files, and `use_rag` to toggle retrieval-augmented context.
 
-The generation pipeline follows these steps:
+For batch workflows, generation splits into phases you can drive separately:
 
-1. **Feature lookup** — Maps the feature name to source files in your project
-2. **AST inspection** — Parses Python files to extract classes, functions, and docstrings
-3. **Template rendering** — Uses Jinja2 templates to transform code analysis into structured markdown
-4. **Multi-depth output** — Creates concept, task, and reference versions with appropriate detail levels
+1. **Prepare.** `prepare_polish_phase()` runs the pre-polish work for one feature and returns a `PolishPreparation` — the feature, its `source_hash`, the `matched_files` it was built from, and a tuple of `pending` templates awaiting polish. It raises `ValueError` if the feature name is invalid.
+2. **Polish.** You produce polished content per depth outside this module (for example, with an LLM).
+3. **Apply.** `apply_polish_results()` takes the `PolishPreparation` and a `dict` mapping depth names to polished content, writes each pending template to disk, and returns a `GenerationResult`.
 
-## Core data structures
+Two supporting pieces keep the pipeline honest:
 
-**`GeneratedTemplate`** represents one output file:
-- `feature` — The feature name this template documents
-- `depth` — Template type (concept, task, reference, quickstart)
-- `path` — Where the generated file was written
-- `source_hash` — Checksum for detecting when source code changes
+- `compute_scaffold_hash()` produces a SHA-256 of a rendered scaffold with metadata lines normalized, so you can detect when a scaffold's substance changed versus when only timestamps or hashes moved.
+- `reset_faithfulness_telemetry()` clears the per-process faithfulness counters between runs.
 
-**`GenerationResult`** represents the complete output for a feature:
-- `feature` — The feature being documented
-- `templates` — List of all generated template files
-- `source_hash` — Combined checksum of all source files
-- `matched_files` — Which source files contributed to the generation
+The result objects give you a full audit trail: each `GeneratedTemplate` records the `feature`, `depth`, output `path`, and `source_hash`, and the enclosing `GenerationResult` collects them alongside the `matched_files` the content was derived from.
 
-## Template categories by purpose
+## What connects to it
 
-The generator creates templates in four categories:
+Template generation sits between feature definitions and the on-disk help library. It consumes source files (tracked in `matched_files`) and produces the markdown templates that the help system serves.
 
-| Category | Template types | When to generate |
-|----------|---------------|------------------|
-| **Core depth** | concept, task, reference | Every feature gets these three |
-| **Problem-solving** | error, warning, troubleshooting, faq | When code handles specific error cases |
-| **Guidance** | quickstart, tip, note, comparison | For features with multiple approaches |
-| **Project docs** | how-to, tutorial, cli-reference, architecture | Project-wide documentation needs |
+Other parts of the codebase interact with it through these interfaces:
 
-Most features start with the core depth templates. The generator analyzes your code to determine which additional categories apply.
+| Interface | Purpose | File |
+|-----------|---------|------|
+| `generate_feature_templates` | One-shot generation for a feature | `src/attune_author/generator.py` |
+| `prepare_polish_phase` / `apply_polish_results` | Two-phase batch generation with an external polish step | `src/attune_author/generator.py` |
+| `GeneratedTemplate` | Record of one generated template file | `src/attune_author/generator.py` |
+| `PolishPreparation` | Per-feature pre-polish state for the batch path | `src/attune_author/generator.py` |
+| `GenerationResult` | Summary of everything generated for a feature | `src/attune_author/generator.py` |
 
-## Generation control
+If you need legacy-format access to pending work, `PolishPreparation` exposes `pending_legacy_tuples()`, which returns the pending templates as plain tuples.
 
-The `generate_feature_templates` function accepts these parameters:
+## Related Topics
 
-- `depths` — Which template types to create (defaults to concept, task, reference)
-- `overwrite` — Whether to replace existing templates
-- `use_rag` — Whether to incorporate context from existing documentation
+_No related topics yet._
+## Faithfulness review
 
-The function raises `ValueError` for invalid feature names that don't map to any source files.
+> Auto-generated by attune-author faithfulness judge. Score 0.79 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
+
+**Score:** 0.79 (supported: 19, unsupported: 5)
+
+### Unsupported claims
+
+- Template generation sits between feature definitions and the on-disk help library
+- The help system serves the markdown templates produced by template generation
+- generate_feature_templates() is the simplest path for generation
+- For batch workflows, generation splits into three phases
+- Two supporting pieces keep the pipeline honest
+
+### Reasoning
+
+The answer is largely faithful to the passages. Core API signatures, parameter names, return types, and dataclass structures are all directly supported by the code documentation and type annotations in the passages. The explicit functions (generate_feature_templates, prepare_polish_phase, apply_polish_results, compute_scaffold_hash, reset_faithfulness_telemetry) and their signatures, parameters, and return values match the source code. However, some contextual framing claims lack direct textual support—specifically, characterizations about what sits "between" feature definitions and the help library, what the help system does with templates, and architectural characterizations like "two supporting pieces keep the pipeline honest" are reasonable inferences that go beyond explicit statements in the passages. These inferences are plausible but not directly stated, so they are marked unsupported per strict faithfulness standards.

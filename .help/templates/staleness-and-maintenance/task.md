@@ -1,108 +1,80 @@
 ---
 type: task
+name: staleness-and-maintenance-task
 feature: staleness-and-maintenance
 depth: task
-generated_at: 2026-04-26T19:48:08.669237+00:00
-source_hash: 196e1038a7194fe466fe8c96559cc4197bb18833f5afc123452ec132dd9007b6
+generated_at: 2026-07-10T13:08:07.303710+00:00
+source_hash: f70ee7dc8566b26c31c6469a302951de9b7e530870798083457598b8f84d96d6
 status: generated
+scaffold_hash: d7893b95a84a165017c6d0a838c1fc00895ba7788354736a3f17c4d4e6aeec53
 ---
 
 # Work with staleness and maintenance
 
-Use staleness and maintenance when you need to detect outdated generated templates and regenerate them automatically to keep your help system current with source code changes.
+Run a staleness check and maintenance pass when source files have changed and you need to find and regenerate help templates or project docs that no longer match the code.
 
 ## Prerequisites
 
-- Access to the project source code
-- Understanding of how templates are generated from source files
+- A workspace with a `.help/` directory and a feature manifest
+- Access to the project source tree (staleness hashes are computed from the feature's source files)
+- Python access to `attune_author.staleness` and `attune_author.maintenance`
 
-## Check for stale templates
+## Steps
 
-1. **Import the maintenance module**
-   ```python
-   from attune_author.maintenance import run_maintenance
-   ```
+1. **Check what's stale.**
+   Call `check_workspace_staleness(workspace)` for the conventional `.help/` layout, or `check_staleness(manifest, help_dir, project_root)` if you already have a `FeatureManifest`. Pass a `features` list to limit the check to specific features. Both return a `StalenessReport`.
 
-2. **Run staleness detection**
-   ```python
-   result = run_maintenance(
-       help_dir="docs/help",
-       project_root=".",
-       dry_run=True  # Check only, don't regenerate
-   )
-   ```
+2. **Review the report.**
+   Print a human-readable summary with `format_status_report(report, help_dir)`. Inspect the report directly when you need programmatic detail:
+   - `report.stale_count()` and `report.current_count()` for totals
+   - `report.stale_features()` for features with stale help templates
+   - `report.stale_docs()` for `docs/` entries that are stale or missing
+   - `report.manual_features` for features that maintenance will not touch
 
-3. **Review the staleness report**
-   ```python
-   print(f"Found {result.stale_count} stale templates")
-   print(result.staleness)  # Detailed report
-   ```
+3. **Preview the maintenance run.**
+   Call `run_maintenance(help_dir, project_root, dry_run=True)` to see what would be regenerated without writing anything. The returned `MaintenanceResult` lists what would change.
 
-## Regenerate outdated templates
+4. **Regenerate stale content.**
+   Call `run_maintenance(help_dir, project_root)` (optionally with a `features` list) to regenerate stale templates. Manually maintained features are skipped and recorded in `MaintenanceResult.skipped_manual`; failures land in `MaintenanceResult.failed`.
 
-1. **Run maintenance with regeneration enabled**
-   ```python
-   result = run_maintenance(
-       help_dir="docs/help",
-       project_root=".",
-       dry_run=False  # Actually regenerate
-   )
-   ```
+5. **Automate the check after commits (optional).**
+   Wire `run_hook(help_dir, project_root)` into a post-commit hook. It uses `get_changed_files(project_root)` to scope the check to files changed in the most recent commit and returns a `MaintenanceResult`, or `None` when there is nothing to do.
 
-2. **Target specific features** (optional)
-   ```python
-   result = run_maintenance(
-       help_dir="docs/help",
-       project_root=".",
-       features=["authentication", "error-handling"]
-   )
-   ```
+## Verify the result
 
-## Set up automatic maintenance
+- `MaintenanceResult.regenerated_count()` matches the number of stale features you expected, and `MaintenanceResult.failed` is empty.
+- Re-run `check_workspace_staleness(workspace)`; `stale_count()` now returns `0` for the features you regenerated.
 
-1. **Configure the post-commit hook**
-   ```python
-   from attune_author.maintenance import run_hook
+## Extend staleness detection
 
-   # In your .git/hooks/post-commit script
-   result = run_hook(
-       help_dir="docs/help",
-       project_root="."
-   )
-   ```
+If the built-in checks don't cover your case, these are the functions that own each piece of behavior:
 
-2. **Handle hook results**
-   ```python
-   if result and result.stale_count > 0:
-       print(f"Regenerated {result.regenerated_count} templates")
-   ```
+- `compute_semantic_hash()` in `src/attune_author/staleness.py` — semantic SHA-256 hash of a feature's Python source files; accepts a custom `extractor`
+- `compute_source_hash()` in `src/attune_author/staleness.py` — raw SHA-256 hash of a feature's source files
+- `parse_doc_footer()` / `build_doc_footer()` in `src/attune_author/staleness.py` — read and write the attune-generated HTML comment footer that stores a doc's `source_hash`, `feature`, `kind`, and `generated_at`
+- `run_maintenance()` in `src/attune_author/maintenance.py` — orchestrates the check-and-regenerate flow
 
-## Format status reports
+After changing any of these, run the related tests with `pytest -k "staleness-and-maintenance"` to catch regressions.
 
-1. **Generate a readable status report**
-   ```python
-   from attune_author.maintenance import format_status_report
+## Key files
 
-   report = format_status_report(
-       result.staleness,
-       help_dir="docs/help"
-   )
-   print(report)
-   ```
+- `src/attune_author/staleness.py` — staleness detection for help templates and project docs
+- `src/attune_author/maintenance.py` — maintenance logic for commit hooks and manual refresh
+## Faithfulness review
 
-2. **Check what files changed recently**
-   ```python
-   from attune_author.maintenance import get_changed_files
+> Auto-generated by attune-author faithfulness judge. Score 0.85 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
 
-   changed = get_changed_files(".")
-   print(f"Changed files: {changed}")
-   ```
+**Score:** 0.85 (supported: 33, unsupported: 6)
 
-## Verification
+### Unsupported claims
 
-You've successfully set up staleness and maintenance when:
+- MaintenanceResult.regenerated_count() is a method that returns the count of regenerated features
+- report.stale_count() is a method call in the step
+- report.current_count() is a method call in the step
+- report.stale_features() is a method call in the step
+- report.stale_docs() is a method call in the step
+- pytest -k "staleness-and-maintenance" is the command to run related tests
 
-- `run_maintenance()` returns a `MaintenanceResult` with accurate stale counts
-- Dry runs identify stale templates without modifying files
-- Regeneration updates only the templates that need refreshing
-- Status reports clearly show which templates were updated and why
+### Reasoning
+
+The answer claims that `stale_count()`, `current_count()`, `stale_features()`, and `stale_docs()` are methods (with parentheses), but the passages show these are @property decorators that should be accessed as attributes without parentheses (e.g., `report.stale_count` not `report.stale_count()`). Similarly, `regenerated_count()` is a @property in MaintenanceResult, not a method call. The claim about `pytest -k "staleness-and-maintenance"` is not mentioned in the passages and appears to be an invented test command.

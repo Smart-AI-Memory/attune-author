@@ -1,58 +1,89 @@
 ---
 type: reference
+name: doc-gen-pipeline-reference
 feature: doc-gen-pipeline
 depth: reference
-generated_at: 2026-04-26T19:50:22.310414+00:00
-source_hash: ed1e0ee4f61601566ddf49801a234a64d93605b2683aafe5ee4f86d48d8dd885
+generated_at: 2026-07-10T13:11:24.181397+00:00
+source_hash: 133624bd892c65fc1107ef6e8ac7503496aa666e58699b21c2121e800ebee9bc
 status: generated
+scaffold_hash: 6ffaba7f8011dae7aeb3467189d9888c692eae109ef031782e9dce5bcae69564
 ---
 
 # Doc Gen Pipeline reference
 
-Generate documentation through a three-stage pipeline: outline, write, and review. Configure documentation type, audience, and model parameters to produce API references, README sections, or docstrings from source code.
+Generate documentation from source code through a three-stage LLM pipeline: build an outline, write content section by section, then review and polish the draft. Configure the pipeline with `DocGenConfig` and inspect stage outputs through `DocGenResult`.
 
 ## Classes
 
-| Class | Description |
-|-------|-------------|
-| `DocGenConfig` | Configuration for the document generation pipeline |
-| `DocGenResult` | Result of document generation with content and pipeline stages |
+| Class | Description | File |
+|-------|-------------|------|
+| `DocGenConfig` | Configuration for the document generation pipeline. | `src/attune_author/doc_gen/config.py` |
+| `DocGenResult` | Result of document generation, including intermediate stage outputs. | `src/attune_author/doc_gen/pipeline.py` |
 
 ### DocGenConfig fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `doc_type` | `str` | `'api-reference'` | Type of documentation to generate |
-| `audience` | `str` | `'developers'` | Target audience for the documentation |
-| `model` | `str` | `'claude-sonnet-4-20250514'` | AI model to use for generation |
-| `max_outline_tokens` | `int` | `1000` | Token limit for outline generation |
-| `max_write_tokens` | `int` | `8000` | Token limit for content writing |
-| `max_review_tokens` | `int` | `8000` | Token limit for content review |
-| `sections_per_chunk` | `int` | `4` | Number of sections to process per chunk |
-| `section_focus` | `list[str]` | `field(default_factory=list)` | Specific sections to focus on during generation |
+| Field | Type | Default |
+|-------|------|---------|
+| `doc_type` | `str` | `'api-reference'` |
+| `audience` | `str` | `'developers'` |
+| `model` | `str` | `field(default_factory=_default_model)` |
+| `max_outline_tokens` | `int` | `1000` |
+| `max_write_tokens` | `int` | `8000` |
+| `max_review_tokens` | `int` | `8000` |
+| `sections_per_chunk` | `int` | `4` |
+| `section_focus` | `list[str]` | `field(default_factory=list)` |
 
 ### DocGenResult fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `content` | `str` | `''` | Final generated documentation content |
-| `outline` | `str` | `''` | Structured outline created in stage one |
-| `draft` | `str` | `''` | Draft content from stage two |
-| `stages_completed` | `list[str]` | `field(default_factory=list)` | Pipeline stages that completed successfully |
-| `source_path` | `str` | `''` | Path to the source file or content |
+| Field | Type | Default |
+|-------|------|---------|
+| `content` | `str` | `''` |
+| `outline` | `str` | `''` |
+| `draft` | `str` | `''` |
+| `stages_completed` | `list[str]` | `field(default_factory=list)` |
+| `source_path` | `str` | `''` |
 
 ## Functions
 
-| Function | Parameters | Returns | Description |
-|----------|------------|---------|-------------|
-| `generate_docs` | `target: str, config: DocGenConfig \| None = None, output_path: str \| None = None` | `DocGenResult` | Generate documentation for a source file or content |
-| `build_outline` | `client: Anthropic, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int` | `str` | Generate a structured documentation outline |
-| `write_content` | `client: Anthropic, outline: str, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int, section_focus: list[str] \| None = None` | `str` | Write documentation content from an outline |
-| `review_content` | `client: Anthropic, draft: str, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int` | `str` | Review and polish draft documentation |
-| `parse_outline_sections` | `outline: str` | `list[str]` | Parse top-level section titles from an outline |
+| Function | Parameters | Returns | Description | File |
+|----------|------------|---------|-------------|------|
+| `generate_docs` | `target: str, config: DocGenConfig \| None = None, output_path: str \| None = None` | `DocGenResult` | Runs the full outline-write-review pipeline on a source file or content string. | `src/attune_author/doc_gen/pipeline.py` |
+| `build_outline` | `client: Anthropic, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int` | `str` | Generates a structured documentation outline from source content. | `src/attune_author/doc_gen/stages.py` |
+| `write_content` | `client: Anthropic, outline: str, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int, section_focus: list[str] \| None = None` | `str` | Writes documentation content from an outline, optionally focused on specific sections. | `src/attune_author/doc_gen/stages.py` |
+| `review_content` | `client: Anthropic, draft: str, source_content: str, doc_type: str, audience: str, model: str, max_tokens: int` | `str` | Reviews the draft against the source and returns polished documentation. | `src/attune_author/doc_gen/stages.py` |
+| `parse_outline_sections` | `outline: str` | `list[str]` | Parses top-level section titles from an outline. | `src/attune_author/doc_gen/stages.py` |
 
-### Raises
+## Raises
 
-| Function | Exception | Message |
-|----------|-----------|---------|
+| Function | Raises | Message |
+|----------|--------|---------|
 | `generate_docs` | `AnthropicCallError` | `{...} — install with: pip install 'attune-author[ai]'` |
+
+## Source files
+
+- `src/attune_author/doc_gen/pipeline.py`
+- `src/attune_author/doc_gen/stages.py`
+- `src/attune_author/doc_gen/config.py`
+
+## Tags
+
+`doc-gen`, `pipeline`, `llm`, `multi-stage`
+## Faithfulness review
+
+> Auto-generated by attune-author faithfulness judge. Score 0.82 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
+
+**Score:** 0.82 (supported: 32, unsupported: 7)
+
+### Unsupported claims
+
+- DocGenConfig is located in 'src/attune_author/doc_gen/config.py'
+- DocGenResult is located in 'src/attune_author/doc_gen/pipeline.py'
+- build_outline is located in 'src/attune_author/doc_gen/stages.py'
+- write_content is located in 'src/attune_author/doc_gen/stages.py'
+- review_content is located in 'src/attune_author/doc_gen/stages.py'
+- parse_outline_sections is located in 'src/attune_author/doc_gen/stages.py'
+- generate_docs is located in 'src/attune_author/doc_gen/pipeline.py'
+
+### Reasoning
+
+The answer is primarily faithful to the retrieved passages. All core functional and structural information about the pipeline, classes, fields, and functions are directly supported by the code. However, the answer specifies exact file paths (e.g., 'src/attune_author/doc_gen/config.py') in the reference table, while the passages only show relative module paths (attune_author.doc_gen.config). The exact 'src/' prefix locations are not explicitly stated in the passages, making these claims technically unsupported, though they are reasonable inferences about Python package structure.

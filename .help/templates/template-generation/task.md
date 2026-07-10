@@ -1,77 +1,97 @@
 ---
 type: task
+name: template-generation-task
 feature: template-generation
 depth: task
-generated_at: 2026-04-26T19:46:35.990000+00:00
-source_hash: e3ad2679109ec5bb81db1607254855a0f32feadedbce291531797eb11bf09912
+generated_at: 2026-07-10T13:05:05.890581+00:00
+source_hash: e149f981f61eeb2abe34e8dcb562351d5abf6345541b513e7652221934c533ab
 status: generated
+scaffold_hash: 5cce38b557a36c7838fd16b1a6de780b98ceb521d653f20bd4d6da755e3d2a61
 ---
 
 # Work with template generation
 
-Use template generation when you need to create markdown help templates from feature definitions and source code analysis.
+Use template generation when you need to render markdown help templates for a feature from its definition and source code, or when you need to modify how templates are generated, hashed, or polished.
 
 ## Prerequisites
 
 - Access to the project source code
-- Understanding of the `src/attune_author/generator.py` module structure
+- Familiarity with `src/attune_author/generator.py`
 
-## Generate templates for a feature
+## Steps
 
-1. **Import the generation function**
-   ```python
-   from attune_author.generator import generate_feature_templates
-   ```
+1. **Map your goal to the function that owns it.**
+   The generator exposes two entry paths, both in
+   `src/attune_author/generator.py`:
+   - **Single-pass generation:** `generate_feature_templates()`
+     generates help templates for a feature and returns a
+     `GenerationResult`.
+   - **Batch (two-phase) generation:** `prepare_polish_phase()`
+     runs the pre-polish work for one feature and returns a
+     `PolishPreparation`; `apply_polish_results()` then writes
+     the polished content for each pending template and returns
+     a `GenerationResult`.
 
-2. **Define your feature and paths**
-   ```python
-   feature = Feature(name="your-feature-name")
-   help_dir = Path("help")
-   project_root = Path(".")
-   ```
+   Supporting functions:
+   - `compute_scaffold_hash()` — computes a SHA-256 of a
+     rendered scaffold with metadata lines normalized.
+   - `reset_faithfulness_telemetry()` — resets the per-process
+     faithfulness telemetry counters.
 
-3. **Call the generator with your parameters**
-   ```python
-   result = generate_feature_templates(
-       feature=feature,
-       help_dir=help_dir,
-       project_root=project_root,
-       depths=["concept", "task", "reference"],  # optional
-       overwrite=False,  # optional
-       use_rag=True  # optional
-   )
-   ```
+2. **Confirm the function's contract before editing.**
+   Check its parameters and return type. For example, the
+   generation functions accept `feature`, `help_dir`,
+   `project_root`, and optional `depths`, `overwrite`, and
+   `use_rag` arguments. Note that `prepare_polish_phase()`
+   raises `ValueError` for an invalid feature name — preserve
+   that validation if you change its inputs.
 
-4. **Check the generation result**
-   ```python
-   print(f"Generated {len(result.templates)} templates for {result.feature}")
-   for template in result.templates:
-       print(f"- {template.depth}: {template.path}")
-   ```
+3. **Edit the function and update its dataclasses together.**
+   If your change affects generation output, check whether the
+   result shapes need to change too: `GeneratedTemplate` records
+   one generated file (`feature`, `depth`, `path`,
+   `source_hash`), and `GenerationResult` aggregates the
+   templates, `source_hash`, and `matched_files` for a feature.
+   Match the file's existing naming, error handling, and logging
+   style.
 
-## Modify template generation behavior
+4. **Watch for hash stability.**
+   If you touch scaffold rendering, remember that
+   `compute_scaffold_hash()` normalizes metadata lines before
+   hashing. Changes to rendered content can invalidate existing
+   scaffold hashes and trigger regeneration downstream.
 
-1. **Locate the function you need to change**
-   Open `src/attune_author/generator.py` and find `generate_feature_templates()`. This function orchestrates the entire generation process.
+5. **Run the related tests.**
+   Target them with:
 
-2. **Review the current implementation**
-   Read the function's docstring, parameters, and return type to understand its responsibilities before making changes.
-
-3. **Follow the existing patterns**
-   Use the same naming conventions, error handling style (raising `ValueError` for invalid feature names), and return type structure (`GenerationResult`) as the current code.
-
-4. **Test your changes**
-   Run the template generation tests to verify your modifications work correctly:
    ```bash
    pytest -k "template-generation"
    ```
 
-## Verify template generation worked
+## Verify the change
 
-After running `generate_feature_templates()`, you should see:
-- A `GenerationResult` object with the correct feature name
-- Template files created at the specified paths in the help directory
-- Each generated template has a unique `source_hash` matching the input
-- The `matched_files` list contains the source files that were analyzed
+- The targeted tests pass with no failures.
+- If you regenerated templates, the returned `GenerationResult`
+  lists the expected templates and each `GeneratedTemplate.path`
+  points to a file that exists on disk under your `help_dir`.
 
-The generation succeeds when all specified depths produce valid markdown files with proper YAML frontmatter.
+## Key files
+
+- `src/attune_author/generator.py`
+## Faithfulness review
+
+> Auto-generated by attune-author faithfulness judge. Score 0.72 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
+
+**Score:** 0.72 (supported: 13, unsupported: 5)
+
+### Unsupported claims
+
+- The generator exposes two entry paths, both in src/attune_author/generator.py
+- Supporting functions include compute_scaffold_hash(), reset_faithfulness_telemetry(), and others as listed
+- The generation functions accept depths, overwrite, and use_rag as optional arguments
+- Tests can be targeted with pytest -k 'template-generation'
+- If you regenerated templates, the returned GenerationResult lists the expected templates
+
+### Reasoning
+
+The answer is a task guide that decomposes actual functionality from the source code passages. Most claims about the functions themselves—their names, parameters, return types, and file locations—are directly supported by function signatures and docstrings in the passages. The claim about "two entry paths" is supported (generate_feature_templates and prepare_polish_phase are both documented as entry points). However, the pytest command and verification steps are procedural guidance not explicitly stated in the passages; similarly, the characterization of "supporting functions" as a distinct category is organizational framing rather than a direct statement in the source. The claim about "depths, overwrite, and use_rag as optional arguments" is supported by the function signatures and docstring language ("optional"), though the phrasing as a grouped statement in Step 1 goes beyond what is explicitly stated there.

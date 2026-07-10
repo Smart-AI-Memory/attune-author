@@ -1,79 +1,91 @@
 ---
 type: task
+name: rag-hook-task
 feature: rag-hook
 depth: task
-generated_at: 2026-04-26T19:50:48.254347+00:00
-source_hash: d61374d79edea28930ef15ec35497f1fe3d5042dd35a449b02dca7cd837e332e
+generated_at: 2026-07-10T13:12:16.859281+00:00
+source_hash: 19b577bbd2525cae2917679bdac6c3c7051a2eb5ba988b8fc0be275b7c6eef09
 status: generated
+scaffold_hash: fd9fc12ea2d562e06e6dc6e1d9f08f754a41491720c2aaf675917aa2118c1c33
 ---
 
-# Work with rag hook
+# Work with the RAG hook
 
-Use rag hook when you need to add contextual grounding to the template polish pass or modify how attune-author retrieves related help content.
+Use the RAG hook when you want the polish pass to ground its rewrites in real attune-help templates instead of invented patterns, or when you need to change how that grounding context is gated or built.
 
 ## Prerequisites
 
 - Access to the project source code
 - Familiarity with `src/attune_author/rag_hook.py`
 
-## Check if RAG is enabled
+## Steps
 
-1. **Call the detection function.**
-   Use `rag_enabled()` to check whether RAG grounding is available:
-   ```python
-   from attune_author.rag_hook import rag_enabled
+1. **Read the two entry points.**
+   The module exposes two functions, both in
+   `src/attune_author/rag_hook.py`:
+   - `rag_enabled() -> bool` — returns `True` when RAG
+     grounding should be used. Check the
+     `ATTUNE_AUTHOR_RAG` environment variable behavior
+     here — this is the disable switch.
+   - `ground_polish_context(feature_name: str, template_type: str, k: int = 3) -> str | None` —
+     builds the grounding context block that the polish
+     pass injects into the rewrite prompt. Returns `None`
+     when no context is available.
 
-   if rag_enabled():
-       # RAG is available
-   else:
-       # Fall back to non-RAG behavior
-   ```
+2. **Pick the function that owns the behavior you need.**
+   Change `rag_enabled()` if you're adjusting when
+   grounding activates. Change `ground_polish_context()`
+   if you're adjusting what the grounding block contains,
+   how many related templates it retrieves (`k`), or how
+   it degrades when retrieval is unavailable.
 
-2. **Handle the disabled state.**
-   When RAG is disabled (via `ATTUNE_AUTHOR_RAG` environment variable), your code should degrade gracefully without the extra context.
+3. **Preserve graceful degradation.**
+   The module lazy-imports its retrieval dependency so
+   attune-author stays installable without the `[rag]`
+   extra. Any change you make must not raise at import
+   time or when the extra is absent — return `None` from
+   `ground_polish_context()` rather than failing.
 
-## Retrieve grounding context
+4. **Run the related tests.**
+   Target the hook's tests with:
 
-1. **Build the context block.**
-   Call `ground_polish_context()` with your feature name and template type:
-   ```python
-   from attune_author.rag_hook import ground_polish_context
-
-   context = ground_polish_context("your-feature", "task", k=3)
-   ```
-
-2. **Handle the None case.**
-   The function returns `None` when RAG is disabled or no relevant templates are found:
-   ```python
-   if context:
-       # Include context in your polish prompt
-       prompt = f"Context:\n{context}\n\nTemplate to polish:\n{template}"
-   else:
-       # Polish without additional context
-       prompt = f"Template to polish:\n{template}"
-   ```
-
-## Modify RAG behavior
-
-1. **Locate the function you need.**
-   - `rag_enabled()` controls when RAG grounding runs
-   - `ground_polish_context()` builds the context block from retrieved templates
-
-2. **Follow the existing patterns.**
-   - Use lazy imports to keep dependencies optional
-   - Return graceful defaults when RAG is unavailable
-   - Maintain the same return types and error handling
-
-3. **Test your changes.**
-   Run the test suite to verify your modifications work:
    ```bash
-   pytest -k "rag_hook"
+   pytest -k "rag-hook"
    ```
 
-## Verification
+## Verify your change
 
-You successfully modified the rag hook when:
-- `rag_enabled()` returns the expected boolean value
-- `ground_polish_context()` returns properly formatted context or `None` as appropriate
-- The system gracefully handles cases when RAG dependencies are unavailable
-- All existing tests pass
+- Tests pass with `pytest -k "rag-hook"`.
+- With the `[rag]` extra installed and RAG enabled,
+  `ground_polish_context()` returns a non-empty string
+  for a known feature and template type.
+- With `ATTUNE_AUTHOR_RAG` set to disable grounding,
+  `rag_enabled()` returns `False` and the polish pass
+  runs without a grounding block.
+- Without the `[rag]` extra installed, importing
+  `attune_author.rag_hook` succeeds and
+  `ground_polish_context()` returns `None` instead of
+  raising.
+
+## Key files
+
+- `src/attune_author/rag_hook.py` — both entry points
+  live here:
+  - `rag_enabled()` — the gate that decides whether
+    grounding runs
+  - `ground_polish_context()` — the builder that
+    assembles the grounding context block
+## Faithfulness review
+
+> Auto-generated by attune-author faithfulness judge. Score 0.89 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
+
+**Score:** 0.89 (supported: 16, unsupported: 2)
+
+### Unsupported claims
+
+- The polish pass injects the grounding block into the rewrite prompt
+- The polish pass retrieves k related templates
+
+### Reasoning
+
+The answer's atomic claims are overwhelmingly supported by the passages. The module documentation and code explicitly define the two functions, their signatures, return types, and behavior. The passages detail the lazy-import design, graceful degradation strategy, environment variable handling, and test verification approach. Two minor claims about the polish pass's specific behavior (injection into rewrite prompt and retrieval of k templates) are reasonable inferences but not explicitly stated in the passages—the passages say ground_polish_context() retrieves hits and k is "max hits to include," but don't explicitly confirm the polish pass uses these or how many it retrieves. All other details are directly attested by the code and docstrings.

@@ -1,39 +1,46 @@
 ---
 type: concept
+name: bootstrap-concept
 feature: bootstrap
 depth: concept
-generated_at: 2026-04-14T16:08:15.813184+00:00
-source_hash: 747d4d8b3e41bb5a6d7a534fb1402fcfcda15486e7b1994427f88a2f71907ebf
+generated_at: 2026-07-10T13:07:32.382854+00:00
+source_hash: 40cd7c5eca29231d1a865aa04654239348b46aed8c204904aacc473fc810affe
 status: generated
+scaffold_hash: 86c6577f7fd5f4575d4b8c7ef0c1fb4ae3ef232e9436313a11797aea1ba12888
 ---
 
 # Bootstrap
 
-Bootstrap automatically discovers features in a codebase by scanning directory structures and file patterns, then generates an initial feature manifest.
+Bootstrap scans an existing project and proposes an initial feature manifest, so you don't have to write one from scratch. Instead of listing every feature by hand, you run a scan, review the proposals, and convert the ones you accept into a manifest.
 
-## Discovery process
+## How it works
 
-The scanner examines your project's file system to identify potential features based on:
+The scan-and-convert flow has two steps, each backed by one public function:
 
-- **Entry points** — Files like `main.py`, `app.py`, `cli.py`, `server.py` that typically contain application logic
-- **Configuration patterns** — Directories and files containing "config", "settings", or "conf" in their names
-- **Directory structure** — Organized code folders that suggest distinct functionality
+1. **`scan_project(project_root)`** walks the project's directory structure and Python package layout and returns a list of `ProposedFeature` objects — one per feature it thinks it found. The scanner skips noise directories such as `.git`, `__pycache__`, `.venv`, and `node_modules`, and it uses signals like entry-point filenames (for example `main.py`, `cli.py`, `server.py`) and configuration naming patterns (`config`, `settings`, `conf`) to decide what looks like a feature.
+2. **`proposals_to_manifest(proposals)`** takes the proposals you've accepted and converts them into a `FeatureManifest`, the structure the rest of the system consumes.
 
-The scanner skips common directories that don't contain feature code, such as `.git`, `__pycache__`, `node_modules`, and virtual environments.
+Each `ProposedFeature` carries enough information for you to judge it before accepting:
 
-## Feature proposals
+| Field | What it tells you |
+|---|---|
+| `name` | The proposed feature name |
+| `description` | What the scanner thinks the feature does |
+| `files` | The source files grouped under this feature |
+| `tags` | Searchable tags suggested for the feature |
+| `confidence` | How sure the scanner is (defaults to `medium`) |
+| `reason` | Why the scanner proposed this feature |
 
-Each discovered feature becomes a `ProposedFeature` with these attributes:
+The `confidence` and `reason` fields exist because scanning is heuristic: the scanner explains its guesses so you can accept, edit, or discard each proposal rather than trusting the output blindly.
 
-- **name** — Derived from directory or file names
-- **description** — Generated based on the context where the feature was found
-- **files** — List of relevant source files associated with the feature
-- **tags** — Categorization labels to help organize features
-- **confidence** — Assessment of how certain the scanner is about the feature (defaults to 'medium')
-- **reason** — Explanation of why this was identified as a feature
+## What connects to it
 
-## Manifest generation
+Bootstrap sits at the front of the setup pipeline: it produces the manifest that scanning and generation later depend on. The rest of the codebase interacts with it through these interfaces:
 
-After scanning, you can convert the feature proposals into a structured `FeatureManifest` using `proposals_to_manifest()`. This creates the foundation for documentation generation and project analysis workflows.
+| Interface | Purpose | File |
+|-----------|---------|------|
+| `scan_project` | Scan a project and propose features | `src/attune_author/bootstrap.py` |
+| `proposals_to_manifest` | Convert accepted proposals to a `FeatureManifest` | `src/attune_author/bootstrap.py` |
+| `ProposedFeature` | A feature discovered by scanning | `src/attune_author/bootstrap.py` |
 
-The bootstrap process gives you a starting point that you can refine by accepting, rejecting, or modifying the proposed features before generating your final documentation.
+A useful mental model: bootstrap is the one-time (or occasional) step that turns a raw project tree into structured proposals, and `FeatureManifest` is the handoff point where its job ends and the rest of the system takes over.
