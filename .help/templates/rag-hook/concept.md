@@ -1,33 +1,36 @@
 ---
 type: concept
+name: rag-hook-concept
 feature: rag-hook
 depth: concept
-generated_at: 2026-04-26T19:50:37.332949+00:00
-source_hash: d61374d79edea28930ef15ec35497f1fe3d5042dd35a449b02dca7cd837e332e
+generated_at: 2026-07-10T13:12:16.847805+00:00
+source_hash: 19b577bbd2525cae2917679bdac6c3c7051a2eb5ba988b8fc0be275b7c6eef09
 status: generated
+scaffold_hash: e451bbc3a9e666fbc1d0670ba83dec90f6410a25eda9bccac2432d673f6a6f6a
 ---
 
-# RAG Hook
+# RAG hook
 
-The RAG hook provides optional retrieval-augmented generation for template polishing, letting the AI rewriter reference real attune-help patterns instead of inventing content.
+The RAG hook is an optional grounding step in the attune-author polish pass: before the LLM rewrites a template, the hook retrieves related attune-help templates through attune-rag and injects them as context, so the rewrite references real, existing patterns instead of inventing them.
 
-## Core responsibilities
+## How it works
 
-The hook acts as a bridge between attune-author's polish pass and the attune-rag system. When enabled, it retrieves existing templates that match the feature being polished, giving the LLM concrete examples of style, structure, and naming conventions to follow.
+The hook lives in `attune_author.rag_hook` and exposes two functions:
 
-Two functions handle this integration:
+- **`rag_enabled() -> bool`** — Returns `True` when RAG grounding should be used. The polish pass calls this first as a cheap gate before doing any retrieval work. You can disable grounding by setting the `ATTUNE_AUTHOR_RAG` environment variable.
+- **`ground_polish_context(feature_name: str, template_type: str, k: int = 3) -> str | None`** — Builds the grounding context block for the polish pass. Given a feature name and template type, it retrieves up to `k` related templates (three by default) and returns them as a formatted context string. It returns `None` when nothing useful is available, so callers can skip grounding cleanly.
 
-- **`rag_enabled()`** checks whether RAG grounding is available and should be used
-- **`ground_polish_context()`** fetches related templates and formats them as context for the polish prompt
+The module uses lazy imports and degrades gracefully: if the `[rag]` extra isn't installed, attune-author still works — the polish pass simply runs without grounding. This keeps the base package installable without pulling in retrieval dependencies.
 
-## Graceful degradation model
+A useful mental model: the hook is a fetch-and-format layer between the polish pass and attune-rag. The polish pass asks "is grounding on?" (`rag_enabled()`), then "what should the LLM see?" (`ground_polish_context()`), and the hook handles retrieval, formatting, and every failure mode in between.
 
-The hook uses lazy imports and optional dependencies to keep attune-author lightweight. If the `[rag]` extra isn't installed or the `ATTUNE_AUTHOR_RAG` environment variable is set, RAG grounding is silently disabled and polishing continues without retrieval context.
+## Connection points
 
-This design lets users install attune-author standalone for basic template generation while providing enhanced polish quality when the full RAG stack is available.
+The hook sits at the boundary between attune-author's polish pass and the attune-rag retrieval layer. Related concerns: retrieval, grounding, the polish pass, and optional-extra packaging.
 
-## Integration with the polish workflow
+Other parts of the codebase call into the hook through these functions:
 
-During template polishing, the hook retrieves up to 3 related templates based on feature name and template type. These examples appear in the LLM prompt as "Related existing templates (for reference)" — giving the AI concrete patterns to follow rather than generating formulaic placeholder content.
-
-The retrieved templates serve as style guides, showing real section structures, naming conventions, and content depth that match the project's documentation standards.
+| Function | Purpose | File |
+|----------|---------|------|
+| `rag_enabled()` | Return `True` when RAG grounding should be used. | `src/attune_author/rag_hook.py` |
+| `ground_polish_context()` | Build a grounding context block for the polish pass. | `src/attune_author/rag_hook.py` |

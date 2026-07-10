@@ -1,40 +1,57 @@
 ---
 type: concept
+name: staleness-and-maintenance-concept
 feature: staleness-and-maintenance
 depth: concept
-generated_at: 2026-04-26T19:47:57.095143+00:00
-source_hash: 196e1038a7194fe466fe8c96559cc4197bb18833f5afc123452ec132dd9007b6
+generated_at: 2026-07-10T13:08:07.296131+00:00
+source_hash: f70ee7dc8566b26c31c6469a302951de9b7e530870798083457598b8f84d96d6
 status: generated
+scaffold_hash: 987852496b6fe69ac7a1a507a34fbced646796239d8ab2abd62e795c53829149
 ---
 
-# Staleness And Maintenance
+# Staleness and maintenance
+
+Staleness detection tells you when generated help templates and project docs have drifted from the source code they describe, and maintenance regenerates the stale ones.
 
 ## How it works
 
-Staleness detection identifies when generated help templates are out of sync with their source code. When you modify functions, classes, or files that generated templates reference, those templates become stale and need regeneration to reflect current behavior.
+Generated documentation rots when source code changes underneath it. This feature closes that gap with a hash-compare-regenerate loop across two modules: `attune_author.staleness` (detection) and `attune_author.maintenance` (repair).
 
-The system tracks this through source hashes — cryptographic fingerprints of the code that generated each template. When source files change, their hashes change, marking dependent templates as stale.
+The cycle works like this:
 
-## Core components
+1. **Record.** When a doc is generated, `build_doc_footer` writes an HTML comment footer into the file that records the source hash, feature name, doc kind, and generation timestamp.
+2. **Hash.** Later, `compute_source_hash` computes a SHA-256 hash of a feature's current source files. `compute_semantic_hash` does the same but hashes the semantic content of the Python source, so cosmetic edits don't trigger false staleness. Cache and tooling directories such as `__pycache__` and `node_modules` are excluded from hashing.
+3. **Compare.** `check_staleness` reads each doc's stored hash (via `parse_doc_footer`) and compares it against the current hash. `check_workspace_staleness` does the same for a workspace that uses the conventional `.help/` layout. Both return a `StalenessReport`.
+4. **Regenerate.** `run_maintenance` acts on the report: it regenerates stale docs and returns a `MaintenanceResult` describing what happened. Pass `dry_run=True` to see what would be regenerated without touching any files.
 
-**MaintenanceResult** captures what happened during a maintenance run. It tracks which features were stale, which got regenerated successfully, which were skipped because they require manual updates, and which failed during regeneration.
+Two entry points feed this cycle automatically:
 
-**Staleness detection** compares current source hashes against the hashes stored in template frontmatter. Templates with mismatched hashes are marked stale and queued for regeneration.
+- `run_hook` is the post-commit hook entry point. It uses `get_changed_files` to look at the most recent commit, so routine commits keep help content fresh without manual effort.
+- `format_status_report` turns a `StalenessReport` into human-readable output when you want to inspect drift yourself.
 
-**Automated maintenance** runs either manually through `run_maintenance()` or automatically via the post-commit hook. The hook examines recent git changes and regenerates only templates affected by those changes.
+### The report structures
 
-## When staleness matters
+A `StalenessReport` aggregates two kinds of entries plus an exclusion list:
 
-Templates become stale in three scenarios:
+- **`FeatureStaleness`** — status for one feature's `.help/` templates. Its `is_stale` flag is derived by comparing `current_hash` against `stored_hash`; `matched_files` lists the source files that contributed to the hash.
+- **`DocStaleness`** — status for one project doc file in `docs/`. In addition to the hash pair, its `missing` flag distinguishes a doc that has drifted from one that was never generated or has been deleted.
+- **`manual_features`** — features whose docs are hand-maintained and should never be regenerated.
 
-1. **Function signatures change** — adding parameters, changing return types, or modifying docstrings
-2. **Class structure evolves** — new methods, field additions, or inheritance changes
-3. **Module organization shifts** — moving files, renaming modules, or changing import paths
+Convenience properties on the report (`stale_count`, `current_count`, `stale_features`, `stale_docs`) let callers summarize or filter without walking the entry lists themselves.
 
-The maintenance system prevents documentation drift by catching these changes before templates mislead users.
+A `MaintenanceResult` mirrors this shape for the repair side: it carries the triggering `staleness` report, the list of `regenerated` docs, features `skipped_manual` because they're hand-maintained, and any that `failed`. Its `stale_count` and `regenerated_count` properties give you the before-and-after numbers at a glance.
 
-## Hook integration
+## What connects to it
 
-The post-commit hook automatically runs maintenance after each commit. It examines `get_changed_files()` to identify what changed, then regenerates only the templates that depend on those files. This keeps help content fresh without manual intervention.
+Staleness and maintenance sits between doc generation and version control: generation stamps the footer, commits trigger the check, and regeneration feeds back into generation.
 
-For manual maintenance, `run_maintenance()` can target specific features or scan the entire help directory. The `dry_run` option shows what would be regenerated without making changes.
+Other parts of the codebase interact with this feature through these interfaces:
+
+| Interface | Purpose | File |
+|-----------|---------|------|
+| `MaintenanceResult` | Result of a help maintenance run | `src/attune_author/maintenance.py` |
+| `FeatureStaleness` | Staleness status for one feature's `.help/` templates | `src/attune_author/staleness.py` |
+| `DocStaleness` | Staleness status for one project doc file in `docs/` | `src/attune_author/staleness.py` |
+| `StalenessReport` | Combined staleness report across help templates and project docs | `src/attune_author/staleness.py` |
+
+If you only need to answer "is anything stale?", call `check_workspace_staleness` and read `stale_count`. If you need to fix drift, call `run_maintenance` — or install the post-commit hook so `run_hook` does it for you.

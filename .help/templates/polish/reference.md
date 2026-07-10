@@ -1,44 +1,88 @@
 ---
 type: reference
+name: polish-reference
 feature: polish
 depth: reference
-generated_at: 2026-04-26T19:47:19.826246+00:00
-source_hash: c3c5a14decb406edb1b2d8ca09a6adb5d3bf68908f60cdaf9a9ea6ba0df1471d
+generated_at: 2026-07-10T13:05:53.047550+00:00
+source_hash: cee35117856c8654705dabf8225b46da419f67a138180fcc5b5a7008b62e2cd0
 status: generated
+scaffold_hash: 6d4549cb32cd454c47f17902ada0c2fc0a20c9a0323ac60df2cae037fa8cfa77
 ---
 
 # Polish reference
 
-Polish generated help templates using an LLM to improve readability, structure, and adherence to Google's developer documentation style guide.
+Rewrite generated help templates with an LLM pass that combines per-type system prompts with source-grounded summaries. Use `polish_template` to run the pass, `build_source_summary` to assemble the grounding context, and the cache functions to inspect or reset prompt-cache usage.
 
 ## Classes
 
-| Class | Description |
-|-------|-------------|
-| `PolishError` | Raised when the polish pass fails in strict mode |
+| Class | Description | File |
+|-------|-------------|------|
+| `PolishError` | Raised when the polish pass fails in strict mode. | `src/attune_author/polish.py` |
+| `PolishCacheStats` | Aggregate prompt-cache token usage across polish calls. | `src/attune_author/polish.py` |
+
+### PolishCacheStats fields
+
+| Field | Type | Default |
+|-------|------|---------|
+| `calls` | `int` | `0` |
+| `creation_tokens` | `int` | `0` |
+| `read_tokens` | `int` | `0` |
+
+### PolishCacheStats properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `total_tokens` | `int` | Sum of cache token usage across polish calls. |
+| `hit_rate` | `float` | Cache read fraction in `[0.0, 1.0]`; `0.0` when no calls recorded. |
+
+### PolishCacheStats methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `summary_line()` | `str` | One-line summary of aggregate cache usage. |
 
 ## Functions
 
-| Function | Parameters | Returns | Description |
-|----------|------------|---------|-------------|
-| `polish_template()` | `content: str, feature_name: str, source_summary: str, template_type: str = "generic", strict: bool \| None = None, augmented_context: str \| None = None` | `str` | Polish a generated template using an LLM |
-| `build_source_summary()` | `public_classes: list[dict[str, str]], public_functions: list[dict[str, str]], module_docstrings: list[str], file_count: int, function_signatures: list[dict[str, str]] \| None = None, class_signatures: list[dict[str, str]] \| None = None, module_constants: list[dict[str, object]] \| None = None` | `str` | Build a concise source summary for the polish prompt |
-| `get_system_prompt()` | `template_type: str` | `str` | Build the system prompt for a given template kind |
+| Function | Parameters | Returns | Raises | Description | File |
+|----------|------------|---------|--------|-------------|------|
+| `clear_cache` | — | `int` | — | Delete every entry in the polish cache directory. | `src/attune_author/polish.py` |
+| `polish_template` | `content: str, feature_name: str, source_summary: str, template_type: str = 'generic', strict: bool \| None = None, augmented_context: str \| None = None, include_ground_truth_anchor: bool = False` | `str` | `PolishError` — `'Polish pass failed for {...} (type={...}): {...}'` | Polish a generated template using an LLM. | `src/attune_author/polish.py` |
+| `build_polish_prompt` | `content: str, feature_name: str, source_summary: str, template_type: str, augmented_context: str \| None = None, include_ground_truth_anchor: bool = False` | `tuple[str, str]` | — | Build the `(system_prompt, user_message)` pair for a polish call. | `src/attune_author/polish.py` |
+| `reset_polish_cache_telemetry` | — | `None` | — | Reset the per-process prompt-cache telemetry counters. | `src/attune_author/polish.py` |
+| `polish_cache_stats` | — | `PolishCacheStats` | — | Snapshot the current per-process prompt-cache aggregate. | `src/attune_author/polish.py` |
+| `format_polish_cache_summary` | — | `str \| None` | — | End-of-run summary line, or `None` if polish never ran. | `src/attune_author/polish.py` |
+| `build_source_summary` | `public_classes: list[dict[str, str]], public_functions: list[dict[str, str]], module_docstrings: list[str], file_count: int, function_signatures: list[dict[str, str]] \| None = None, class_signatures: list[dict[str, str]] \| None = None, module_constants: list[dict[str, object]] \| None = None` | `str` | — | Build a concise source summary for the polish prompt. | `src/attune_author/polish.py` |
+| `get_system_prompt` | `template_type: str` | `str` | — | Build the system prompt for a given template kind. | `src/attune_author/polish_prompts.py` |
 
-### Raises
+## Module constants
 
-| Function | Exception | Message |
-|----------|-----------|---------|
-| `polish_template()` | `PolishError` | `'Polish pass failed for {...} (type={...}): {...}'` |
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `STRICT_ENV_VAR` | `'ATTUNE_AUTHOR_STRICT_POLISH'` | Environment variable that controls the strict-mode default. |
+| `_FALSY` | `{'0', 'false', 'no', 'off'}` | String values that turn strict mode off when set in the environment. |
+| `_CACHE_DIR_ENV` | `'ATTUNE_AUTHOR_POLISH_CACHE'` | Environment variable that overrides the polish cache directory. |
+| `_CACHE_TTL_ENV` | `'ATTUNE_AUTHOR_POLISH_CACHE_TTL_SECONDS'` | Environment variable that sets the cache time-to-live in seconds. |
+| `_VOLATILE_FRONTMATTER_FIELDS` | `{'generated_at'}` | Frontmatter fields excluded from cache-key comparison. |
 
-## Constants
+## Source files
 
-| Constant | Values | Description |
-|----------|--------|-------------|
-| `STRICT_ENV_VAR` | `'ATTUNE_AUTHOR_STRICT_POLISH'` | Environment variable name for enabling strict mode |
-| `_FALSY` | `{'0', 'false', 'no', 'off'}` | String values that disable strict mode |
-| `_BASE_RULES` | System prompt base rules | Core polishing instructions applied to all template types |
+- `src/attune_author/polish.py`
+- `src/attune_author/polish_prompts.py`
 
 ## Tags
 
 `polish`, `llm`, `anthropic`, `quality`
+## Faithfulness review
+
+> Auto-generated by attune-author faithfulness judge. Score 0.95 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
+
+**Score:** 0.95 (supported: 37, unsupported: 2)
+
+### Unsupported claims
+
+- PolishCacheStats.hit_rate returns 0.0 when no calls recorded (the passage says it returns 0.0 when no cacheable tokens were seen, which is a different condition)
+- polish_template() has default parameter template_type = 'generic' (passages show default is 'generic' but claim wording could be more precise about what 'generic' means in context)
+
+### Reasoning
+
+The answer is a structured reference table extracted directly from the source code and docstrings in the retrieved passages. Nearly all atomic claims map to explicit statements in the code documentation, function signatures, class definitions, and docstrings. The class field defaults, return types, parameter names, and descriptions are all verbatim from the passages. The constants and their values are directly from the source. Two minor issues: (1) the hit_rate property description in the answer says it returns 0.0 "when no calls recorded," but the passage states "0.0 when no cacheable tokens were seen," which is subtly different; (2) the template_type default of 'generic' is correctly stated but the context suggests it's a fallback for unknown kinds, not a literal default in all cases. These are technical precision issues rather than hallucinations. Overall, the answer demonstrates high faithfulness to the passages.

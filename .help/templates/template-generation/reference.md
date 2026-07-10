@@ -1,58 +1,100 @@
 ---
 type: reference
+name: template-generation-reference
 feature: template-generation
 depth: reference
-generated_at: 2026-04-26T19:46:47.168872+00:00
-source_hash: e3ad2679109ec5bb81db1607254855a0f32feadedbce291531797eb11bf09912
+generated_at: 2026-07-10T13:05:05.895525+00:00
+source_hash: e149f981f61eeb2abe34e8dcb562351d5abf6345541b513e7652221934c533ab
 status: generated
+scaffold_hash: cd686c05443fe776b966ad7a690179a7d2c65025609580764096252c5c1860d6
 ---
 
-# Template Generation reference
+# Template generation reference
 
-Generate help documentation templates from source code analysis.
+Generate markdown help templates for a feature, hash rendered scaffolds for change detection, and run the two-phase polish workflow that rewrites generated content.
+
+## Functions
+
+| Function | Parameters | Returns | Raises | Description | File |
+|----------|------------|---------|--------|-------------|------|
+| `generate_feature_templates` | `feature: Feature, help_dir: str \| Path, project_root: str \| Path, depths: list[str] \| None = None, overwrite: bool = False, use_rag: bool = True` | `GenerationResult` | — | Generate help templates for a feature. | `src/attune_author/generator.py` |
+| `compute_scaffold_hash` | `content: str` | `str` | — | Returns the SHA-256 of a rendered scaffold with metadata lines normalized. | `src/attune_author/generator.py` |
+| `prepare_polish_phase` | `feature: Feature, help_dir: str \| Path, project_root: str \| Path, depths: list[str] \| None = None, overwrite: bool = False, use_rag: bool = True` | `PolishPreparation` | `ValueError` — `'Invalid feature name: {...}'` | Run the pre-polish (Phase 1) work for one feature. | `src/attune_author/generator.py` |
+| `apply_polish_results` | `prep: PolishPreparation, polished_by_depth: dict[str, str]` | `GenerationResult` | — | Write polished content for each pending template (Phase 3). | `src/attune_author/generator.py` |
+| `reset_faithfulness_telemetry` | — | `None` | — | Reset the per-process faithfulness telemetry counters. | `src/attune_author/generator.py` |
 
 ## Classes
 
-| Class | Description |
-|-------|-------------|
-| `GeneratedTemplate` | Result of generating one template file |
-| `GenerationResult` | Result of generating templates for a feature |
+| Class | Description | File |
+|-------|-------------|------|
+| `GeneratedTemplate` | Result of generating one template file. | `src/attune_author/generator.py` |
+| `PolishPreparation` | Per-feature pre-polish state for the batch path. | `src/attune_author/generator.py` |
+| `GenerationResult` | Result of generating templates for a feature. | `src/attune_author/generator.py` |
 
-### GeneratedTemplate
-
-| Field | Type | Default |
-|-------|------|---------|
-| `feature` | `str` | |
-| `depth` | `str` | |
-| `path` | `Path` | |
-| `source_hash` | `str` | |
-
-### GenerationResult
+### GeneratedTemplate fields
 
 | Field | Type | Default |
 |-------|------|---------|
-| `feature` | `str` | |
+| `feature` | `str` | — |
+| `depth` | `str` | — |
+| `path` | `Path` | — |
+| `source_hash` | `str` | — |
+
+### PolishPreparation fields
+
+| Field | Type | Default |
+|-------|------|---------|
+| `feature` | `object` | — |
+| `source_hash` | `str` | — |
+| `matched_files` | `list[str]` | — |
+| `source_info` | `object` | — |
+| `pending` | `tuple[_PendingPolish, ...]` | — |
+| `use_rag` | `bool` | — |
+
+### PolishPreparation methods
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `pending_legacy_tuples` | — | `tuple[tuple[str, str, Path], ...]` | Returns the pending polish entries as `(feature, depth, path)` tuples. |
+
+### GenerationResult fields
+
+| Field | Type | Default |
+|-------|------|---------|
+| `feature` | `str` | — |
 | `templates` | `list[GeneratedTemplate]` | `field(default_factory=list)` |
 | `source_hash` | `str` | `''` |
 | `matched_files` | `list[str]` | `field(default_factory=list)` |
 
-## Functions
-
-| Function | Parameters | Returns | Description |
-|----------|------------|---------|-------------|
-| `generate_feature_templates` | `feature: Feature, help_dir: str \| Path, project_root: str \| Path, depths: list[str] \| None = None, overwrite: bool = False, use_rag: bool = True` | `GenerationResult` | Generate help templates for a feature |
-
-### Raises
-
-| Function | Exception | Message |
-|----------|-----------|---------|
-| `generate_feature_templates` | `ValueError` | `'Invalid feature name: {...}'` |
-
 ## Constants
 
-| Constant | Values | Description |
-|----------|--------|-------------|
-| `_CORE_DEPTH_NAMES` | `'concept'`, `'task'`, `'reference'` | Core depth names |
-| `_PROBLEM_TEMPLATE_NAMES` | `'error'`, `'warning'`, `'troubleshooting'`, `'faq'` | Problem template names |
-| `_GUIDANCE_TEMPLATE_NAMES` | `'quickstart'`, `'tip'`, `'note'`, `'comparison'` | Guidance template names |
-| `_PROJECT_DOC_NAMES` | `'how-to'`, `'tutorial'`, `'cli-reference'`, `'architecture'` | Project doc names |
+| Constant | Type | Values |
+|----------|------|--------|
+| `_CORE_DEPTH_NAMES` | tuple | `'concept'`, `'task'`, `'reference'` |
+| `_PROBLEM_TEMPLATE_NAMES` | tuple | `'error'`, `'warning'`, `'troubleshooting'`, `'faq'` |
+| `_GUIDANCE_TEMPLATE_NAMES` | tuple | `'quickstart'`, `'tip'`, `'note'`, `'comparison'` |
+| `_PROJECT_DOC_NAMES` | tuple | `'how-to'`, `'tutorial'`, `'cli-reference'`, `'architecture'` |
+| `_SCAFFOLD_HASH_EXCLUDE` | tuple | `'generated_at'`, `'scaffold_hash'`, `'source_hash'` |
+| `_DETERMINISTIC_FRONTMATTER_FIELDS` | frozenset | `'type'`, `'name'`, `'feature'`, `'depth'`, `'generated_at'`, `'source_hash'`, `'scaffold_hash'`, `'status'` |
+
+## Source files
+
+- `src/attune_author/generator.py`
+
+## Tags
+
+`generation`, `jinja2`, `ast`, `meta-templates`
+## Faithfulness review
+
+> Auto-generated by attune-author faithfulness judge. Score 0.94 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
+
+**Score:** 0.94 (supported: 29, unsupported: 2)
+
+### Unsupported claims
+
+- pending_legacy_tuples method has no parameters (the docstring indicates it is parameterless, but the implementation suggests implicit self)
+- pending_legacy_tuples returns '(feature, depth, path) tuples' - the actual return documented is '(depth, content, out_path) tuples' per the docstring
+
+### Reasoning
+
+The answer is largely faithful to the retrieved passages. Nearly all factual claims about function signatures, class definitions, field types, and constants are directly supported by the source code. The key unsupported claim is in the PolishPreparation.pending_legacy_tuples() method description: the answer states it returns "(feature, depth, path) tuples" but the docstring in the passages explicitly says it "Adapt ``pending`` to the legacy 3-tuple shape for ``_parallel_polish``. ``_parallel_polish`` predates this dataclass and expects ``(depth, content, out_path)``." This is a factual error in the return type description.

@@ -1,47 +1,83 @@
 ---
 type: task
+name: polish-task
 feature: polish
 depth: task
-generated_at: 2026-04-26T19:47:10.811578+00:00
-source_hash: c3c5a14decb406edb1b2d8ca09a6adb5d3bf68908f60cdaf9a9ea6ba0df1471d
+generated_at: 2026-07-10T13:05:53.040250+00:00
+source_hash: cee35117856c8654705dabf8225b46da419f67a138180fcc5b5a7008b62e2cd0
 status: generated
+scaffold_hash: 9c436d54d7c340d8e9af5814efdbec9365b84ab840fd5875f7bc10cc14ac3ebd
 ---
 
 # Work with polish
 
-Use the polish module when you need to improve auto-generated template quality through LLM rewriting that applies type-specific style rules and source-grounded accuracy checks.
+Use the polish module when you need to change how generated help templates are rewritten by the LLM — for example, to adjust the prompt that guides the rewrite, tune caching behavior, or alter how failures are handled.
 
 ## Prerequisites
 
 - Access to the project source code
-- Understanding of template types and their style conventions
-- Familiarity with the polish module structure
+- Familiarity with `src/attune_author/polish.py` and `src/attune_author/polish_prompts.py`
 
 ## Steps
 
-1. **Identify the polish function you need to modify.**
-   The module separates concerns into three main functions:
-   - `polish_template()` — Orchestrates the LLM rewriting process
-   - `build_source_summary()` — Creates concise source descriptions for prompt context
-   - `get_system_prompt()` — Retrieves type-specific style rules
+1. **Map your change to the right layer.**
+   The feature splits into three concerns:
+   - **Prompt construction** — `build_polish_prompt()` assembles the `(system_prompt, user_message)` pair, and `get_system_prompt()` in `polish_prompts.py` supplies the per-type system prompt. `build_source_summary()` condenses public classes, functions, and docstrings into the source-grounding text.
+   - **The polish call itself** — `polish_template()` runs the LLM rewrite. It raises `PolishError` when strict mode is on and the pass fails; strict behavior defaults from the `STRICT_ENV_VAR` environment variable.
+   - **Cache and telemetry** — `clear_cache()` empties the polish cache, `polish_cache_stats()` returns a `PolishCacheStats` snapshot (`calls`, `creation_tokens`, `read_tokens`), `reset_polish_cache_telemetry()` zeroes the per-process counters, and `format_polish_cache_summary()` produces the end-of-run line.
 
-2. **Review the function's current implementation.**
-   Read the docstring, parameter types, and return values to understand the function's scope and constraints.
+2. **Confirm the function owns the behavior.**
+   Read its docstring, parameters, and return type. For
+   example, if you want to change what the LLM is told,
+   edit `build_polish_prompt()` or `get_system_prompt()`
+   — not `polish_template()`, which orchestrates the call.
 
-3. **Implement your changes following the module patterns.**
-   Maintain the existing error handling style, use the `PolishError` for polish failures, and preserve the source-grounded accuracy approach.
+3. **Edit the function.**
+   Match the module's conventions: raise `PolishError` for
+   strict-mode failures rather than returning silently, and
+   keep prompt text in `polish_prompts.py` rather than
+   inlining it in `polish.py`.
 
-4. **Test your changes with the polish test suite.**
-   Run `pytest -k "polish"` to verify your modifications don't break existing functionality.
+4. **Run the related tests.**
+   Target them with `pytest -k "polish"`.
 
-## Verify success
+## Verify your change
 
-Your changes work correctly when:
-- The polish test suite passes without errors
-- Generated templates maintain their factual accuracy while improving in readability
-- Type-specific style rules are properly applied based on the template kind
+- `pytest -k "polish"` passes with no failures.
+- If you changed prompt construction, call
+  `build_polish_prompt()` directly and inspect the returned
+  tuple to confirm your text appears where you expect.
+- If you changed caching or telemetry, check that
+  `polish_cache_stats()` reflects your calls and that
+  `reset_polish_cache_telemetry()` returns the counters
+  to zero.
 
 ## Key files
 
-- `src/attune_author/polish.py` — Core polish functions
-- `src/attune_author/polish_prompts.py` — Type-specific system prompts
+- `src/attune_author/polish.py` — polish pass, cache, telemetry, and error handling
+- `src/attune_author/polish_prompts.py` — per-type system prompts
+
+## Functions you are most likely to change
+
+| Goal | Function |
+|---|---|
+| Change what the LLM sees | `build_polish_prompt()`, `get_system_prompt()` |
+| Change how source facts are summarized | `build_source_summary()` |
+| Change the rewrite call or strict handling | `polish_template()` |
+| Change cache behavior | `clear_cache()` |
+| Change telemetry or reporting | `polish_cache_stats()`, `reset_polish_cache_telemetry()`, `format_polish_cache_summary()` |
+## Faithfulness review
+
+> Auto-generated by attune-author faithfulness judge. Score 0.88 fell below the configured threshold of 0.95. Review unsupported claims and either fix the source code or fix this doc.
+
+**Score:** 0.88 (supported: 23, unsupported: 3)
+
+### Unsupported claims
+
+- Familiarity with src/attune_author/polish.py and src/attune_author/polish_prompts.py is a prerequisite
+- The polish module splits into three concerns that can be independently mapped to changes
+- All the functions listed in the 'Functions you are most likely to change' table are present in the code
+
+### Reasoning
+
+The answer is a task documentation page that describes how to work with the polish module. Nearly all substantive claims are directly supported by the retrieved passages, which include detailed docstrings, function signatures, module structure, and a data class definition. The supported claims cover the three-layer architecture, the individual functions and their roles (which are all explicitly documented), and the key files. Three claims are marked unsupported: (1) the prerequisite statement, which is editorial and not found in the passages; (2) the characterization of the split as "independently mappable," which is reasonable inference but not explicitly stated; and (3) the claim that all listed functions are present—the table is presented in the answer but the passages do not enumerate all listed functions in a single place (though they are individually documented elsewhere in the code). The answer is faithful overall and demonstrates good understanding of the module structure from the source code.
