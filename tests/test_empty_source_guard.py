@@ -141,6 +141,45 @@ class TestEmptySourceOverwriteGuard:
         assert prep.source_hash != EMPTY_SOURCE_SHA256
         assert prep.pending
 
+    def test_unrecognized_depth_name_is_skipped_not_raised(
+        self, feature: Feature, help_dir: Path, tmp_path: Path
+    ) -> None:
+        # A depth string outside _ALL_TEMPLATE_NAMES must not crash the
+        # at-risk scan — it's silently skipped, not treated as a file
+        # to check for existing output.
+        empty_root = tmp_path / "emptyroot"
+        empty_root.mkdir()
+
+        prep = prepare_polish_phase(
+            feature=feature,
+            help_dir=help_dir,
+            project_root=empty_root,
+            depths=["not-a-real-depth"],
+            overwrite=True,
+        )
+        assert prep.matched_files == []
+
+    def test_project_doc_depth_at_risk_raises(
+        self, feature: Feature, help_dir: Path, tmp_path: Path
+    ) -> None:
+        # Project-doc kinds (how-to/tutorial/cli-reference/architecture)
+        # resolve their at-risk path via _project_doc_output_path, not
+        # template_dir — must be checked too, not just .help/ templates.
+        empty_root = tmp_path / "emptyroot"
+        empty_root.mkdir()
+        how_to = empty_root / "docs" / "how-to" / f"{feature.name}.md"
+        how_to.parent.mkdir(parents=True)
+        how_to.write_text("# Existing how-to doc\n", encoding="utf-8")
+
+        with pytest.raises(EmptySourceError, match="how-to"):
+            prepare_polish_phase(
+                feature=feature,
+                help_dir=help_dir,
+                project_root=empty_root,
+                depths=["how-to"],
+                overwrite=True,
+            )
+
 
 class TestEmptySourceCLI:
     """The CLI exits non-zero with a clear message — no traceback."""
