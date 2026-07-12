@@ -22,7 +22,12 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from attune_author.manifest import Feature, FeatureManifest, is_safe_feature_name, load_manifest
+from attune_author.manifest import (
+    Feature,
+    FeatureManifest,
+    is_safe_feature_name,
+    load_manifest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +43,30 @@ _EXCLUDED_DIRS = {
     "node_modules",
     ".git",
 }
+
+#: SHA-256 of zero bytes. Both hash paths (byte-concatenation and
+#: semantic) produce this digest when a feature's globs match nothing,
+#: or when every matched file is unreadable or empty. A generation run
+#: must never stamp this hash into frontmatter — it means the resolved
+#: source content was empty and the polished output would be degraded
+#: (2026-07-05 incident: a bulk regen against a wrong project root
+#: rewrote 36 templates with this hash).
+EMPTY_SOURCE_SHA256 = hashlib.sha256(b"").hexdigest()
+
+
+class EmptySourceError(RuntimeError):
+    """Empty/unreadable resolved source would overwrite existing output.
+
+    Raised by the generation pipeline (before any file is written)
+    when a feature's source globs resolve to no readable content
+    under the given project root AND generated output already exists
+    on disk. Regenerating from empty source silently replaces good
+    templates with degraded content stamped with the empty-string
+    ``source_hash``, so the pipeline refuses instead. The usual cause
+    is a wrong ``--project-root``. Scaffolding a brand-new feature
+    (no templates on disk yet) from empty source stays allowed.
+    """
+
 
 # Regex to parse the HTML comment footer written by attune-author's doc generator:
 # <!-- attune-generated: source_hash=abc123 feature=foo kind=how-to generated_at=2026-04-23 -->

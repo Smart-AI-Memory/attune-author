@@ -30,6 +30,7 @@ from attune_author.editor_launcher import (
     ensure_sidecar,
 )
 from attune_author.mcp.path_validation import validate_file_path
+from attune_author.staleness import EmptySourceError
 
 logger = logging.getLogger(__name__)
 
@@ -485,6 +486,12 @@ def _dispatch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
     try:
         return handler(args)
+    except EmptySourceError as e:
+        # Deliberate hard stop: source resolved empty — nothing was
+        # written. Exit non-zero so wrappers (pre-commit, CI, release
+        # prep) see the failure instead of a silently degraded regen.
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
     except (FileNotFoundError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
